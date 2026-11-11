@@ -97,9 +97,17 @@ Future<void> main() async {
     WidgetsFlutterBinding.ensureInitialized();
 
     // Initialize Firebase
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    if (Firebase.apps.isEmpty) {
+      try {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      } catch (e) {
+        try {
+          await Firebase.initializeApp();
+        } catch (_) {}
+      }
+    }
     // Route every uncaught framework and async error to Crashlytics, so a crash
     // on a seller's phone is visible without waiting for a phone call.
     FlutterError.onError = (FlutterErrorDetails details) {

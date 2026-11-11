@@ -134,7 +134,7 @@ class EditAddressScreenState extends State<EditAddressScreen> {
       final response = await http.get(
         url,
         headers: {
-          'User-Agent': 'SyriaCosmeticsManager/1.0',
+          'User-Agent': 'LavkooSeller/1.0',
         },
       );
 

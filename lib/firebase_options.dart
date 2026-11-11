@@ -60,10 +60,10 @@ class DefaultFirebaseOptions {
     apiKey: 'AIzaSyDvJQFODtpTu7b7hLcXzE1rkQHr3RsB2SQ',
     appId: '1:486850863620:ios:9b215456444a0bd3bb0b51',
     messagingSenderId: '486850863620',
-    projectId: 'lavkoocosmeticsmanager-cosmetics',
-    storageBucket: 'lavkoocosmeticsmanager-cosmetics.firebasestorage.app',
+    projectId: 'lavkoo-380f1',
+    storageBucket: 'lavkoo-380f1.firebasestorage.app',
     androidClientId: '486850863620-62vifh2ds8uariu9e1pmbcgl01jhditb.apps.googleusercontent.com',
     iosClientId: '486850863620-o6nvglplc6t8hpmgagqq9449a68p7mob.apps.googleusercontent.com',
-    iosBundleId: 'com.lavkoocosmeticsmanager.seller',
+    iosBundleId: 'com.lavkoocosmeticsmanager.app',
   );
 }

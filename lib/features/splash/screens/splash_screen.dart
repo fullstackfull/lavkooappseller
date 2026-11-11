@@ -39,7 +39,7 @@ class SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Provider.of<AuthController>(Get.context!,listen: false).setUnAuthorize(false, update: false);
+    Provider.of<AuthController>(context, listen: false).setUnAuthorize(false, update: false);
     initCall();
   }
 

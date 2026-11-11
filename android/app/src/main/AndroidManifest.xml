@@ -33,7 +33,7 @@
 
 
    <application
-       android:label="Lavkoo Seller"
+       android:label="Seller Center LV"
        android:name="${applicationName}"
        android:extractNativeLibs="true"
        android:icon="@mipmap/ic_launcher"
@@ -42,6 +42,10 @@
        android:allowBackup="false"
        android:fullBackupOnly="false"
        >
+
+       <meta-data
+           android:name="com.google.firebase.messaging.default_notification_icon"
+           android:resource="@drawable/notification_icon" />
 
        <provider
            android:name="vn.hunghd.flutterdownloader.DownloadedFileProvider"
