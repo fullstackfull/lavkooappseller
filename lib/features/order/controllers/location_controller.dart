@@ -1,0 +1,167 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:syriacosmeticsmanger/features/order/domain/models/geo_point.dart';
+import 'package:syriacosmeticsmanger/data/model/response/base/api_response.dart';
+import 'package:syriacosmeticsmanger/features/order/domain/models/place_details_model.dart';
+import 'package:syriacosmeticsmanger/features/order/domain/models/prediction_model.dart';
+import 'package:syriacosmeticsmanger/features/order/domain/services/location_service_interface.dart';
+
+class LocationController with ChangeNotifier {
+  final LocationServiceInterface locationServiceInterface;
+  LocationController({required this.locationServiceInterface});
+
+  GeoPoint _position = GeoPoint.zero;
+  GeoPoint _pickPosition = GeoPoint.zero;
+  bool _loading = false;
+  bool get loading => _loading;
+  final TextEditingController _locationTextEditingController = TextEditingController();
+
+  GeoPoint get position => _position;
+  GeoPoint get pickPosition => _pickPosition;
+  String? _address;
+  String? _pickAddress;
+
+  String? get address => _address;
+  String? get pickAddress => _pickAddress;
+  TextEditingController get locationTextEditingController => _locationTextEditingController;
+
+  bool _changeAddress = true;
+  bool _updateAddAddressData = true;
+
+
+
+  PredictionListModel? _predictionListModel;
+  PredictionListModel? get predictionListModel => _predictionListModel;
+
+
+
+  void updatePosition(MapCameraPosition? position, bool fromAddress, String? address, BuildContext context) async {
+    if(_updateAddAddressData) {
+      _loading = true;
+      notifyListeners();
+      try {
+        if (fromAddress) {
+          _position = GeoPoint(latitude: position!.target.latitude, longitude: position.target.longitude);
+        } else {
+          _pickPosition = GeoPoint(latitude: position!.target.latitude, longitude: position.target.longitude);
+        }
+        if (_changeAddress) {
+            String? previousAddress = await getAddressFromGeocode(LatLng(position.target.latitude, position.target.longitude), context);
+            fromAddress ? _address = previousAddress : _pickAddress = previousAddress;
+
+          if(address != null) {
+            _locationTextEditingController.text = address;
+          }else if(fromAddress) {
+            _locationTextEditingController.text = previousAddress;
+          }
+        } else {
+          _changeAddress = true;
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print(e);
+        }
+      }
+      _loading = false;
+      notifyListeners();
+    }else {
+      _updateAddAddressData = true;
+    }
+  }
+
+  bool isLoading = false;
+
+  int _selectAddressIndex = 0;
+
+  int get selectAddressIndex => _selectAddressIndex;
+
+  void updateAddressIndex(int index, bool notify) {
+    _selectAddressIndex = index;
+    if(notify) {
+      notifyListeners();
+    }
+  }
+
+  void setLocationIntoSelectLocationScreen( String locationAddress){
+    locationTextEditingController.text = locationAddress;
+  }
+
+  String? chosenAddress = '';
+  /// Resolves a place id to a coordinate. [mapController] is a flutter_map
+  /// controller; when given, the map is recentred on the resolved point.
+  Future<GeoPoint> setLocation(String? placeID, String? address, MapController? mapController) async {
+    _loading = true;
+    notifyListeners();
+
+    LatLng latLng = const LatLng(0, 0);
+    ApiResponse response = await locationServiceInterface.getPlaceDetails(placeID);
+    if(response.response?.statusCode == 200) {
+      PlaceDetailsModel placeDetails = PlaceDetailsModel.fromJson(response.response?.data);
+
+      latLng = LatLng(placeDetails.location?.latitude ?? 0, placeDetails.location?.longitude ?? 0);
+    }
+
+    _pickPosition = GeoPoint.fromLatLng(latLng);
+
+    chosenAddress = address;
+    locationTextEditingController.text = address??'';
+    _changeAddress = false;
+
+    if(mapController != null) {
+      try {
+        mapController.move(latLng, 16);
+      } catch (e) {
+        debugPrint('Map recentre failed: $e');
+      }
+    }
+    _loading = false;
+    notifyListeners();
+    return _pickPosition;
+  }
+
+
+  void setAddAddressData() {
+    _position = _pickPosition;
+    _address = _pickAddress!;
+    if(_pickAddress != null && _pickAddress!.isNotEmpty) {
+      debugPrint("Save Address Data: $_pickAddress");
+      _locationTextEditingController.text = _address ?? '';
+    }
+    _updateAddAddressData = false;
+  }
+
+
+  Future<String> getAddressFromGeocode(LatLng latLng, BuildContext context) async {
+    ApiResponse response = await locationServiceInterface.getAddressFromGeocode(latLng);
+    String address = '';
+    if(response.response?.statusCode == 200 && response.response!.data['status'] == 'OK') {
+      address = response.response!.data['results'][0]['formatted_address'].toString();
+    }else {
+      //ApiChecker.checkApi( response);
+    }
+    return address;
+  }
+
+
+
+  Future<List<Suggestions>> searchLocation(BuildContext context, String text) async {
+    if(text.isNotEmpty) {
+      _predictionListModel = null;
+
+      ApiResponse response = await locationServiceInterface.searchLocation(text);
+      if (response.response!.data is !List) {
+        _predictionListModel =  PredictionListModel.fromJson(response.response!.data);
+      }
+    }
+    return _predictionListModel?.suggestions ?? [];
+  }
+
+
+  void updateInitialPosition(LatLng latLng){
+    _position = GeoPoint.fromLatLng(latLng);
+  }
+
+
+}

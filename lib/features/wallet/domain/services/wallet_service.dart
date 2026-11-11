@@ -1,0 +1,62 @@
+
+
+import 'package:syriacosmeticsmanger/data/model/response/base/api_response.dart';
+import 'package:syriacosmeticsmanger/features/wallet/domain/repositories/wallet_repository_interface.dart';
+import 'package:syriacosmeticsmanger/features/wallet/domain/services/wallet_service_interface.dart';
+import 'package:syriacosmeticsmanger/helper/api_checker.dart';
+
+class WalletService implements WalletServiceInterface{
+  final WalletRepositoryInterface walletRepoInterface;
+  WalletService({required this.walletRepoInterface});
+
+  @override
+  Future getDynamicWithDrawMethod() async{
+    ApiResponse apiResponse = await walletRepoInterface.getDynamicWithDrawMethod();
+    if(apiResponse.response?.statusCode == 200) {
+      return apiResponse;
+    }else{
+      ApiChecker.checkApi(apiResponse);
+      // Returned, not dropped: falling off the end handed the caller a null
+      // where it declared an ApiResponse, turning a handled API error into a
+      // crash.
+      return apiResponse;
+    }
+  }
+
+
+  @override
+  Future withdrawBalance(List<String?> typeKey, List<String> typeValue, int? id, String balance) async {
+    ApiResponse apiResponse = await walletRepoInterface.withdrawBalance(
+        typeKey, typeValue, id, balance);
+    if (apiResponse.response != null && apiResponse.response!.statusCode == 200) {
+      return apiResponse;
+    } else {
+      return apiResponse;
+    }
+  }
+
+  @override
+  Future updateWithdrawRequest(List<String?> typeKey, List<String> typeValue, int? methodId, String balance, int requestId) async {
+    ApiResponse apiResponse = await walletRepoInterface.updateWithdrawRequest(
+      typeKey, typeValue, methodId, balance, requestId,
+    );
+    if (apiResponse.response != null && apiResponse.response!.statusCode == 200) {
+      return apiResponse;
+    } else {
+      return apiResponse;
+    }
+  }
+
+
+  @override
+  Future getPaymentInfoList() {
+    return walletRepoInterface.getPaymentInfoList();
+  }
+
+
+  @override
+  Future closeWithdrawRequest(int? id, String balance) async {
+    return walletRepoInterface.closeWithdrawRequest(id, balance);
+  }
+
+}

@@ -1,0 +1,43 @@
+# Static analysis configuration.
+#
+# Run with `flutter analyze`; CI runs the same command, so anything promoted to
+# `error` below blocks a merge.
+
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
+
+  errors:
+    # Release builds used to log withdrawal payloads, order amounts and saved
+    # addresses to the device log. Keep that from creeping back.
+    avoid_print: error
+
+    # A BuildContext used after an await can belong to a disposed widget. The
+    # app has real instances of this; treat new ones as build failures.
+    use_build_context_synchronously: error
+
+    # Dead code is how the low-stock banner sat unnoticed behind an impossible
+    # condition for so long.
+    # `flutter analyze` treats warnings as fatal, so this is a build gate too.
+    unused_local_variable: warning
+    unused_import: error
+    unused_element: error
+    dead_code: error
+
+linter:
+  rules:
+    # RTL correctness: the app serves Arabic-speaking users, so physical
+    # left/right padding is a layout bug, not a style preference.
+    - use_full_hex_values_for_flutter_colors
+    - avoid_relative_lib_imports
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - unnecessary_brace_in_string_interps

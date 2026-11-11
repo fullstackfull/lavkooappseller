@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "533968466510",
+    "project_id": "lavkoo-380f1",
+    "storage_bucket": "lavkoo-380f1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:533968466510:android:32e398b9781b897c81891f",
+        "android_client_info": {
+          "package_name": "com.lavkoo.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRZAlSvjjRxbmnVj4IzcNb5PgPZkl2R4k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:533968466510:android:c1476bdda23f47be81891f",
+        "android_client_info": {
+          "package_name": "com.lavkoocosmeticsmanager.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRZAlSvjjRxbmnVj4IzcNb5PgPZkl2R4k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
