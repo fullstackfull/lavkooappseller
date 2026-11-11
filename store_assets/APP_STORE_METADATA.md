@@ -5,6 +5,7 @@
 - **Subtitle (Arabic):** إدارة متجر وطلبات لافكو
 - **Subtitle (English):** Manage Lavkoo Store & Orders
 - **Bundle ID:** `com.lavkoocosmeticsmanager.app`
+- **Version:** `1.0.0` (Build `1`)
 - **SKU:** `lavkoo-seller-ios`
 - **Primary Language:** Arabic (`ar-SA`)
 - **Secondary Language:** English (US) (`en-US`)
