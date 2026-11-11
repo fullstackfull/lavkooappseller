@@ -24,3 +24,7 @@ Read in order at the beginning of every Claude session:
 - Coordinate approved implementation with backend/customer/seller repositories via workstream-specific branches and PRs. GitHub push is NOT production deployment.
 
 **Do not modify this app's internals as part of GCC documentation setup.**
+
+## GCC-20 — Owner Super Admin Mode
+
+The owner requires this same app to support a **distinct platform Super Admin experience** alongside the existing seller/staff experience. Read https://github.com/fullstackfull/lavkoo/blob/main/docs/gcc/GCC-20-SUPER-ADMIN-MOBILE.md and the central GCC decisions and discovery prompt. During discovery, audit existing seller login, seller guards, control tower, country drilldown and safe platform-admin authentication. **Do not reuse seller tokens for admin access or implement application changes yet.**
