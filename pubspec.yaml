@@ -5,7 +5,7 @@ publish_to: 'none'
 # seller_app_version_control (Admin -> Business Settings -> App Settings),
 # or the splash force-update gate locks every seller out before the login
 # screen. See test/app_version_gate_test.dart and MIGRATION.md.
-version: 1.0.0+2
+version: 1.0.0+3
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
