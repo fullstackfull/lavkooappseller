@@ -132,6 +132,8 @@ abstract final class PlatformAdminTexts {
   static String failureTitle(BuildContext context, PlatformAdminFailure failure) => switch (failure.kind) {
         PlatformAdminFailureKind.network => getTranslated('connection_failed_title', context)!,
         PlatformAdminFailureKind.marketNotAllowed => getTranslated('platform_admin_market_not_allowed', context)!,
+        PlatformAdminFailureKind.capabilityNotAllowed =>
+          getTranslated('platform_admin_capability_not_allowed', context)!,
         PlatformAdminFailureKind.notAvailable => getTranslated('platform_admin_not_available', context)!,
         PlatformAdminFailureKind.notReady => getTranslated('platform_admin_not_ready', context)!,
         PlatformAdminFailureKind.throttled => _tryAgain(context, failure),
@@ -149,7 +151,10 @@ abstract final class PlatformAdminTexts {
 
   static IconData failureIcon(PlatformAdminFailure failure) => switch (failure.kind) {
         PlatformAdminFailureKind.network => Icons.wifi_off_rounded,
-        PlatformAdminFailureKind.marketNotAllowed || PlatformAdminFailureKind.unauthenticated => Icons.lock_outline,
+        PlatformAdminFailureKind.marketNotAllowed ||
+        PlatformAdminFailureKind.capabilityNotAllowed ||
+        PlatformAdminFailureKind.unauthenticated =>
+          Icons.lock_outline,
         PlatformAdminFailureKind.notAvailable => Icons.block_outlined,
         PlatformAdminFailureKind.notReady => Icons.hourglass_empty_rounded,
         PlatformAdminFailureKind.throttled => Icons.timer_outlined,

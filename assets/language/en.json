@@ -1930,5 +1930,6 @@
   "platform_admin_audit_status": "Status",
   "platform_admin_audit_device": "Device",
   "platform_admin_audit_empty": "No audit lines yet.",
-  "platform_admin_open_alerts": "Open alerts"
+  "platform_admin_open_alerts": "Open alerts",
+  "platform_admin_capability_not_allowed": "This part is not included in your access."
 }

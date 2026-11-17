@@ -1930,5 +1930,6 @@
   "platform_admin_audit_status": "الحالة",
   "platform_admin_audit_device": "الجهاز",
   "platform_admin_audit_empty": "لا توجد سجلات بعد.",
-  "platform_admin_open_alerts": "فتح التنبيهات"
+  "platform_admin_open_alerts": "فتح التنبيهات",
+  "platform_admin_capability_not_allowed": "هذا القسم غير مشمول في صلاحياتك."
 }
