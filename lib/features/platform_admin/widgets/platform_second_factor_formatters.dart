@@ -5,17 +5,15 @@ import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platf
 ///
 /// The digits of an Arabic or a Persian keyboard are turned into 0 to 9, and anything that is not a digit, the
 /// spaces and hyphens an app writes a code with included, is left out, so that a code can be pasted the way it is shown.
+/// How many digits there may be is the limit of the field it is given to, which comes after it.
 class PlatformCodeInputFormatter extends TextInputFormatter {
   const PlatformCodeInputFormatter();
 
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
     final String digits = PlatformSecondFactorInput.asciiDigits(newValue.text).replaceAll(RegExp(r'[^0-9]'), '');
-    final String kept = digits.length > PlatformSecondFactorInput.codeLength
-        ? digits.substring(0, PlatformSecondFactorInput.codeLength)
-        : digits;
 
-    return TextEditingValue(text: kept, selection: TextSelection.collapsed(offset: kept.length));
+    return TextEditingValue(text: digits, selection: TextSelection.collapsed(offset: digits.length));
   }
 }
 
