@@ -663,6 +663,7 @@
   "scan_shared_code_choose_country": "The same code is used in different countries. Tap the product you want to add.",
   "scan_shared_code_open_list": "A scan cannot choose between them. Open your product list and pick the right product.",
   "scan_open_product_list": "Open product list",
+  "scan_market_unavailable": "Scanning is not available for this market.",
   "scan_country_sa": "Saudi Arabia",
   "scan_country_ae": "UAE",
   "scan_country_kw": "Kuwait",

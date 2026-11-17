@@ -662,6 +662,7 @@
   "scan_shared_code_choose_country": "الرمز نفسه مستخدم في دول مختلفة. اضغط على المنتج الذي تريد إضافته.",
   "scan_shared_code_open_list": "لا يمكن للمسح أن يختار بينها. افتح قائمة المنتجات واختر المنتج المناسب.",
   "scan_open_product_list": "فتح قائمة المنتجات",
+  "scan_market_unavailable": "المسح غير متاح لهذا السوق.",
   "scan_country_sa": "السعودية",
   "scan_country_ae": "الإمارات",
   "scan_country_kw": "الكويت",
