@@ -365,7 +365,7 @@ class PlatformAdminController with ChangeNotifier {
   }
 
   /// Null when the session was ended; otherwise why it was not. A session that was
-  /// already over counts as ended, and the list is read again either way.
+  /// already over is gone from the list as well, so it is read again either way.
   Future<PlatformAdminFailure?> endSession(int id) async {
     if (_stage != PlatformAdminStage.signedIn || _endingSessionId != null) return null;
 
@@ -385,7 +385,7 @@ class PlatformAdminController with ChangeNotifier {
     notifyListeners();
 
     if (gone) await loadSessions(force: true);
-    return failure?.kind == PlatformAdminFailureKind.sessionNotFound ? null : failure;
+    return failure;
   }
 
   Future<void> loadAuditLog({bool force = false}) async {

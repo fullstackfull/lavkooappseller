@@ -685,7 +685,7 @@ void main() {
       expect(controller.endingSessionId, isNull);
     });
 
-    test('ending one that is already over is ending it, and the list is read again', () async {
+    test('ending one that is already over says so, and the list is read again so that it is gone from it', () async {
       final PlatformAdminController controller = await signedIn();
       await controller.loadSessions();
       service.calls.clear();
@@ -693,7 +693,7 @@ void main() {
 
       final PlatformAdminFailure? failure = await controller.endSession(2);
 
-      expect(failure, isNull);
+      expect(failure!.kind, PlatformAdminFailureKind.sessionNotFound);
       expect(service.calls, <String>['endSession 2', 'sessions']);
     });
 
