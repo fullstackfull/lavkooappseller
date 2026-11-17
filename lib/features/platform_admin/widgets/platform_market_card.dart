@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_alert_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_market_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/widgets/platform_admin_texts.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/widgets/platform_severity_style.dart';
 import 'package:syriacosmeticsmanger/features/reports/widgets/report_widgets.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 import 'package:syriacosmeticsmanger/utill/dimensions.dart';
@@ -19,7 +21,11 @@ class PlatformMarketCard extends StatelessWidget {
   /// What the platform says about the market itself; null until it has been read.
   final PlatformMarketModel? market;
 
-  const PlatformMarketCard({super.key, required this.overview, this.market});
+  /// Opens the alerts of this market. Null where they cannot be opened from here:
+  /// the counts are then only read.
+  final VoidCallback? onOpenAlerts;
+
+  const PlatformMarketCard({super.key, required this.overview, this.market, this.onOpenAlerts});
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +48,7 @@ class PlatformMarketCard extends StatelessWidget {
         const SizedBox(height: Dimensions.paddingSizeDefault),
         PlatformFiguresBlock(figures: overview.figures),
         const SizedBox(height: Dimensions.paddingSizeSmall),
-        _AlertCounts(counts: overview.alerts),
+        _AlertCounts(counts: overview.alerts, onOpen: onOpenAlerts),
         const SizedBox(height: Dimensions.paddingSizeSmall),
         PlatformSalesNote(sales: overview.figures.sales),
       ],
@@ -213,8 +219,9 @@ class _Header extends StatelessWidget {
 
 class _AlertCounts extends StatelessWidget {
   final PlatformAlertCounts counts;
+  final VoidCallback? onOpen;
 
-  const _AlertCounts({required this.counts});
+  const _AlertCounts({required this.counts, this.onOpen});
 
   @override
   Widget build(BuildContext context) {
@@ -229,20 +236,35 @@ class _AlertCounts extends StatelessWidget {
       ]);
     }
 
-    return Wrap(spacing: Dimensions.paddingSizeExtraSmall, runSpacing: Dimensions.paddingSizeExtraSmall, children: [
-      if (counts.critical > 0)
-        _tag(context, '${getTranslated('platform_admin_severity_critical', context)!} ${counts.critical}',
-            Theme.of(context).colorScheme.error,
-            icon: Icons.priority_high_rounded),
-      if (counts.warning > 0)
-        _tag(context, '${getTranslated('platform_admin_severity_warning', context)!} ${counts.warning}',
-            Colors.amber.shade800,
-            icon: Icons.warning_amber_rounded),
-      if (counts.info > 0)
-        _tag(context, '${getTranslated('platform_admin_severity_info', context)!} ${counts.info}',
-            Theme.of(context).primaryColor,
-            icon: Icons.info_outline),
+    final Widget tags =
+        Wrap(spacing: Dimensions.paddingSizeExtraSmall, runSpacing: Dimensions.paddingSizeExtraSmall, children: [
+      for (final (String severity, int count) in <(String, int)>[
+        (PlatformSeverity.critical, counts.critical),
+        (PlatformSeverity.warning, counts.warning),
+        (PlatformSeverity.info, counts.info),
+      ])
+        if (count > 0)
+          _tag(context, '${PlatformAdminTexts.severity(context, severity)} $count',
+              PlatformSeverityStyle.color(context, severity),
+              icon: PlatformSeverityStyle.icon(severity)),
     ]);
+    if (onOpen == null) return tags;
+
+    return Semantics(
+      button: true,
+      hint: getTranslated('platform_admin_open_alerts', context),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onOpen,
+          borderRadius: BorderRadius.circular(Dimensions.radiusDefault),
+          child: Row(children: [
+            Expanded(child: tags),
+            Icon(Icons.chevron_right, color: Theme.of(context).hintColor),
+          ]),
+        ),
+      ),
+    );
   }
 }
 

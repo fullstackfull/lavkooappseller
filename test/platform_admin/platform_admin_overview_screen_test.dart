@@ -531,6 +531,94 @@ void main() {
     });
   });
 
+  group('opening the alerts of a market from its card', () {
+    late List<String> opened;
+
+    setUp(() => opened = <String>[]);
+
+    Future<void> pumpWithOpener(WidgetTester tester, {Locale locale = PlatformAdminHarness.english}) async {
+      await controller.loadOverview();
+      service.calls.clear();
+      PlatformAdminHarness.useScreen(tester, PlatformAdminHarness.tallPhone);
+      await tester.pumpWidget(await PlatformAdminHarness.app(
+        tester,
+        home: Scaffold(body: PlatformAdminOverviewScreen(onOpenAlerts: opened.add)),
+        controller: controller,
+        locale: locale,
+      ));
+      await tester.pump();
+    }
+
+    Finder arrowIn(String code) => inCard(code, find.byIcon(Icons.chevron_right));
+
+    group('the platform owner', () {
+      setUp(signIn);
+
+      testWidgets('opens the alerts of a market from the counts on its card, naming that market',
+          (WidgetTester tester) async {
+        await pumpWithOpener(tester);
+
+        await tester.tap(inCard('KW', find.text('Critical 1')));
+        await tester.tap(inCard('SA', find.text('Info 1')));
+
+        expect(opened, <String>['KW', 'SA']);
+      });
+
+      testWidgets('a card with alerts has an arrow, and a card with none has nothing to open',
+          (WidgetTester tester) async {
+        await pumpWithOpener(tester);
+
+        expect(arrowIn('KW'), findsOneWidget);
+        expect(arrowIn('SA'), findsOneWidget);
+        expect(arrowIn('QA'), findsNothing);
+
+        await tester.tap(inCard('QA', find.text('No alerts')));
+        expect(opened, isEmpty);
+      });
+
+      testWidgets('the arrow is drawn turned the way the language reads', (WidgetTester tester) async {
+        await pumpWithOpener(tester, locale: PlatformAdminHarness.arabic);
+
+        expect(tester.widget<Icon>(arrowIn('KW')).icon!.matchTextDirection, isTrue);
+      });
+
+      testWidgets('asking for the alerts asks the server for nothing: the screen only says where to go',
+          (WidgetTester tester) async {
+        await pumpWithOpener(tester);
+
+        await tester.tap(inCard('KW', find.text('Critical 1')));
+        await tester.pump();
+
+        expect(service.calls, isEmpty);
+      });
+
+      testWidgets('without somewhere to open them the counts are only read', (WidgetTester tester) async {
+        await pumpOverview(tester);
+
+        expect(find.byIcon(Icons.chevron_right), findsNothing);
+        await tester.tap(inCard('KW', find.text('Critical 1')));
+        expect(find.byType(PlatformMarketCard), findsNWidgets(6));
+      });
+    });
+
+    group('a country manager', () {
+      setUp(() => signIn(as: restrictedProfile()));
+
+      testWidgets('cannot open the alerts of a market that is not theirs, even if its card were sent',
+          (WidgetTester tester) async {
+        service.onMarkets = () async => PlatformAdminResult<PlatformMarketDirectory>.success(
+            PlatformMarketDirectory.fromJson(fixtureData('markets_owner')));
+
+        await pumpWithOpener(tester);
+
+        expect(arrowIn('KW'), findsOneWidget, reason: 'the grant holds Kuwait');
+        expect(arrowIn('SA'), findsNothing, reason: 'and does not hold Saudi Arabia');
+        await tester.tap(inCard('SA', find.text('Info 1')));
+        expect(opened, isEmpty);
+      });
+    });
+  });
+
   group('the screen only draws what the controller holds', () {
     setUp(signIn);
 

@@ -236,10 +236,13 @@ class PlatformAdminController with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Whether a market can be opened: the server lists it for this viewer.
+  bool canOpenMarket(String market) => _profile?.canSee(PlatformMarketCode.normalize(market)) ?? false;
+
   /// Whether an alert can be opened: it links to a market this viewer may see.
   bool canOpen(PlatformAlertModel alert) {
     final PlatformDeepLink? link = alert.link;
-    return link != null && (_profile?.canSee(link.market) ?? false);
+    return link != null && canOpenMarket(link.market);
   }
 
   Future<void> loadOverview({bool force = false}) async {
@@ -290,17 +293,22 @@ class PlatformAdminController with ChangeNotifier {
     _alertsFailure = null;
     notifyListeners();
 
+    // The market chips of this screen are the overview's, so the markets are asked for here when the overview has not.
+    final Future<PlatformAdminResult<PlatformMarketDirectory>>? directoryCall =
+        _directory == null ? platformAdminServiceInterface.markets() : null;
     final PlatformAdminResult<PlatformAlertPage> result = await platformAdminServiceInterface.alerts(
       market: key.market,
       page: 1,
       severity: key.severity,
     );
+    final PlatformAdminResult<PlatformMarketDirectory>? directoryResult = await directoryCall;
 
     if (session != _sessionEpoch || market != _marketEpoch) return;
 
     if (_loadingAlerts == key) _loadingAlerts = null;
-    if (_endedBy(result.failure)) return;
+    if (_endedBy(result.failure) || _endedBy(directoryResult?.failure)) return;
 
+    if (directoryResult?.value != null) _directory = directoryResult!.value;
     final PlatformAlertPage? page = result.value;
     if (page != null) {
       _alerts[key] = _AlertList(items: page.alerts, lastPage: page.page, total: page.total, hasMore: page.hasMore);

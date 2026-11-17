@@ -560,7 +560,81 @@ void main() {
 
       expect(controller.alerts, hasLength(4));
       expect(controller.alertsHaveMore, isFalse);
-      expect(service.calls, <String>['alerts all p1 null', 'alerts all p2 null']);
+      expect(service.calls, <String>['markets', 'alerts all p1 null', 'alerts all p2 null']);
+    });
+
+    test('ask for the markets too when nothing has, because the market chips of the screen are the overview\'s',
+        () async {
+      final PlatformAdminController controller = await signedIn();
+
+      await controller.loadAlerts();
+
+      expect(service.calls, <String>['markets', 'alerts all p1 null']);
+      expect(controller.markets.map((PlatformMarketModel market) => market.code),
+          <String>['SA', 'AE', 'KW', 'QA', 'BH', 'OM']);
+    });
+
+    test('do not ask for the markets again when the overview already has them', () async {
+      final PlatformAdminController controller = await signedInOwnerWithOverview();
+
+      await controller.loadAlerts();
+
+      expect(service.calls, <String>['alerts all p1 null']);
+    });
+
+    test('and the overview does not ask for them again when the alerts have them', () async {
+      final PlatformAdminController controller = await signedIn();
+      await controller.loadAlerts();
+      service.calls.clear();
+
+      await controller.loadOverview();
+
+      expect(service.calls, <String>['overview all null']);
+      expect(controller.hasOverview, isTrue);
+    });
+
+    test('a list of markets that cannot be had does not fail the alerts, and is asked for again next time', () async {
+      service.onMarkets = () async => unreachable<PlatformMarketDirectory>();
+      final PlatformAdminController controller = await signedIn();
+
+      await controller.loadAlerts();
+
+      expect(controller.alerts, hasLength(3));
+      expect(controller.alertsFailure, isNull);
+      expect(controller.markets, isEmpty);
+
+      service.calls.clear();
+      await controller.loadAlerts(force: true);
+      expect(service.calls, <String>['markets', 'alerts all p1 null']);
+    });
+
+    test('a session the server refuses on the markets ends the session, and nothing of the alerts is kept', () async {
+      service.onMarkets = () async => refused<PlatformMarketDirectory>('error_unauthenticated');
+      final PlatformAdminController controller = await signedIn();
+
+      await controller.loadAlerts();
+
+      expect(controller.stage, PlatformAdminStage.signedOut);
+      expect(controller.sessionEnded, isTrue);
+      expect(controller.hasAlertList, isFalse);
+      expect(controller.markets, isEmpty);
+    });
+
+    test('markets that were on their way when the admin signed out are not kept', () async {
+      final Gate<PlatformAdminResult<PlatformMarketDirectory>> gate =
+          Gate<PlatformAdminResult<PlatformMarketDirectory>>();
+      service.onMarkets = () => gate.future;
+      final PlatformAdminController controller = await signedIn();
+      final Future<void> loading = controller.loadAlerts();
+
+      await controller.signOut();
+      gate.open(PlatformAdminResult<PlatformMarketDirectory>.success(
+          PlatformMarketDirectory.fromJson(fixtureData('markets_owner'))));
+      await loading;
+
+      expect(controller.markets, isEmpty);
+      expect(controller.hasAlertList, isFalse);
+      expect(controller.stage, PlatformAdminStage.signedOut);
     });
 
     test('are not asked for again while held, and are when forced', () async {
@@ -659,6 +733,30 @@ void main() {
           <String, dynamic>{...fixtureRows('alerts_owner').first, 'deep_link': 'orders/12'});
 
       expect(controller.canOpen(alert), isFalse);
+    });
+
+    test('a market can be opened when the server lists it for the viewer, in whatever case it is written', () async {
+      final PlatformAdminController owner = await signedIn();
+      final PlatformAdminController viewer = await signedIn(as: restrictedProfile());
+
+      expect(owner.canOpenMarket('SA'), isTrue);
+      expect(owner.canOpenMarket('sa'), isTrue);
+      expect(viewer.canOpenMarket('KW'), isTrue);
+      expect(viewer.canOpenMarket('kw'), isTrue);
+      expect(viewer.canOpenMarket('SA'), isFalse);
+      expect(viewer.canOpenMarket('ZZ'), isFalse);
+    });
+
+    test('before anyone is signed in, and after they sign out, no market can be opened', () async {
+      final PlatformAdminController controller = newController();
+      expect(controller.canOpenMarket('SA'), isFalse);
+
+      service.onRestore = () async => PlatformAdminResult<PlatformAdminProfile?>.success(ownerProfile());
+      await controller.restoreSession();
+      expect(controller.canOpenMarket('SA'), isTrue);
+
+      await controller.signOut();
+      expect(controller.canOpenMarket('SA'), isFalse);
     });
   });
 

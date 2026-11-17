@@ -19,7 +19,10 @@ import 'package:syriacosmeticsmanger/utill/styles.dart';
 /// of one market are never added to another's, and there is no money on this
 /// screen: sales say why they are not reported.
 class PlatformAdminOverviewScreen extends StatelessWidget {
-  const PlatformAdminOverviewScreen({super.key});
+  /// Opens the alerts of a market. Without it the alert counts of a card are only read.
+  final ValueChanged<String>? onOpenAlerts;
+
+  const PlatformAdminOverviewScreen({super.key, this.onOpenAlerts});
 
   @override
   Widget build(BuildContext context) {
@@ -98,12 +101,24 @@ class PlatformAdminOverviewScreen extends StatelessWidget {
 
     return [
       for (final PlatformMarketOverview market in overview.markets) ...[
-        PlatformMarketCard(overview: market, market: controller.marketInfo(market.market)),
+        PlatformMarketCard(
+          overview: market,
+          market: controller.marketInfo(market.market),
+          onOpenAlerts: _alertsOpener(controller, market),
+        ),
         const SizedBox(height: Dimensions.paddingSizeDefault),
       ],
       if (overview.unattributed != null) PlatformUnattributedCard(unattributed: overview.unattributed!),
       const SizedBox(height: Dimensions.paddingSizeLarge),
     ];
+  }
+
+  /// Alerts can be opened from a card that has some, for a market the viewer may see.
+  VoidCallback? _alertsOpener(PlatformAdminController controller, PlatformMarketOverview market) {
+    final ValueChanged<String>? open = onOpenAlerts;
+    if (open == null || market.alerts.total == 0 || !controller.canOpenMarket(market.market)) return null;
+
+    return () => open(market.market);
   }
 }
 

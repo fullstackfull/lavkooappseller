@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_alert_models.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_audit_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
 import 'package:syriacosmeticsmanger/helper/date_converter.dart';
@@ -9,9 +10,10 @@ import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 
 /// The words of the platform admin shell, chosen by the codes the API speaks in.
 ///
-/// The API's own messages are plain English for a person reading a log and are
-/// never shown. Every key is written out where it is used, so that the
-/// translation check can see it.
+/// The API's own error messages are plain English for a person reading a log and
+/// are never shown. The sentence of an alert is shown only as detail under its
+/// translated title, because the count of what is wrong is only in it. Every key
+/// is written out where it is used, so that the translation check can see it.
 abstract final class PlatformAdminTexts {
   /// A moment, in the zone of the phone, as the rest of the app writes one.
   static String moment(DateTime moment) => DateConverter.formatDateWithCommaAnd24Hour(moment);
@@ -54,6 +56,45 @@ abstract final class PlatformAdminTexts {
         PlatformSeverity.info => getTranslated('platform_admin_severity_info', context)!,
         _ => severity.toTitleCase(),
       };
+
+  /// What an alert is about, by its code. The API's own sentence is English only, and
+  /// carries the count, so it is shown under this as detail and never parsed.
+  static String alertTitle(BuildContext context, String code) => switch (code) {
+        'legal_not_ready' => getTranslated('platform_admin_alert_legal_not_ready', context)!,
+        'stock_zero' => getTranslated('platform_admin_alert_stock_zero', context)!,
+        'orders_pending_too_long' => getTranslated('platform_admin_alert_orders_pending_too_long', context)!,
+        _ => code.toTitleCase(),
+      };
+
+  /// What a line of the audit log says was done. An action the app has not heard of
+  /// is written out from its own name.
+  static String auditAction(BuildContext context, String action) => switch (action) {
+        'auth.login' => getTranslated('platform_admin_action_auth_login', context)!,
+        'auth.login_failed' => getTranslated('platform_admin_action_auth_login_failed', context)!,
+        'auth.logout' => getTranslated('platform_admin_action_auth_logout', context)!,
+        'me.view' => getTranslated('platform_admin_action_me_view', context)!,
+        'sessions.list' => getTranslated('platform_admin_action_sessions_list', context)!,
+        'session.revoke' => getTranslated('platform_admin_action_session_revoke', context)!,
+        'markets.view' => getTranslated('platform_admin_action_markets_view', context)!,
+        'overview.view' => getTranslated('platform_admin_action_overview_view', context)!,
+        'alerts.view' => getTranslated('platform_admin_action_alerts_view', context)!,
+        'audit_logs.view' => getTranslated('platform_admin_action_audit_logs_view', context)!,
+        'grant.created' => getTranslated('platform_admin_action_grant_created', context)!,
+        'grant.updated' => getTranslated('platform_admin_action_grant_updated', context)!,
+        'grant.reactivated' => getTranslated('platform_admin_action_grant_reactivated', context)!,
+        'grant.revoked' => getTranslated('platform_admin_action_grant_revoked', context)!,
+        'tokens.revoked' => getTranslated('platform_admin_action_tokens_revoked', context)!,
+        _ => action.replaceAll('.', ' ').toTitleCase(),
+      };
+
+  /// Who a line of the audit log is about: this admin, another, or the operator at the console.
+  static String auditActor(BuildContext context, PlatformAuditLine line, {required int? me}) {
+    final int? adminId = line.adminId;
+    if (adminId == null) return getTranslated('platform_admin_audit_operator', context)!;
+    if (adminId == me) return getTranslated('platform_admin_audit_you', context)!;
+
+    return '${getTranslated('platform_admin_audit_admin', context)!} $adminId';
+  }
 
   /// A window of days, written the way a chip says it.
   static String windowLabel(BuildContext context, int days) => switch (days) {
