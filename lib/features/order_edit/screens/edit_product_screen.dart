@@ -240,8 +240,8 @@ class _EditProductScreenState extends State<EditProductScreen> {
 
                                 orderEditController.editOrderSubmit(
                                   {'order_id' : widget.orderDetails[0].orderId.toString(), 'products' : jsonEncode(cartList)}
-                                ).then((response) {
-                                  if(response.response?.statusCode == 200) {
+                                ).then((result) {
+                                  if(result.isSaved) {
                                     Navigator.of(Get.context!).pop();
                                   }
                                 });

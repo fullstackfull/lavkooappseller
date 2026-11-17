@@ -1,13 +1,16 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:syriacosmeticsmanger/common/basewidgets/custom_snackbar_widget.dart';
 import 'package:syriacosmeticsmanger/features/order_details/controllers/order_details_controller.dart';
 import 'package:syriacosmeticsmanger/features/order_details/domain/models/order_details_model.dart';
 import 'package:syriacosmeticsmanger/features/order_edit/domain/models/order_edit_cart_model.dart';
+import 'package:syriacosmeticsmanger/features/order_edit/domain/models/order_edit_submit_result.dart';
 import 'package:syriacosmeticsmanger/features/order_edit/domain/services/order_edit_service_interface.dart';
 import 'package:syriacosmeticsmanger/data/model/response/base/api_response.dart';
 import 'package:syriacosmeticsmanger/features/product/domain/models/product_model.dart';
 import 'package:syriacosmeticsmanger/helper/api_checker.dart';
+import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 
 import 'package:syriacosmeticsmanger/core/app_context.dart';
 
@@ -191,20 +194,34 @@ class OrderEditController with ChangeNotifier {
   }
 
 
-  Future<ApiResponse> editOrderSubmit(Map<String, dynamic> data) async {
+  Future<OrderEditSubmitResult> editOrderSubmit(Map<String, dynamic> data) async {
     _isUpdateCartLoading = true;
     notifyListeners();
     ApiResponse apiResponse = await orderEditServiceInterface.editOrderSubmit(data: data);
+    final OrderEditSubmitResult result = OrderEditSubmitResult.fromApiResponse(apiResponse);
 
-    if (apiResponse.response != null && apiResponse.response!.statusCode == 200) {
+    if (result.isSaved) {
       Provider.of<OrderDetailsController>(Get.context!, listen: false).getOrderDetails(data['order_id']);
+    } else if (result.isRefused) {
+      _showRefusal(result.message);
     } else {
       ApiChecker.checkApi(apiResponse);
     }
 
     _isUpdateCartLoading = false;
     notifyListeners();
-    return apiResponse;
+    return result;
+  }
+
+  void _showRefusal(String? serverMessage) {
+    final BuildContext? context = Get.context;
+    if (context == null) return;
+
+    showCustomSnackBarWidget(
+      getTranslated(serverMessage ?? 'something_went_wrong', context),
+      context,
+      sanckBarType: SnackBarType.error,
+    );
   }
 
   void setQuantity(int index, int quantity, {bool isUpdate = true}) {
