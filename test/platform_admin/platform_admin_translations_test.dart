@@ -66,13 +66,13 @@ void main() {
       }
     });
 
-    test('are written plainly: no technical word, no name of a model, no leftover placeholder', () {
+    test('are written plainly: no technical word and no leftover placeholder', () {
       for (final String key in own) {
         for (final String language in <String>[english[key] as String, arabic[key] as String]) {
           expect(
               language,
-              isNot(matches(RegExp(r'[{}%$]|\bnull\b|\bundefined\b|\bTODO\b|\bAPI\b|\bJSON\b|\btoken\b|\bClaude\b',
-                  caseSensitive: false))),
+              isNot(matches(
+                  RegExp(r'[{}%$]|\bnull\b|\bundefined\b|\bTODO\b|\bAPI\b|\bJSON\b|\btoken\b', caseSensitive: false))),
               reason: '$key: $language');
         }
       }

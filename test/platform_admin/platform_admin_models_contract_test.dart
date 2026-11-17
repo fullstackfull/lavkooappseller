@@ -30,6 +30,13 @@ void main() {
       expect(signIn.profile.tokenExpiresAt, signIn.expiresAt);
     });
 
+    test('the sign-in answer does not give its token to anything that prints it', () {
+      final PlatformAdminSignIn signIn = PlatformAdminSignIn.fromJson(fixtureData('login_success'));
+
+      expect(signIn.toString(), isNot(contains(fixtureToken)));
+      expect('$signIn', isNot(contains('lkpa_')));
+    });
+
     test('the platform owner is not restricted and may see every market the server lists', () {
       final PlatformAdminProfile owner = PlatformAdminProfile.fromJson(fixtureData('me_owner'));
 

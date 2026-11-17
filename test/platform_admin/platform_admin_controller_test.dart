@@ -1091,6 +1091,189 @@ void main() {
     });
   });
 
+  group('a late answer, for what was thrown away while it was on its way', () {
+    PlatformAdminResult<List<PlatformSessionModel>> sessionsAnswer() =>
+        PlatformAdminResult<List<PlatformSessionModel>>.success(
+            fixtureRows('sessions_owner').map(PlatformSessionModel.fromJson).toList());
+
+    test('a failure for the market that was left is not shown under the new market', () async {
+      final PlatformAdminController controller = await signedIn();
+      final Gate<PlatformAdminResult<PlatformOverviewModel>> late = Gate<PlatformAdminResult<PlatformOverviewModel>>();
+      service.onOverview = (String market, int? windowDays) => market == 'all'
+          ? late.future
+          : Future<PlatformAdminResult<PlatformOverviewModel>>.value(PlatformAdminResult<PlatformOverviewModel>.success(
+              FakePlatformAdminService.overviewOf(market, windowDays)));
+      final Future<void> loadingAll = controller.loadOverview();
+
+      controller.selectMarket('KW');
+      await controller.loadOverview();
+      late.open(unreachable<PlatformOverviewModel>());
+      await loadingAll;
+
+      expect(controller.overviewFailure, isNull);
+      expect(controller.hasOverview, isTrue);
+    });
+
+    test('a failure of the alerts of the market that was left is not shown under the new market', () async {
+      final PlatformAdminController controller = await signedIn();
+      final Gate<PlatformAdminResult<PlatformAlertPage>> late = Gate<PlatformAdminResult<PlatformAlertPage>>();
+      service.onAlerts = (String market, int page, String? severity) => market == 'all'
+          ? late.future
+          : Future<PlatformAdminResult<PlatformAlertPage>>.value(PlatformAdminResult<PlatformAlertPage>.success(
+              FakePlatformAdminService.alertsOf(market, page, severity)));
+      final Future<void> loadingAll = controller.loadAlerts();
+
+      controller.selectMarket('KW');
+      await controller.loadAlerts();
+      late.open(unreachable<PlatformAlertPage>());
+      await loadingAll;
+
+      expect(controller.alertsFailure, isNull);
+      expect(controller.hasAlertList, isTrue);
+    });
+
+    test('a failure of a further page of the alerts of the market that was left is not shown under the new market',
+        () async {
+      final PlatformAdminController controller = await signedIn();
+      await controller.loadAlerts();
+      final Gate<PlatformAdminResult<PlatformAlertPage>> late = Gate<PlatformAdminResult<PlatformAlertPage>>();
+      service.onAlerts = (String market, int page, String? severity) => market == 'all' && page == 2
+          ? late.future
+          : Future<PlatformAdminResult<PlatformAlertPage>>.value(PlatformAdminResult<PlatformAlertPage>.success(
+              FakePlatformAdminService.alertsOf(market, page, severity)));
+      final Future<void> loadingMore = controller.loadMoreAlerts();
+
+      controller.selectMarket('KW');
+      await controller.loadAlerts();
+      late.open(unreachable<PlatformAlertPage>());
+      await loadingMore;
+
+      expect(controller.alertsFailure, isNull);
+      expect(controller.isLoadingMoreAlerts, isFalse);
+    });
+
+    test('sessions that arrive after the admin signed out are not kept', () async {
+      final PlatformAdminController controller = await signedIn();
+      final Gate<PlatformAdminResult<List<PlatformSessionModel>>> late =
+          Gate<PlatformAdminResult<List<PlatformSessionModel>>>();
+      service.onSessions = () => late.future;
+      final Future<void> loading = controller.loadSessions();
+
+      await controller.signOut();
+      late.open(sessionsAnswer());
+      await loading;
+
+      expect(controller.sessions, isNull);
+      expect(controller.isLoadingSessions, isFalse);
+    });
+
+    test('lines of the audit log that arrive after the admin signed out are not kept', () async {
+      final PlatformAdminController controller = await signedIn();
+      final Gate<PlatformAdminResult<PlatformAuditPage>> late = Gate<PlatformAdminResult<PlatformAuditPage>>();
+      service.onAuditLogs = (int page) => late.future;
+      final Future<void> loading = controller.loadAuditLog();
+
+      await controller.signOut();
+      late.open(PlatformAdminResult<PlatformAuditPage>.success(FakePlatformAdminService.auditOf(1)));
+      await loading;
+
+      expect(controller.auditLines, isNull);
+      expect(controller.isLoadingAudit, isFalse);
+    });
+
+    group('a refusal that comes after the admin signed out is not the end of a session that already ended', () {
+      final Map<String, Future<({Future<Object?> pending, void Function() release})> Function(PlatformAdminController)>
+          starts =
+          <String, Future<({Future<Object?> pending, void Function() release})> Function(PlatformAdminController)>{
+        'the overview': (PlatformAdminController controller) async {
+          final Gate<PlatformAdminResult<PlatformOverviewModel>> gate =
+              Gate<PlatformAdminResult<PlatformOverviewModel>>();
+          service.onOverview = (String market, int? windowDays) => gate.future;
+          return (
+            pending: controller.loadOverview(),
+            release: () => gate.open(refused<PlatformOverviewModel>('error_unauthenticated')),
+          );
+        },
+        'the alerts': (PlatformAdminController controller) async {
+          final Gate<PlatformAdminResult<PlatformAlertPage>> gate = Gate<PlatformAdminResult<PlatformAlertPage>>();
+          service.onAlerts = (String market, int page, String? severity) => gate.future;
+          return (
+            pending: controller.loadAlerts(),
+            release: () => gate.open(refused<PlatformAlertPage>('error_unauthenticated')),
+          );
+        },
+        'a further page of the alerts': (PlatformAdminController controller) async {
+          await controller.loadAlerts();
+          final Gate<PlatformAdminResult<PlatformAlertPage>> gate = Gate<PlatformAdminResult<PlatformAlertPage>>();
+          service.onAlerts = (String market, int page, String? severity) => gate.future;
+          return (
+            pending: controller.loadMoreAlerts(),
+            release: () => gate.open(refused<PlatformAlertPage>('error_unauthenticated')),
+          );
+        },
+        'the sessions': (PlatformAdminController controller) async {
+          final Gate<PlatformAdminResult<List<PlatformSessionModel>>> gate =
+              Gate<PlatformAdminResult<List<PlatformSessionModel>>>();
+          service.onSessions = () => gate.future;
+          return (
+            pending: controller.loadSessions(),
+            release: () => gate.open(refused<List<PlatformSessionModel>>('error_unauthenticated')),
+          );
+        },
+        'ending a session': (PlatformAdminController controller) async {
+          await controller.loadSessions();
+          final Gate<PlatformAdminResult<int>> gate = Gate<PlatformAdminResult<int>>();
+          service.onEndSession = (int id) => gate.future;
+          return (pending: controller.endSession(2), release: () => gate.open(refused<int>('error_unauthenticated')));
+        },
+        'the audit log': (PlatformAdminController controller) async {
+          final Gate<PlatformAdminResult<PlatformAuditPage>> gate = Gate<PlatformAdminResult<PlatformAuditPage>>();
+          service.onAuditLogs = (int page) => gate.future;
+          return (
+            pending: controller.loadAuditLog(),
+            release: () => gate.open(refused<PlatformAuditPage>('error_unauthenticated')),
+          );
+        },
+        'a further page of the audit log': (PlatformAdminController controller) async {
+          await controller.loadAuditLog();
+          final Gate<PlatformAdminResult<PlatformAuditPage>> gate = Gate<PlatformAdminResult<PlatformAuditPage>>();
+          service.onAuditLogs = (int page) => gate.future;
+          return (
+            pending: controller.loadMoreAuditLog(),
+            release: () => gate.open(refused<PlatformAuditPage>('error_unauthenticated')),
+          );
+        },
+        'who the admin is, read after a long time away': (PlatformAdminController controller) async {
+          final Gate<PlatformAdminResult<PlatformAdminProfile>> gate =
+              Gate<PlatformAdminResult<PlatformAdminProfile>>();
+          service.onProfile = () => gate.future;
+          controller.onAppBackgrounded();
+          now = now.add(const Duration(minutes: 10));
+          return (
+            pending: controller.onAppResumed(),
+            release: () => gate.open(refused<PlatformAdminProfile>('error_unauthenticated')),
+          );
+        },
+      };
+
+      for (final MapEntry<String,
+              Future<({Future<Object?> pending, void Function() release})> Function(PlatformAdminController)> entry
+          in starts.entries) {
+        test('asked for: ${entry.key}', () async {
+          final PlatformAdminController controller = await signedIn();
+          final ({Future<Object?> pending, void Function() release}) late = await entry.value(controller);
+
+          await controller.signOut();
+          late.release();
+          await late.pending;
+
+          expect(controller.stage, PlatformAdminStage.signedOut);
+          expect(controller.sessionEnded, isFalse, reason: 'the admin signed out; the server did not end anything');
+        });
+      }
+    });
+  });
+
   group('the scope of the viewer', () {
     test('is read from the server and never from the app: a restricted viewer is restricted', () async {
       final PlatformAdminController controller = await signedIn(as: restrictedProfile());
