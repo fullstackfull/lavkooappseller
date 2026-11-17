@@ -166,13 +166,13 @@ void main() {
           email: '  owner@example.test ', password: ' a password with spaces ', deviceName: '  Ahmed\'s phone ');
       await tapSignIn(tester);
 
-      expect(service.calls, <String>['signIn owner@example.test/Ahmed\'s phone']);
+      expect(service.calls, <String>['signIn owner@example.test/Ahmed\'s phone', 'profile']);
       expect(controller.stage, PlatformAdminStage.signedIn);
     });
 
     testWidgets('keeps the password in the field only until it has been sent, if it did not work',
         (WidgetTester tester) async {
-      service.onSignIn = () async => refused<PlatformAdminSignIn>('login_failed_wrong_password');
+      service.onSignIn = () async => refused<PlatformAdminSignInStep>('login_failed_wrong_password');
       await pumpSignIn(tester);
 
       await fill(tester, email: 'owner@example.test', password: 'wrong-password');
@@ -185,7 +185,8 @@ void main() {
     });
 
     testWidgets('is busy while it waits, and cannot be tapped twice', (WidgetTester tester) async {
-      final Gate<PlatformAdminResult<PlatformAdminSignIn>> gate = Gate<PlatformAdminResult<PlatformAdminSignIn>>();
+      final Gate<PlatformAdminResult<PlatformAdminSignInStep>> gate =
+          Gate<PlatformAdminResult<PlatformAdminSignInStep>>();
       service.onSignIn = () => gate.future;
       await pumpSignIn(tester);
 
@@ -194,13 +195,13 @@ void main() {
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       expect(find.text('Sign in'), findsNothing, reason: 'the button is the spinner while it waits');
-      gate.open(PlatformAdminResult<PlatformAdminSignIn>.success(ownerSignIn()));
+      gate.open(PlatformAdminResult<PlatformAdminSignInStep>.success(PlatformAdminSessionOpened(ownerSignIn())));
       await tester.pump();
       expect(service.count('signIn'), 1);
     });
 
     testWidgets('a refusal says so, and says nothing of which check failed', (WidgetTester tester) async {
-      service.onSignIn = () async => refused<PlatformAdminSignIn>('login_failed_wrong_password');
+      service.onSignIn = () async => refused<PlatformAdminSignInStep>('login_failed_wrong_password');
       await pumpSignIn(tester);
 
       await fill(tester);
@@ -213,7 +214,7 @@ void main() {
     });
 
     testWidgets('too many attempts says when to try again, in the time of the phone', (WidgetTester tester) async {
-      service.onSignIn = () async => refused<PlatformAdminSignIn>('error_login_throttled');
+      service.onSignIn = () async => refused<PlatformAdminSignInStep>('error_login_throttled');
       await pumpSignIn(tester);
 
       await fill(tester);
@@ -227,16 +228,16 @@ void main() {
 
     testWidgets('no connection, an API that is off and one that is not ready each say what they are',
         (WidgetTester tester) async {
-      final Map<String, Future<PlatformAdminResult<PlatformAdminSignIn>> Function()> causes =
-          <String, Future<PlatformAdminResult<PlatformAdminSignIn>> Function()>{
-        'Could not reach the server': () async => unreachable<PlatformAdminSignIn>(),
+      final Map<String, Future<PlatformAdminResult<PlatformAdminSignInStep>> Function()> causes =
+          <String, Future<PlatformAdminResult<PlatformAdminSignInStep>> Function()>{
+        'Could not reach the server': () async => unreachable<PlatformAdminSignInStep>(),
         'Platform admin is not available right now.': () async =>
-            refused<PlatformAdminSignIn>('error_api_switched_off_login'),
+            refused<PlatformAdminSignInStep>('error_api_switched_off_login'),
         'Platform admin is not ready yet. Try again later.': () async =>
-            refused<PlatformAdminSignIn>('error_not_ready'),
+            refused<PlatformAdminSignInStep>('error_not_ready'),
       };
 
-      for (final MapEntry<String, Future<PlatformAdminResult<PlatformAdminSignIn>> Function()> cause
+      for (final MapEntry<String, Future<PlatformAdminResult<PlatformAdminSignInStep>> Function()> cause
           in causes.entries) {
         service = FakePlatformAdminService()..onSignIn = cause.value;
         controller = PlatformAdminController(platformAdminServiceInterface: service);
@@ -271,7 +272,7 @@ void main() {
     });
 
     testWidgets('says what went wrong in Arabic as well', (WidgetTester tester) async {
-      service.onSignIn = () async => refused<PlatformAdminSignIn>('login_failed_wrong_password');
+      service.onSignIn = () async => refused<PlatformAdminSignInStep>('login_failed_wrong_password');
       await pumpSignIn(tester, locale: PlatformAdminHarness.arabic);
 
       await fill(tester);
@@ -287,7 +288,7 @@ void main() {
     testWidgets(
         'fits at the narrowest width with the text at twice its size, in either language, with an error showing',
         (WidgetTester tester) async {
-      service.onSignIn = () async => refused<PlatformAdminSignIn>('login_failed_wrong_password');
+      service.onSignIn = () async => refused<PlatformAdminSignInStep>('login_failed_wrong_password');
 
       for (final Locale locale in <Locale>[PlatformAdminHarness.english, PlatformAdminHarness.arabic]) {
         controller = PlatformAdminController(platformAdminServiceInterface: service);

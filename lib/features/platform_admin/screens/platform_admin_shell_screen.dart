@@ -44,7 +44,11 @@ class _PlatformAdminShellScreenState extends State<PlatformAdminShellScreen> {
             appBar: CustomAppBarWidget(title: getTranslated('platform_admin_title', context)),
             body: PlatformAdminFailureView(failure: controller.restoreFailure!, onRetry: controller.restoreSession),
           ),
-        PlatformAdminStage.signedOut || PlatformAdminStage.signingIn => const PlatformAdminSignInScreen(),
+        // The second step has its own screen in the next change; until then it shows the password step again.
+        PlatformAdminStage.signedOut ||
+        PlatformAdminStage.signingIn ||
+        PlatformAdminStage.secondFactor =>
+          const PlatformAdminSignInScreen(),
         PlatformAdminStage.signedIn => const PlatformAdminHomeScreen(),
       },
     );
