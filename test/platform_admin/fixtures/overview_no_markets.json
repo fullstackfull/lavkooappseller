@@ -1,0 +1,39 @@
+{
+  "data": {
+    "scope": "restricted",
+    "market": "all",
+    "generated_at": "2026-11-17T06:00:00Z",
+    "window": {
+      "from": "2026-10-19",
+      "to": "2026-11-17",
+      "days": 30,
+      "clamped": false,
+      "timezone": "Asia/Dhaka"
+    },
+    "freshness": {
+      "mode": "live",
+      "cached": false
+    },
+    "attribution": {
+      "orders": {
+        "rule": "all_lines_one_market",
+        "via": "order_details.product_id > products.storefront_country"
+      },
+      "refund_requests": {
+        "rule": "product_market",
+        "via": "refund_requests.product_id > products.storefront_country"
+      },
+      "stock": {
+        "rule": "live_physical_products_by_market",
+        "via": "products.storefront_country"
+      },
+      "products_country": "column",
+      "currency": {
+        "per_order": false,
+        "reason": "order_currency_not_recorded"
+      }
+    },
+    "markets": [],
+    "unattributed": null
+  }
+}

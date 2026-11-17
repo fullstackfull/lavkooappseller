@@ -1,0 +1,8 @@
+{
+  "errors": [
+    {
+      "code": "market_not_allowed",
+      "message": "This account may not see that market."
+    }
+  ]
+}

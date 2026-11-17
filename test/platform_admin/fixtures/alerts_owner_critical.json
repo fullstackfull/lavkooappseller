@@ -1,0 +1,23 @@
+{
+  "data": [
+    {
+      "id": "a4882d780c5c00a1",
+      "severity": "critical",
+      "market": "KW",
+      "code": "legal_not_ready",
+      "message": "The KW storefront is active but its legal documents are not approved, so it cannot take orders.",
+      "deep_link": "markets/KW",
+      "generated_at": "2026-11-17T06:00:00Z"
+    }
+  ],
+  "meta": {
+    "scope": "all",
+    "market": "all",
+    "severity": "critical",
+    "generated_at": "2026-11-17T06:00:00Z",
+    "page": 1,
+    "per_page": 25,
+    "total": 1,
+    "has_more": false
+  }
+}

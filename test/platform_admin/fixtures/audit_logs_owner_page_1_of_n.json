@@ -1,0 +1,89 @@
+{
+  "data": [
+    {
+      "id": 33,
+      "admin_id": 4,
+      "action": "audit_logs.view",
+      "market": null,
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 32,
+      "admin_id": 7,
+      "action": "grant.revoked",
+      "market": null,
+      "token_id": null,
+      "ip": null,
+      "user_agent": null,
+      "context": {
+        "source": "console",
+        "tokens_revoked": 0,
+        "already_revoked": false
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 31,
+      "admin_id": 7,
+      "action": "tokens.revoked",
+      "market": null,
+      "token_id": null,
+      "ip": null,
+      "user_agent": null,
+      "context": {
+        "source": "console",
+        "tokens_revoked": 0
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 30,
+      "admin_id": 7,
+      "action": "grant.created",
+      "market": null,
+      "token_id": null,
+      "ip": null,
+      "user_agent": null,
+      "context": {
+        "source": "console",
+        "before": null,
+        "after": {
+          "level": 1,
+          "countries": [
+            "AE",
+            "KW"
+          ]
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 29,
+      "admin_id": 4,
+      "action": "session.revoke",
+      "market": null,
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 404,
+        "params": {
+          "id": "999999"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    }
+  ],
+  "meta": {
+    "scope": "all",
+    "page": 1,
+    "per_page": 5,
+    "has_more": true
+  }
+}
