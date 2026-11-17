@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_alert_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_audit_models.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_capability_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_market_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_mfa_models.dart';
@@ -44,7 +45,8 @@ class _AlertList {
 /// and none of it is ever written down.
 ///
 /// What is held is thrown away, and not merely hidden, when the market changes,
-/// when the session ends or is refused, when the viewer's scope changes, and when
+/// when the session ends or is refused, when the viewer's scope or the parts of the
+/// API the grant includes change, and when
 /// the app has been in the background for longer than [backgroundGrace]. An
 /// answer that was still on its way when that happened is dropped when it
 /// arrives: [_marketEpoch] and [_sessionEpoch] say which answers still belong.
@@ -80,6 +82,14 @@ class PlatformAdminController with ChangeNotifier {
   PlatformAdminProfile? _profile;
   PlatformAdminProfile? get profile => _profile;
   bool get isRestricted => _profile?.isRestricted ?? true;
+
+  /// Whether the grant includes this part of the API, as the server last said. Nothing is included for nobody.
+  bool can(PlatformCapability capability) => _profile?.can(capability) ?? false;
+
+  /// Counts the times what the viewer may see or do changed, so that a screen can tell that what it holds was thrown away.
+  int _accessEpoch = 0;
+  int get accessEpoch => _accessEpoch;
+  bool _refreshingProfile = false;
 
   PlatformAdminFailure? _signInFailure;
   PlatformAdminFailure? get signInFailure => _signInFailure;
@@ -150,8 +160,23 @@ class PlatformAdminController with ChangeNotifier {
   int? get windowDays => _windowDays;
 
   PlatformMarketDirectory? _directory;
+
+  /// The server refused the directory of markets for a part the grant leaves out, which the list the app holds did not say.
+  bool _directoryRefused = false;
   List<PlatformMarketModel> get markets => _directory?.markets ?? const <PlatformMarketModel>[];
   PlatformMarketModel? marketInfo(String code) => _directory?.marketOf(code);
+
+  /// There is no directory to wait for: the grant does not include it, or the server has just refused it.
+  bool get _directoryUnavailable => !can(PlatformCapability.markets) || _directoryRefused;
+
+  /// The markets the viewer can choose between: those the directory lists, or, where the grant does not include
+  /// the directory, those the grant names.
+  List<String> get marketCodes {
+    final PlatformMarketDirectory? directory = _directory;
+    if (directory != null) return directory.codes;
+
+    return _directoryUnavailable ? _profile?.markets ?? const <String>[] : const <String>[];
+  }
 
   final Map<_OverviewKey, PlatformOverviewModel> _overviews = <_OverviewKey, PlatformOverviewModel>{};
   _OverviewKey? _loadingOverview;
@@ -163,8 +188,8 @@ class PlatformAdminController with ChangeNotifier {
   PlatformAdminFailure? get overviewFailure => _overviewFailure;
 
   /// Whether the overview can be drawn: the market the viewer asked about and the
-  /// facts about every market are both here.
-  bool get hasOverview => overview != null && _directory != null;
+  /// facts about every market are both here, or the facts are not to be had.
+  bool get hasOverview => overview != null && (_directory != null || _directoryUnavailable);
 
   final Map<_AlertsKey, _AlertList> _alerts = <_AlertsKey, _AlertList>{};
   String? _alertSeverity;
@@ -397,7 +422,8 @@ class PlatformAdminController with ChangeNotifier {
     _overviewFailure = null;
     notifyListeners();
 
-    final bool needsDirectory = force || _directory == null;
+    if (force) _directoryRefused = false;
+    final bool needsDirectory = !_directoryUnavailable && (force || _directory == null);
     final Future<PlatformAdminResult<PlatformMarketDirectory>>? directoryCall =
         needsDirectory ? platformAdminServiceInterface.markets() : null;
     final PlatformAdminResult<PlatformOverviewModel> overviewResult = await platformAdminServiceInterface.overview(
@@ -409,7 +435,9 @@ class PlatformAdminController with ChangeNotifier {
     if (session != _sessionEpoch || market != _marketEpoch) return;
 
     if (_loadingOverview == key) _loadingOverview = null;
-    final PlatformAdminFailure? failure = overviewResult.failure ?? directoryResult?.failure;
+    final PlatformAdminFailure? directoryFailure = directoryResult?.failure;
+    final bool directoryRefused = directoryFailure?.kind == PlatformAdminFailureKind.capabilityNotAllowed;
+    final PlatformAdminFailure? failure = overviewResult.failure ?? (directoryRefused ? null : directoryFailure);
 
     if (failure?.kind == PlatformAdminFailureKind.unauthenticated) {
       _endSession();
@@ -417,8 +445,11 @@ class PlatformAdminController with ChangeNotifier {
     }
     if (overviewResult.value != null) _overviews[key] = overviewResult.value!;
     if (directoryResult?.value != null) _directory = directoryResult!.value;
+    if (directoryRefused) _directoryRefused = true;
     _overviewFailure = failure;
     notifyListeners();
+
+    await _readAgainIfRefused(<PlatformAdminFailure?>[overviewResult.failure, directoryFailure]);
   }
 
   Future<void> loadAlerts({bool force = false}) async {
@@ -435,7 +466,7 @@ class PlatformAdminController with ChangeNotifier {
 
     // The market chips of this screen are the overview's, so the markets are asked for here when the overview has not.
     final Future<PlatformAdminResult<PlatformMarketDirectory>>? directoryCall =
-        _directory == null ? platformAdminServiceInterface.markets() : null;
+        _directory == null && !_directoryUnavailable ? platformAdminServiceInterface.markets() : null;
     final PlatformAdminResult<PlatformAlertPage> result = await platformAdminServiceInterface.alerts(
       market: key.market,
       page: 1,
@@ -449,12 +480,15 @@ class PlatformAdminController with ChangeNotifier {
     if (_endedBy(result.failure) || _endedBy(directoryResult?.failure)) return;
 
     if (directoryResult?.value != null) _directory = directoryResult!.value;
+    if (directoryResult?.failure?.kind == PlatformAdminFailureKind.capabilityNotAllowed) _directoryRefused = true;
     final PlatformAlertPage? page = result.value;
     if (page != null) {
       _alerts[key] = _AlertList(items: page.alerts, lastPage: page.page, total: page.total, hasMore: page.hasMore);
     }
     _alertsFailure = result.failure;
     notifyListeners();
+
+    await _readAgainIfRefused(<PlatformAdminFailure?>[result.failure, directoryResult?.failure]);
   }
 
   Future<void> loadMoreAlerts() async {
@@ -490,6 +524,8 @@ class PlatformAdminController with ChangeNotifier {
     }
     _alertsFailure = result.failure;
     notifyListeners();
+
+    await _readAgainIfRefused(<PlatformAdminFailure?>[result.failure]);
   }
 
   Future<void> loadSessions({bool force = false}) async {
@@ -510,6 +546,8 @@ class PlatformAdminController with ChangeNotifier {
     _sessions = result.value ?? _sessions;
     _sessionsFailure = result.failure;
     notifyListeners();
+
+    await _readAgainIfRefused(<PlatformAdminFailure?>[result.failure]);
   }
 
   /// Null when the session was ended; otherwise why it was not. A session that was
@@ -533,6 +571,7 @@ class PlatformAdminController with ChangeNotifier {
     notifyListeners();
 
     if (gone) await loadSessions(force: true);
+    await _readAgainIfRefused(<PlatformAdminFailure?>[failure]);
     return failure;
   }
 
@@ -554,6 +593,7 @@ class PlatformAdminController with ChangeNotifier {
 
     notifyListeners();
     if (result.isSuccess) await loadSessions(force: true);
+    await _readAgainIfRefused(<PlatformAdminFailure?>[result.failure]);
     return result;
   }
 
@@ -580,6 +620,8 @@ class PlatformAdminController with ChangeNotifier {
     }
     _auditFailure = result.failure;
     notifyListeners();
+
+    await _readAgainIfRefused(<PlatformAdminFailure?>[result.failure]);
   }
 
   Future<void> loadMoreAuditLog() async {
@@ -605,6 +647,27 @@ class PlatformAdminController with ChangeNotifier {
       _auditHasMore = page.hasMore;
     }
     _auditFailure = result.failure;
+    notifyListeners();
+
+    await _readAgainIfRefused(<PlatformAdminFailure?>[result.failure]);
+  }
+
+  /// Reads who the admin is and what they may do again, which the app does when the server says that a part it offered is not included
+  /// in the grant: the list it holds is out of date. What was held for what is no longer included is thrown away with the rest.
+  Future<void> refreshProfile() async {
+    if (_stage != PlatformAdminStage.signedIn || _refreshingProfile) return;
+
+    final int session = _sessionEpoch;
+    _refreshingProfile = true;
+    final PlatformAdminResult<PlatformAdminProfile> result = await platformAdminServiceInterface.profile();
+
+    if (session != _sessionEpoch) return;
+
+    _refreshingProfile = false;
+    if (_endedBy(result.failure)) return;
+
+    final PlatformAdminProfile? current = result.value;
+    if (current != null) _applyProfile(current);
     notifyListeners();
   }
 
@@ -705,14 +768,24 @@ class PlatformAdminController with ChangeNotifier {
     notifyListeners();
   }
 
+  /// A refusal for a part of the API the grant leaves out, once, however many calls met it together.
+  Future<void> _readAgainIfRefused(Iterable<PlatformAdminFailure?> failures) async {
+    final bool refused =
+        failures.any((PlatformAdminFailure? failure) => failure?.kind == PlatformAdminFailureKind.capabilityNotAllowed);
+    if (refused) await refreshProfile();
+  }
+
   void _applyProfile(PlatformAdminProfile profile) {
     final PlatformAdminProfile? previous = _profile;
     _profile = profile;
 
-    final bool scopeChanged =
-        previous != null && (previous.scope != profile.scope || !listEquals(previous.markets, profile.markets));
-    if (!scopeChanged) return;
+    final bool accessChanged = previous != null &&
+        (previous.scope != profile.scope ||
+            !listEquals(previous.markets, profile.markets) ||
+            !setEquals(previous.capabilities, profile.capabilities));
+    if (!accessChanged) return;
 
+    _accessEpoch++;
     _forgetResponses();
     if (!profile.canSee(_market)) _market = PlatformMarketCode.all;
   }
@@ -734,6 +807,8 @@ class PlatformAdminController with ChangeNotifier {
     _sessionEpoch++;
     _forgetMarketData();
     _directory = null;
+    _directoryRefused = false;
+    _refreshingProfile = false;
     _sessions = null;
     _loadingSessions = false;
     _endingSessionId = null;
