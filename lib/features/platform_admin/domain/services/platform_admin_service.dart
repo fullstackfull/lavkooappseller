@@ -2,6 +2,7 @@ import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platf
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_audit_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_market_models.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_mfa_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_session_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/repositories/platform_admin_repository_interface.dart';
@@ -21,12 +22,20 @@ class PlatformAdminService implements PlatformAdminServiceInterface {
       : _now = now ?? DateTime.now;
 
   @override
-  Future<PlatformAdminResult<PlatformAdminSignIn>> signIn({
+  Future<PlatformAdminResult<PlatformAdminSignInStep>> signIn({
     required String email,
     required String password,
     required String deviceName,
   }) =>
       platformAdminRepoInterface.signIn(email: email, password: password, deviceName: deviceName);
+
+  @override
+  Future<PlatformAdminResult<PlatformAdminSignIn>> signInWithSecondFactor({
+    required String challenge,
+    required PlatformAdminMfaMethod method,
+    required String code,
+  }) =>
+      platformAdminRepoInterface.signInWithSecondFactor(challenge: challenge, method: method, code: code);
 
   @override
   Future<PlatformAdminResult<PlatformAdminProfile?>> restore() => platformAdminRepoInterface.restore();
@@ -57,6 +66,9 @@ class PlatformAdminService implements PlatformAdminServiceInterface {
 
   @override
   Future<PlatformAdminResult<int>> endSession(int id) => platformAdminRepoInterface.endSession(id);
+
+  @override
+  Future<PlatformAdminResult<int>> endOtherSessions() => platformAdminRepoInterface.endOtherSessions();
 
   @override
   Future<PlatformAdminResult<PlatformAuditPage>> auditLogs({required int page}) =>

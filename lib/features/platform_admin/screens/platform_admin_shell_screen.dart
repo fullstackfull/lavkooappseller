@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_app_bar_widget.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/controllers/platform_admin_controller.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_home_screen.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_second_factor_screen.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_sign_in_screen.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/widgets/platform_admin_state_widgets.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
@@ -13,7 +14,7 @@ import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 /// back: while it is open the seller app's tabs, menus and screens are not part
 /// of it, and the seller's session, if it ever has one, is not read here. Which
 /// screen is shown follows the state of the platform session alone: looking for
-/// the session of an earlier launch, the sign-in, or the signed-in screens. A
+/// the session of an earlier launch, the sign-in, its second step, or the signed-in screens. A
 /// session the server ends puts the admin back at the sign-in, from wherever
 /// they were.
 class PlatformAdminShellScreen extends StatefulWidget {
@@ -45,6 +46,7 @@ class _PlatformAdminShellScreenState extends State<PlatformAdminShellScreen> {
             body: PlatformAdminFailureView(failure: controller.restoreFailure!, onRetry: controller.restoreSession),
           ),
         PlatformAdminStage.signedOut || PlatformAdminStage.signingIn => const PlatformAdminSignInScreen(),
+        PlatformAdminStage.secondFactor => const PlatformAdminSecondFactorScreen(),
         PlatformAdminStage.signedIn => const PlatformAdminHomeScreen(),
       },
     );

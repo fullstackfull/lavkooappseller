@@ -1,0 +1,30 @@
+{
+  "data": {
+    "admin_id": 4,
+    "name": "Admin 0GFmZ",
+    "level": 1,
+    "scope": "all",
+    "markets": [
+      "SA",
+      "AE",
+      "KW",
+      "QA",
+      "BH",
+      "OM"
+    ],
+    "token_expires_at": "2026-11-17T18:00:00Z",
+    "capabilities": [
+      "overview",
+      "markets",
+      "alerts",
+      "audit",
+      "sessions"
+    ],
+    "grant_expires_at": null,
+    "mfa": {
+      "enrolled": true,
+      "verified": true,
+      "method": "totp"
+    }
+  }
+}

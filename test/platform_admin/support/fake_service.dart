@@ -4,6 +4,7 @@ import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platf
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_audit_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_market_models.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_mfa_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_session_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/services/platform_admin_service_interface.dart';
@@ -11,13 +12,16 @@ import 'package:syriacosmeticsmanger/features/platform_admin/domain/services/pla
 import 'fixtures.dart';
 
 /// What a refusal looks like to the controller, made the way the client makes it.
-PlatformAdminFailure refusal(String fixtureName) => PlatformAdminFailure.fromResponse(
+PlatformAdminFailure refusal(String fixtureName, {DateTime? now}) => PlatformAdminFailure.fromResponse(
       statusCode: fixtureStatus(fixtureName),
       body: fixture(fixtureName),
       retryAfter: fixtureRetryAfter(fixtureName),
+      now: now,
     );
 
-PlatformAdminResult<T> refused<T>(String fixtureName) => PlatformAdminResult<T>.failure(refusal(fixtureName));
+/// A refusal; with [now], a wait the API names is counted from that moment and not from the wall clock.
+PlatformAdminResult<T> refused<T>(String fixtureName, {DateTime? now}) =>
+    PlatformAdminResult<T>.failure(refusal(fixtureName, now: now));
 
 PlatformAdminResult<T> unreachable<T>() => PlatformAdminResult<T>.failure(const PlatformAdminFailure.network());
 
@@ -27,6 +31,13 @@ PlatformAdminProfile restrictedProfile() => PlatformAdminProfile.fromJson(fixtur
 
 PlatformAdminSignIn ownerSignIn() => PlatformAdminSignIn.fromJson(fixtureData('login_success'));
 
+/// The answer of the password step that asks for a code.
+PlatformAdminSignInStep secondFactorWanted() => PlatformAdminSignInStep.fromJson(fixtureData('login_mfa_required'))!;
+
+/// The answer of the second step, by the name of the fixture that carries it.
+PlatformAdminSignIn secondFactorSignIn([String fixtureName = 'mfa_success_totp']) =>
+    PlatformAdminSignIn.fromJson(fixtureData(fixtureName));
+
 /// The service behind the controller: scripted, and it remembers what it was asked.
 ///
 /// Every answer is a function so that a test can hold one back and let it go
@@ -34,8 +45,15 @@ PlatformAdminSignIn ownerSignIn() => PlatformAdminSignIn.fromJson(fixtureData('l
 class FakePlatformAdminService implements PlatformAdminServiceInterface {
   final List<String> calls = <String>[];
 
-  Future<PlatformAdminResult<PlatformAdminSignIn>> Function() onSignIn =
-      () async => PlatformAdminResult<PlatformAdminSignIn>.success(ownerSignIn());
+  Future<PlatformAdminResult<PlatformAdminSignInStep>> Function() onSignIn =
+      () async => PlatformAdminResult<PlatformAdminSignInStep>.success(PlatformAdminSessionOpened(ownerSignIn()));
+
+  /// What each attempt at the second step handed over, in order: the challenge, the way and the code.
+  final List<({String challenge, PlatformAdminMfaMethod method, String code})> secondFactorAttempts =
+      <({String challenge, PlatformAdminMfaMethod method, String code})>[];
+
+  Future<PlatformAdminResult<PlatformAdminSignIn>> Function() onSignInWithSecondFactor =
+      () async => PlatformAdminResult<PlatformAdminSignIn>.success(secondFactorSignIn());
 
   Future<PlatformAdminResult<PlatformAdminProfile?>> Function() onRestore =
       () async => const PlatformAdminResult<PlatformAdminProfile?>.success(null);
@@ -63,6 +81,9 @@ class FakePlatformAdminService implements PlatformAdminServiceInterface {
 
   Future<PlatformAdminResult<int>> Function(int id) onEndSession =
       (int id) async => PlatformAdminResult<int>.success(id);
+
+  Future<PlatformAdminResult<int>> Function() onEndOtherSessions =
+      () async => const PlatformAdminResult<int>.success(2);
 
   Future<PlatformAdminResult<PlatformAuditPage>> Function(int page) onAuditLogs =
       (int page) async => PlatformAdminResult<PlatformAuditPage>.success(auditOf(page));
@@ -104,13 +125,24 @@ class FakePlatformAdminService implements PlatformAdminServiceInterface {
   }
 
   @override
-  Future<PlatformAdminResult<PlatformAdminSignIn>> signIn({
+  Future<PlatformAdminResult<PlatformAdminSignInStep>> signIn({
     required String email,
     required String password,
     required String deviceName,
   }) {
     calls.add('signIn $email/$deviceName');
     return onSignIn();
+  }
+
+  @override
+  Future<PlatformAdminResult<PlatformAdminSignIn>> signInWithSecondFactor({
+    required String challenge,
+    required PlatformAdminMfaMethod method,
+    required String code,
+  }) {
+    calls.add('signInWithSecondFactor ${method.name}');
+    secondFactorAttempts.add((challenge: challenge, method: method, code: code));
+    return onSignInWithSecondFactor();
   }
 
   @override
@@ -159,6 +191,12 @@ class FakePlatformAdminService implements PlatformAdminServiceInterface {
   Future<PlatformAdminResult<int>> endSession(int id) {
     calls.add('endSession $id');
     return onEndSession(id);
+  }
+
+  @override
+  Future<PlatformAdminResult<int>> endOtherSessions() {
+    calls.add('endOtherSessions');
+    return onEndOtherSessions();
   }
 
   @override

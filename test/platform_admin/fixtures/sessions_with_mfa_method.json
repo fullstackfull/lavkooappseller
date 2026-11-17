@@ -1,0 +1,40 @@
+{
+  "data": [
+    {
+      "id": 9,
+      "device_name": "Pixel 9",
+      "created_at": "2026-11-17T09:00:00Z",
+      "last_used_at": null,
+      "expires_at": "2026-11-17T18:00:00Z",
+      "current": false,
+      "mfa_method": "recovery_code"
+    },
+    {
+      "id": 8,
+      "device_name": "Owner iPad",
+      "created_at": "2026-11-17T08:00:00Z",
+      "last_used_at": "2026-11-17T09:30:00Z",
+      "expires_at": "2026-11-17T18:00:00Z",
+      "current": false,
+      "mfa_method": "totp"
+    },
+    {
+      "id": 7,
+      "device_name": "Staging phone",
+      "created_at": "2026-11-17T07:00:00Z",
+      "last_used_at": "2026-11-17T09:00:00Z",
+      "expires_at": "2026-11-17T18:00:00Z",
+      "current": false,
+      "mfa_method": null
+    },
+    {
+      "id": 6,
+      "device_name": "Owner iPhone",
+      "created_at": "2026-11-17T06:00:00Z",
+      "last_used_at": "2026-11-17T09:59:00Z",
+      "expires_at": "2026-11-17T18:00:00Z",
+      "current": true,
+      "mfa_method": "totp"
+    }
+  ]
+}

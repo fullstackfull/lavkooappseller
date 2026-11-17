@@ -2,18 +2,30 @@ import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platf
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_audit_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_market_models.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_mfa_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_session_models.dart';
 
 /// Everything the app asks of the platform admin API, and the one place its
 /// session lives.
 abstract class PlatformAdminRepositoryInterface {
-  /// Signs in with the admin's own e-mail and password. On success the token is
-  /// kept, here and in the platform's own secure storage.
-  Future<PlatformAdminResult<PlatformAdminSignIn>> signIn({
+  /// Signs in with the admin's own e-mail and password. Where the server wants no second
+  /// factor the answer is a session, and its token is kept, here and in the platform's own
+  /// secure storage. Where it does, the answer is a challenge and nothing is kept: there is
+  /// no session until the second step gives one.
+  Future<PlatformAdminResult<PlatformAdminSignInStep>> signIn({
     required String email,
     required String password,
     required String deviceName,
+  });
+
+  /// The second step of a sign-in: the code the admin typed, for the challenge the password
+  /// step gave. On success the session is kept as [signIn] keeps one. A refusal says nothing
+  /// of why, and leaves nothing behind.
+  Future<PlatformAdminResult<PlatformAdminSignIn>> signInWithSecondFactor({
+    required String challenge,
+    required PlatformAdminMfaMethod method,
+    required String code,
   });
 
   /// Picks up the session a previous launch left behind and asks the server who
@@ -44,6 +56,9 @@ abstract class PlatformAdminRepositoryInterface {
 
   /// Ends one of the admin's own sessions; succeeds with its id.
   Future<PlatformAdminResult<int>> endSession(int id);
+
+  /// Ends every session of the admin but the one that asks; succeeds with how many it ended.
+  Future<PlatformAdminResult<int>> endOtherSessions();
 
   Future<PlatformAdminResult<PlatformAuditPage>> auditLogs({required int page, required int perPage});
 }

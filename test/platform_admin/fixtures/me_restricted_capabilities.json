@@ -1,0 +1,23 @@
+{
+  "data": {
+    "admin_id": 5,
+    "name": "Admin eAsyS",
+    "level": 1,
+    "scope": "restricted",
+    "markets": [
+      "AE",
+      "KW"
+    ],
+    "token_expires_at": "2026-11-17T18:00:00Z",
+    "capabilities": [
+      "overview",
+      "alerts"
+    ],
+    "grant_expires_at": "2027-03-31T20:59:59Z",
+    "mfa": {
+      "enrolled": true,
+      "verified": true,
+      "method": "recovery_code"
+    }
+  }
+}

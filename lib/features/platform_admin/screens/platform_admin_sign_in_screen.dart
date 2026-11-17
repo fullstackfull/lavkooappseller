@@ -95,6 +95,13 @@ class _PlatformAdminSignInScreenState extends State<PlatformAdminSignInScreen> {
                   ),
                   const SizedBox(height: Dimensions.paddingSizeDefault),
                 ],
+                if (controller.secondFactorEnd != null) ...[
+                  PlatformAdminNote(
+                    text: PlatformAdminTexts.secondFactorEnd(context, controller.secondFactorEnd!),
+                    icon: Icons.timer_off_outlined,
+                  ),
+                  const SizedBox(height: Dimensions.paddingSizeDefault),
+                ],
                 if (failure != null) ...[
                   PlatformAdminFailureBanner(
                     failure: failure,

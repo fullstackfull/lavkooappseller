@@ -1,12 +1,17 @@
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_capability_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_json.dart';
 
 /// Every way a call to the platform admin API can come to nothing.
 enum PlatformAdminFailureKind {
-  /// Any failure to authenticate, which the API answers with one 401 and no hint.
+  /// Any failure to authenticate, which the API answers with one 401 and no hint. At the second step of the sign-in it
+  /// is also what a wrong code, a used code and a challenge that is over answer.
   unauthenticated,
 
   /// 403: the market is not in the viewer's grant.
   marketNotAllowed,
+
+  /// 403: the part of the API the call belongs to is not in the viewer's grant. The token is good.
+  capabilityNotAllowed,
 
   /// 404 from the sessions route: not one of the viewer's own open sessions.
   sessionNotFound,
@@ -47,7 +52,10 @@ class PlatformAdminFailure {
   /// When the API says to try again, for a throttled call.
   final DateTime? retryAt;
 
-  const PlatformAdminFailure._(this.kind, {this.statusCode, this.code, this.retryAt});
+  /// The part of the API a grant lacks, for a call it refused for that. Null when the API does not name one this app knows.
+  final PlatformCapability? capability;
+
+  const PlatformAdminFailure._(this.kind, {this.statusCode, this.code, this.retryAt, this.capability});
 
   const PlatformAdminFailure.network() : this._(PlatformAdminFailureKind.network);
 
@@ -70,11 +78,13 @@ class PlatformAdminFailure {
 
     return switch (statusCode) {
       401 => PlatformAdminFailure._(PlatformAdminFailureKind.unauthenticated, statusCode: statusCode, code: code),
-      403 => PlatformAdminFailure._(
-          code == 'market_not_allowed' ? PlatformAdminFailureKind.marketNotAllowed : PlatformAdminFailureKind.server,
-          statusCode: statusCode,
-          code: code,
-        ),
+      403 => switch (code) {
+          'market_not_allowed' =>
+            PlatformAdminFailure._(PlatformAdminFailureKind.marketNotAllowed, statusCode: statusCode, code: code),
+          'capability_not_allowed' => PlatformAdminFailure._(PlatformAdminFailureKind.capabilityNotAllowed,
+              statusCode: statusCode, code: code, capability: _firstErrorCapability(body)),
+          _ => PlatformAdminFailure._(PlatformAdminFailureKind.server, statusCode: statusCode, code: code),
+        },
       404 => PlatformAdminFailure._(
           code == 'session_not_found'
               ? PlatformAdminFailureKind.sessionNotFound
@@ -99,6 +109,11 @@ class PlatformAdminFailure {
     return errors.isEmpty ? null : PlatformJson.string(PlatformJson.map(errors.first)['code']);
   }
 
+  static PlatformCapability? _firstErrorCapability(Object? body) {
+    final List<Object?> errors = PlatformJson.list(PlatformJson.map(body)['errors']);
+    return errors.isEmpty ? null : PlatformCapability.parse(PlatformJson.map(errors.first)['capability']);
+  }
+
   /// `Retry-After` as a number of seconds. A date, a fraction, zero or text is no
   /// time at all: a wrong time is worse than none.
   static DateTime? _retryAt(String? header, DateTime now) {
@@ -110,7 +125,8 @@ class PlatformAdminFailure {
   }
 
   @override
-  String toString() => 'PlatformAdminFailure(${kind.name}, status: $statusCode, code: $code)';
+  String toString() =>
+      'PlatformAdminFailure(${kind.name}, status: $statusCode, code: $code${capability == null ? '' : ', capability: ${capability!.name}'})';
 }
 
 /// The value of a call, or the reason there is none.
