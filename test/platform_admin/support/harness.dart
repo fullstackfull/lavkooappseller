@@ -30,6 +30,10 @@ abstract final class PlatformAdminHarness {
   /// The narrowest phone still in use.
   static const Size narrowPhone = Size(320, 640);
 
+  /// A phone as wide as the common one and tall enough to hold a whole list, for tests of what a
+  /// list says and not of how it scrolls: a list builds only what is on the screen.
+  static const Size tallPhone = Size(390, 6000);
+
   static Future<Widget> app(
     WidgetTester tester, {
     required Widget home,

@@ -60,6 +60,7 @@ void main() {
         'package:syriacosmeticsmanger/common/basewidgets/',
         'package:syriacosmeticsmanger/helper/date_converter.dart',
         'package:syriacosmeticsmanger/helper/email_checker.dart',
+        'package:syriacosmeticsmanger/features/reports/widgets/report_widgets.dart',
         'package:syriacosmeticsmanger/localization/',
         'package:syriacosmeticsmanger/theme/',
         'package:syriacosmeticsmanger/utill/',

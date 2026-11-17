@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_app_bar_widget.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/controllers/platform_admin_controller.dart';
-import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_sessions_screen.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_home_screen.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_sign_in_screen.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/widgets/platform_admin_state_widgets.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
@@ -45,34 +45,8 @@ class _PlatformAdminShellScreenState extends State<PlatformAdminShellScreen> {
             body: PlatformAdminFailureView(failure: controller.restoreFailure!, onRetry: controller.restoreSession),
           ),
         PlatformAdminStage.signedOut || PlatformAdminStage.signingIn => const PlatformAdminSignInScreen(),
-        PlatformAdminStage.signedIn => const _SignedInScreen(),
+        PlatformAdminStage.signedIn => const PlatformAdminHomeScreen(),
       },
-    );
-  }
-}
-
-/// What the admin sees once signed in.
-class _SignedInScreen extends StatefulWidget {
-  const _SignedInScreen();
-
-  @override
-  State<_SignedInScreen> createState() => _SignedInScreenState();
-}
-
-class _SignedInScreenState extends State<_SignedInScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => Provider.of<PlatformAdminController>(context, listen: false).loadSessions(),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: CustomAppBarWidget(title: getTranslated('sessions', context)),
-      body: const PlatformAdminSessionsScreen(),
     );
   }
 }

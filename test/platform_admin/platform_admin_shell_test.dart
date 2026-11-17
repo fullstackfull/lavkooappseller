@@ -4,8 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/controllers/platform_admin_controller.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_session_models.dart';
-import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_sessions_screen.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_home_screen.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_shell_screen.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_sign_in_screen.dart';
 
@@ -65,7 +66,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(PlatformAdminSignInScreen), findsOneWidget);
-      expect(find.byType(PlatformAdminSessionsScreen), findsNothing);
+      expect(find.byType(PlatformAdminHomeScreen), findsNothing);
       expect(service.calls, <String>['restore']);
     });
 
@@ -77,9 +78,9 @@ void main() {
       await pumpShellOverLogin(tester);
       await tester.pumpAndSettle();
 
-      expect(find.byType(PlatformAdminSessionsScreen), findsOneWidget);
+      expect(find.byType(PlatformAdminHomeScreen), findsOneWidget);
       expect(find.byType(PlatformAdminSignInScreen), findsNothing);
-      expect(service.calls, <String>['restore', 'sessions']);
+      expect(service.calls, <String>['restore', 'markets', 'overview all null']);
     });
 
     testWidgets(
@@ -96,7 +97,7 @@ void main() {
       await tester.tap(find.text('Retry'));
       await tester.pumpAndSettle();
 
-      expect(find.byType(PlatformAdminSessionsScreen), findsOneWidget);
+      expect(find.byType(PlatformAdminHomeScreen), findsOneWidget);
     });
 
     testWidgets('with one the server refuses, shows the sign-in and says the session ended, without an alarm',
@@ -130,7 +131,7 @@ void main() {
       await controller.signIn(email: 'owner@example.test', password: 'a-password', deviceName: 'Pixel 9');
       await tester.pumpAndSettle();
 
-      expect(find.byType(PlatformAdminSessionsScreen), findsOneWidget);
+      expect(find.byType(PlatformAdminHomeScreen), findsOneWidget);
       expect(find.byType(PlatformAdminSignInScreen), findsNothing);
     });
 
@@ -139,7 +140,8 @@ void main() {
       service.onRestore = () async => PlatformAdminResult<PlatformAdminProfile?>.success(ownerProfile());
       await pumpShellOverLogin(tester);
       await tester.pumpAndSettle();
-      service.onSessions = () async => refused<List<PlatformSessionModel>>('error_unauthenticated');
+      service.onOverview =
+          (String market, int? windowDays) async => refused<PlatformOverviewModel>('error_unauthenticated');
 
       await tester.fling(find.byType(ListView), const Offset(0, 400), 1000);
       await tester.pump(const Duration(seconds: 1));
@@ -148,8 +150,8 @@ void main() {
       expect(find.byType(PlatformAdminSignInScreen), findsOneWidget);
       expect(find.text('Your session ended. Sign in again.'), findsOneWidget);
       expect(find.byType(SnackBar), findsNothing);
-      expect(find.byType(PlatformAdminSessionsScreen), findsNothing);
-      expect(controller.sessions, isNull);
+      expect(find.byType(PlatformAdminHomeScreen), findsNothing);
+      expect(controller.overview, isNull);
       expect(controller.profile, isNull);
     });
 
@@ -158,6 +160,9 @@ void main() {
       service.onRestore = () async => PlatformAdminResult<PlatformAdminProfile?>.success(ownerProfile());
       await pumpShellOverLogin(tester);
       await tester.pumpAndSettle();
+      await tester.tap(find.descendant(of: find.byType(BottomNavigationBar), matching: find.text('Sessions')));
+      await tester.pump();
+      await tester.pump();
       await tester.scrollUntilVisible(find.text('Logout'), 300, scrollable: find.byType(Scrollable).first);
 
       await tester.ensureVisible(find.text('Logout'));
