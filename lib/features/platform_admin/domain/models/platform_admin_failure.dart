@@ -51,6 +51,9 @@ class PlatformAdminFailure {
 
   const PlatformAdminFailure.network() : this._(PlatformAdminFailureKind.network);
 
+  /// The session is over without the API having been asked: its token has run out.
+  const PlatformAdminFailure.unauthenticated() : this._(PlatformAdminFailureKind.unauthenticated);
+
   const PlatformAdminFailure.malformed() : this._(PlatformAdminFailureKind.malformed);
 
   /// The longest wait a `Retry-After` is allowed to name, so that the moment it
