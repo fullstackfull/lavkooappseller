@@ -146,5 +146,19 @@ class ProductHelper {
     return (start: startingPrice, end: endingPrice);
   }
 
+  /// Average rating over the approved reviews. The product JSON the seller API
+  /// returns also lists reviews still awaiting approval, and those must not move
+  /// the rating the seller sees.
+  static double getApprovedReviewAverage(List<Reviews>? reviews) {
+    final List<int> ratings = (reviews ?? <Reviews>[])
+        .where((Reviews review) => review.status == 1 && review.rating != null)
+        .map((Reviews review) => review.rating!)
+        .toList();
+
+    if (ratings.isEmpty) return 0;
+    return ratings.reduce((int sum, int rating) => sum + rating) /
+        ratings.length;
+  }
+
 
 }
