@@ -41,6 +41,7 @@ abstract final class PlatformAdminHarness {
     Locale locale = english,
     double textScale = 1.0,
     bool darkTheme = false,
+    List<NavigatorObserver> navigatorObservers = const <NavigatorObserver>[],
   }) async {
     // The language files are read from disk, which a widget test does not wait for, so they are read first and handed over as they are.
     final AppLocalization localization = AppLocalization(locale);
@@ -62,6 +63,7 @@ abstract final class PlatformAdminHarness {
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
+        navigatorObservers: navigatorObservers,
         theme: darkTheme ? dark_theme.dark : light,
         locale: locale,
         localizationsDelegates: [
