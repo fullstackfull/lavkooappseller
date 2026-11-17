@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_alert_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_audit_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_mfa_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
 import 'package:syriacosmeticsmanger/helper/date_converter.dart';
 import 'package:syriacosmeticsmanger/localization/app_localization.dart';
@@ -167,6 +168,19 @@ abstract final class PlatformAdminTexts {
       failure.kind == PlatformAdminFailureKind.unauthenticated
           ? getTranslated('platform_admin_sign_in_failed', context)!
           : failureTitle(context, failure);
+
+  /// What the second step says when a code did not open a session. A code the API refused is said as that and with how
+  /// many tries are left and nothing more, because the API says no more; anything else is said as what it is.
+  static String secondFactorFailure(BuildContext context, PlatformAdminFailure failure, {required int triesLeft}) =>
+      failure.kind == PlatformAdminFailureKind.unauthenticated
+          ? '${getTranslated('platform_admin_mfa_wrong_code', context)!}\n${getTranslated('platform_admin_mfa_tries_left', context)!}: $triesLeft'
+          : failureTitle(context, failure);
+
+  /// Why the second step was left, said on the password step.
+  static String secondFactorEnd(BuildContext context, PlatformAdminSecondFactorEnd end) => switch (end) {
+        PlatformAdminSecondFactorEnd.expired => getTranslated('platform_admin_mfa_expired', context)!,
+        PlatformAdminSecondFactorEnd.triesUsed => getTranslated('platform_admin_mfa_tries_used', context)!,
+      };
 
   /// The time of day a wait ends, in the phone's own zone.
   static String tryAgainClock(DateTime retryAt) => DateFormat('HH:mm').format(retryAt.toLocal());

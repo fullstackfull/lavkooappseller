@@ -5,8 +5,10 @@ import 'package:provider/provider.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/controllers/platform_admin_controller.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
+import 'package:syriacosmeticsmanger/common/basewidgets/textfeild/custom_text_feild_widget.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_session_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_home_screen.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_second_factor_screen.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_shell_screen.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_sign_in_screen.dart';
 
@@ -120,6 +122,105 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Platform admin is not available right now.'), findsOneWidget);
+    });
+  });
+
+  group('when the server wants a second factor', () {
+    late DateTime now;
+
+    setUp(() {
+      service.onSignIn = () async => PlatformAdminResult<PlatformAdminSignInStep>.success(secondFactorWanted());
+      now = DateTime.utc(2026, 11, 17, 10);
+      controller = PlatformAdminController(platformAdminServiceInterface: service, now: () => now);
+    });
+
+    Future<void> passwordStep(WidgetTester tester) async {
+      await pumpShellOverLogin(tester);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).at(0), 'owner@example.test');
+      await tester.enterText(find.byType(TextField).at(1), 'a-password');
+      await tester.tap(find.text('Sign in'));
+      await tester.pumpAndSettle();
+    }
+
+    Finder codeField() => find.descendant(of: find.byType(CustomTextFieldWidget), matching: find.byType(TextField));
+
+    testWidgets('a good password leads to the second step, in the same route, and not to the signed-in screens',
+        (WidgetTester tester) async {
+      await passwordStep(tester);
+
+      expect(find.byType(PlatformAdminSecondFactorScreen), findsOneWidget);
+      expect(find.byType(PlatformAdminSignInScreen), findsNothing);
+      expect(find.byType(PlatformAdminHomeScreen), findsNothing);
+      expect(controller.stage, PlatformAdminStage.secondFactor);
+    });
+
+    testWidgets('a right code leads to the signed-in screens, and the second step is gone',
+        (WidgetTester tester) async {
+      await passwordStep(tester);
+
+      await tester.enterText(codeField(), '123456');
+      await tester.tap(find.text('Verify'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PlatformAdminHomeScreen), findsOneWidget);
+      expect(find.byType(PlatformAdminSecondFactorScreen), findsNothing);
+    });
+
+    testWidgets('going back shows the password step again, with the password gone and no note',
+        (WidgetTester tester) async {
+      await passwordStep(tester);
+
+      await tester.tap(find.text('Back to sign in'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PlatformAdminSignInScreen), findsOneWidget);
+      expect(find.text('The sign-in took too long. Enter your password again.'), findsNothing);
+      expect(find.text('Too many wrong codes. Enter your password again.'), findsNothing);
+      expect(tester.widget<TextField>(find.byType(TextField).at(1)).controller!.text, isEmpty);
+    });
+
+    testWidgets('five wrong codes show the password step again, with the reason, calmly', (WidgetTester tester) async {
+      service.onSignInWithSecondFactor = () async => refused<PlatformAdminSignIn>('mfa_failed');
+      await passwordStep(tester);
+
+      for (int attempt = 0; attempt < 5; attempt++) {
+        await tester.enterText(codeField(), '123456');
+        await tester.tap(find.text('Verify'));
+        await tester.pumpAndSettle();
+      }
+
+      expect(find.byType(PlatformAdminSignInScreen), findsOneWidget);
+      expect(find.text('Too many wrong codes. Enter your password again.'), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+    });
+
+    testWidgets(
+        'a challenge that ran out shows the password step again, with the reason, when the admin tries to use it',
+        (WidgetTester tester) async {
+      await passwordStep(tester);
+
+      now = DateTime.utc(2026, 11, 17, 10, 5);
+      await tester.enterText(codeField(), '123456');
+      await tester.tap(find.text('Verify'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PlatformAdminSignInScreen), findsOneWidget);
+      expect(find.text('The sign-in took too long. Enter your password again.'), findsOneWidget);
+      expect(service.count('signInWithSecondFactor'), 0);
+    });
+
+    testWidgets('a session that is refused as soon as it is open shows the password step with the note that it ended',
+        (WidgetTester tester) async {
+      service.onProfile = () async => refused<PlatformAdminProfile>('error_unauthenticated');
+      await passwordStep(tester);
+
+      await tester.enterText(codeField(), '123456');
+      await tester.tap(find.text('Verify'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PlatformAdminSignInScreen), findsOneWidget);
+      expect(find.text('Your session ended. Sign in again.'), findsOneWidget);
     });
   });
 

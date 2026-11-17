@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/textfeild/custom_text_feild_widget.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/controllers/platform_admin_controller.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_mfa_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_session_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_sign_in_screen.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/widgets/platform_admin_texts.dart';
@@ -249,6 +250,87 @@ void main() {
 
         expect(find.text(cause.key), findsOneWidget, reason: cause.key);
       }
+    });
+
+    testWidgets('a good password that is not enough leaves no password in the field, and the e-mail where it was',
+        (WidgetTester tester) async {
+      service.onSignIn = () async => PlatformAdminResult<PlatformAdminSignInStep>.success(secondFactorWanted());
+      await pumpSignIn(tester);
+
+      await fill(tester, email: 'owner@example.test', password: 'a-password');
+      await tapSignIn(tester);
+      await tester.pump();
+
+      expect(controller.stage, PlatformAdminStage.secondFactor);
+      expect(tester.widget<TextField>(field(1)).controller!.text, isEmpty);
+      expect(tester.widget<TextField>(field(0)).controller!.text, 'owner@example.test');
+      expect(controller.signInFailure, isNull);
+    });
+
+    group('after a second step that was left', () {
+      Future<void> leaveByTimeRunningOut() async {
+        service.onSignIn = () async => PlatformAdminResult<PlatformAdminSignInStep>.success(secondFactorWanted());
+        DateTime now = DateTime.utc(2026, 11, 17, 10);
+        controller = PlatformAdminController(platformAdminServiceInterface: service, now: () => now);
+        await controller.signIn(email: 'a@example.test', password: 'x', deviceName: 'Pixel');
+        now = DateTime.utc(2026, 11, 17, 10, 5);
+        controller.expireSecondFactorIfOver();
+      }
+
+      Future<void> leaveByWrongCodes() async {
+        service.onSignIn = () async => PlatformAdminResult<PlatformAdminSignInStep>.success(secondFactorWanted());
+        service.onSignInWithSecondFactor = () async => refused<PlatformAdminSignIn>('mfa_failed');
+        controller =
+            PlatformAdminController(platformAdminServiceInterface: service, now: () => DateTime.utc(2026, 11, 17, 10));
+        await controller.signIn(email: 'a@example.test', password: 'x', deviceName: 'Pixel');
+        for (int attempt = 0; attempt < 5; attempt++) {
+          await controller.verifySecondFactor(method: PlatformAdminMfaMethod.totp, code: '123456');
+        }
+      }
+
+      testWidgets('the time that ran out is said once, quietly, above the form', (WidgetTester tester) async {
+        await leaveByTimeRunningOut();
+        await pumpSignIn(tester);
+
+        expect(find.text('The sign-in took too long. Enter your password again.'), findsOneWidget);
+        expect(find.byType(SnackBar), findsNothing);
+        expect(find.text('Your session ended. Sign in again.'), findsNothing, reason: 'that is another thing');
+      });
+
+      testWidgets('the tries that were used up are said the same way', (WidgetTester tester) async {
+        await leaveByWrongCodes();
+        await pumpSignIn(tester);
+
+        expect(find.text('Too many wrong codes. Enter your password again.'), findsOneWidget);
+        expect(find.byType(SnackBar), findsNothing);
+      });
+
+      testWidgets('the time that ran out is said in Arabic', (WidgetTester tester) async {
+        await leaveByTimeRunningOut();
+        await pumpSignIn(tester, locale: PlatformAdminHarness.arabic);
+
+        expect(find.text('استغرق تسجيل الدخول وقتًا طويلًا. أدخل كلمة المرور مرة أخرى.'), findsOneWidget);
+      });
+
+      testWidgets('the tries that were used up are said in Arabic', (WidgetTester tester) async {
+        await leaveByWrongCodes();
+        await pumpSignIn(tester, locale: PlatformAdminHarness.arabic);
+
+        expect(find.text('عدد كبير من الرموز الخاطئة. أدخل كلمة المرور مرة أخرى.'), findsOneWidget);
+      });
+
+      testWidgets('and a new attempt takes the note away', (WidgetTester tester) async {
+        await leaveByWrongCodes();
+        await pumpSignIn(tester);
+        expect(find.text('Too many wrong codes. Enter your password again.'), findsOneWidget);
+
+        service.onSignIn = () async => refused<PlatformAdminSignInStep>('login_failed_wrong_password');
+        await fill(tester);
+        await tapSignIn(tester);
+        await tester.pump();
+
+        expect(find.text('Too many wrong codes. Enter your password again.'), findsNothing);
+      });
     });
 
     testWidgets('a session that ended is said once, quietly, above the form', (WidgetTester tester) async {

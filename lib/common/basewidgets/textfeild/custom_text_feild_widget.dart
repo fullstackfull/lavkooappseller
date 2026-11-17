@@ -58,6 +58,9 @@ class CustomTextFieldWidget extends StatefulWidget {
   final String? countryDialCode;
   final bool? showIconDecorationColor;
   final IconData? prefixIcon;
+  final bool autocorrect;
+  final bool enableSuggestions;
+  final bool enableIMEPersonalizedLearning;
   const CustomTextFieldWidget(
       {super.key, this.controller,
         this.hintText,
@@ -100,6 +103,9 @@ class CustomTextFieldWidget extends StatefulWidget {
         this.countryDialCode,
         this.showIconDecorationColor = true,
         this.prefixIcon,
+        this.autocorrect = true,
+        this.enableSuggestions = true,
+        this.enableIMEPersonalizedLearning = true,
       });
 
   @override
@@ -137,6 +143,9 @@ class _CustomTextFieldWidgetState extends State<CustomTextFieldWidget> {
         controller: widget.controller,
         maxLines: widget.maxLine ?? 1,
         textCapitalization: widget.capitalization,
+        autocorrect: widget.autocorrect,
+        enableSuggestions: widget.enableSuggestions,
+        enableIMEPersonalizedLearning: widget.enableIMEPersonalizedLearning,
         maxLength: widget. maxSize ?? (widget.isPhoneNumber ? 15 : null),
         focusNode: widget.focusNode,
         initialValue: null,

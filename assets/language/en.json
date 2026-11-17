@@ -1931,5 +1931,20 @@
   "platform_admin_audit_device": "Device",
   "platform_admin_audit_empty": "No audit lines yet.",
   "platform_admin_open_alerts": "Open alerts",
-  "platform_admin_capability_not_allowed": "This part is not included in your access."
+  "platform_admin_capability_not_allowed": "This part is not included in your access.",
+  "platform_admin_mfa_title": "Enter your code",
+  "platform_admin_mfa_subtitle_totp": "Open your authenticator app and enter the 6-digit code.",
+  "platform_admin_mfa_subtitle_recovery": "Enter one of your recovery codes, like abcde-fghij. Each one works only once.",
+  "platform_admin_mfa_code_hint": "6-digit code",
+  "platform_admin_mfa_recovery_hint": "Recovery code",
+  "platform_admin_mfa_verify_button": "Verify",
+  "platform_admin_mfa_use_recovery": "Use a recovery code instead",
+  "platform_admin_mfa_use_code": "Use your authenticator code instead",
+  "platform_admin_mfa_back_to_sign_in": "Back to sign in",
+  "platform_admin_mfa_enter_code": "Enter the 6-digit code",
+  "platform_admin_mfa_enter_recovery": "Enter your recovery code: 10 letters and numbers",
+  "platform_admin_mfa_wrong_code": "That code did not work. Check it and try again.",
+  "platform_admin_mfa_tries_left": "Tries left",
+  "platform_admin_mfa_expired": "The sign-in took too long. Enter your password again.",
+  "platform_admin_mfa_tries_used": "Too many wrong codes. Enter your password again."
 }

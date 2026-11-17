@@ -280,7 +280,7 @@ class PlatformAdminController with ChangeNotifier {
         return _enter(signIn);
       case PlatformAdminSecondFactorWanted(:final PlatformAdminMfaChallenge challenge):
         _resetSecondFactor();
-        _challenge = challenge;
+        _challenge = challenge.isOver(_now()) ? challenge.withoutEnd() : challenge;
         _stage = PlatformAdminStage.secondFactor;
         notifyListeners();
         return false;

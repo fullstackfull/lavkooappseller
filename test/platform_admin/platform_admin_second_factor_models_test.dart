@@ -250,6 +250,20 @@ void main() {
       expect(challengeOf(<String, dynamic>{'challenge_expires_at': 'soon'}).isOver(DateTime.utc(2030)), isFalse);
     });
 
+    test('can be held without its end, which keeps what the server said about everything else', () {
+      final PlatformAdminMfaChallenge challenge = challengeOf(<String, dynamic>{
+        'challenge_expires_at': '2026-11-17T10:05:00Z',
+        'methods': <Object?>['totp'],
+      });
+
+      final PlatformAdminMfaChallenge open = challenge.withoutEnd();
+
+      expect(open.value, challenge.value);
+      expect(open.methods, challenge.methods);
+      expect(open.expiresAt, isNull);
+      expect(open.isOver(DateTime.utc(2030)), isFalse);
+    });
+
     test('allows five wrong codes, which is what the server allows unless it is told otherwise', () {
       expect(PlatformAdminMfaChallenge.maxTries, 5);
     });

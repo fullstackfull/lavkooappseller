@@ -63,6 +63,10 @@ class PlatformAdminMfaChallenge {
     return end != null && !end.isAfter(now);
   }
 
+  /// The same challenge with no end that the app could hold against it. A challenge that is over at the moment the server hands
+  /// it over can only be read against a clock that is wrong, and the app must not refuse every code on that account.
+  PlatformAdminMfaChallenge withoutEnd() => PlatformAdminMfaChallenge(value: value, methods: methods);
+
   @override
   String toString() => 'PlatformAdminMfaChallenge(methods: ${methods.map((method) => method.name).join(',')})';
 }

@@ -1931,5 +1931,20 @@
   "platform_admin_audit_device": "الجهاز",
   "platform_admin_audit_empty": "لا توجد سجلات بعد.",
   "platform_admin_open_alerts": "فتح التنبيهات",
-  "platform_admin_capability_not_allowed": "هذا القسم غير مشمول في صلاحياتك."
+  "platform_admin_capability_not_allowed": "هذا القسم غير مشمول في صلاحياتك.",
+  "platform_admin_mfa_title": "أدخل رمز التحقق",
+  "platform_admin_mfa_subtitle_totp": "افتح تطبيق المصادقة وأدخل الرمز المكوّن من 6 أرقام.",
+  "platform_admin_mfa_subtitle_recovery": "أدخل أحد رموز الاسترداد، مثل abcde-fghij. كل رمز يُستخدم مرة واحدة فقط.",
+  "platform_admin_mfa_code_hint": "الرمز المكوّن من 6 أرقام",
+  "platform_admin_mfa_recovery_hint": "رمز الاسترداد",
+  "platform_admin_mfa_verify_button": "تحقّق",
+  "platform_admin_mfa_use_recovery": "استخدم رمز استرداد بدلًا من ذلك",
+  "platform_admin_mfa_use_code": "استخدم رمز تطبيق المصادقة بدلًا من ذلك",
+  "platform_admin_mfa_back_to_sign_in": "العودة إلى تسجيل الدخول",
+  "platform_admin_mfa_enter_code": "أدخل الرمز المكوّن من 6 أرقام",
+  "platform_admin_mfa_enter_recovery": "أدخل رمز الاسترداد: 10 أحرف وأرقام",
+  "platform_admin_mfa_wrong_code": "لم يعمل هذا الرمز. تحقّق منه وحاول مرة أخرى.",
+  "platform_admin_mfa_tries_left": "المحاولات المتبقية",
+  "platform_admin_mfa_expired": "استغرق تسجيل الدخول وقتًا طويلًا. أدخل كلمة المرور مرة أخرى.",
+  "platform_admin_mfa_tries_used": "عدد كبير من الرموز الخاطئة. أدخل كلمة المرور مرة أخرى."
 }

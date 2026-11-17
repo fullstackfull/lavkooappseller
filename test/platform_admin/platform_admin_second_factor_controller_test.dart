@@ -71,6 +71,19 @@ void main() {
       expect(controller.secondFactorNextCheck, const Duration(minutes: 3));
     });
 
+    test(
+        'is not held against a clock that is wrong: a challenge that is over when it arrives has no end the app can see',
+        () async {
+      now = DateTime.utc(2026, 11, 17, 10, 30);
+      final PlatformAdminController controller = await atTheSecondStep();
+
+      expect(controller.secondFactorNextCheck, isNull);
+      controller.expireSecondFactorIfOver();
+      expect(controller.stage, PlatformAdminStage.secondFactor);
+      expect(await typeCode(controller), isTrue, reason: 'the code is sent, and the server says what it thinks of it');
+      expect(service.count('signInWithSecondFactor'), 1);
+    });
+
     test('does not say the challenge, anywhere the controller speaks of itself', () async {
       final PlatformAdminController controller = await atTheSecondStep();
 
