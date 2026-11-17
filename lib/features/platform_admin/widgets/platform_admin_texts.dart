@@ -68,7 +68,8 @@ abstract final class PlatformAdminTexts {
       };
 
   /// What a line of the audit log says was done. An action the app has not heard of
-  /// is written out from its own name.
+  /// is shown as its own name, as the server wrote it: the log is evidence, and a name the app made up
+  /// from it would be a different line.
   static String auditAction(BuildContext context, String action) => switch (action) {
         'auth.login' => getTranslated('platform_admin_action_auth_login', context)!,
         'auth.login_failed' => getTranslated('platform_admin_action_auth_login_failed', context)!,
@@ -85,7 +86,21 @@ abstract final class PlatformAdminTexts {
         'grant.reactivated' => getTranslated('platform_admin_action_grant_reactivated', context)!,
         'grant.revoked' => getTranslated('platform_admin_action_grant_revoked', context)!,
         'tokens.revoked' => getTranslated('platform_admin_action_tokens_revoked', context)!,
-        _ => action.replaceAll('.', ' ').toTitleCase(),
+        'auth.mfa_challenge' => getTranslated('platform_admin_action_auth_mfa_challenge', context)!,
+        'auth.mfa_failed' => getTranslated('platform_admin_action_auth_mfa_failed', context)!,
+        'auth.mfa_locked' => getTranslated('platform_admin_action_auth_mfa_locked', context)!,
+        'mfa.recovery_code_used' => getTranslated('platform_admin_action_mfa_recovery_code_used', context)!,
+        'sessions.end_others' => getTranslated('platform_admin_action_sessions_end_others', context)!,
+        'session.evicted' => getTranslated('platform_admin_action_session_evicted', context)!,
+        'session.idle_ended' => getTranslated('platform_admin_action_session_idle_ended', context)!,
+        'session.grant_expired' => getTranslated('platform_admin_action_session_grant_expired', context)!,
+        'audit.pruned' => getTranslated('platform_admin_action_audit_pruned', context)!,
+        'mfa.enrolled' => getTranslated('platform_admin_action_mfa_enrolled', context)!,
+        'mfa.confirmed' => getTranslated('platform_admin_action_mfa_confirmed', context)!,
+        'mfa.confirm_failed' => getTranslated('platform_admin_action_mfa_confirm_failed', context)!,
+        'mfa.reset' => getTranslated('platform_admin_action_mfa_reset', context)!,
+        'mfa.status' => getTranslated('platform_admin_action_mfa_status', context)!,
+        _ => action,
       };
 
   /// Who a line of the audit log is about: this admin, another, or the operator at the console.

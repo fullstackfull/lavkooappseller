@@ -1959,5 +1959,19 @@
   "platform_admin_no_other_sessions": "There were no other open sessions.",
   "platform_admin_sign_out_question": "Sign out of platform admin on this phone?",
   "platform_admin_access_ends": "Your access ends",
-  "platform_admin_no_access": "No part of the platform admin is included in your access yet."
+  "platform_admin_no_access": "No part of the platform admin is included in your access yet.",
+  "platform_admin_action_auth_mfa_challenge": "Password accepted, code requested",
+  "platform_admin_action_auth_mfa_failed": "Wrong second-factor code",
+  "platform_admin_action_auth_mfa_locked": "Second step locked after wrong codes",
+  "platform_admin_action_mfa_recovery_code_used": "Recovery code used",
+  "platform_admin_action_sessions_end_others": "Ended all other sessions",
+  "platform_admin_action_session_evicted": "Session replaced by a newer sign-in",
+  "platform_admin_action_session_idle_ended": "Session ended after being idle",
+  "platform_admin_action_session_grant_expired": "Session ended: access expired",
+  "platform_admin_action_audit_pruned": "Old audit lines removed",
+  "platform_admin_action_mfa_enrolled": "Second factor set up",
+  "platform_admin_action_mfa_confirmed": "Second factor confirmed",
+  "platform_admin_action_mfa_confirm_failed": "Second factor confirmation failed",
+  "platform_admin_action_mfa_reset": "Second factor reset",
+  "platform_admin_action_mfa_status": "Second factor status checked"
 }

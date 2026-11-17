@@ -1959,5 +1959,19 @@
   "platform_admin_no_other_sessions": "لم تكن هناك جلسات أخرى مفتوحة.",
   "platform_admin_sign_out_question": "تسجيل الخروج من إدارة المنصة على هذا الهاتف؟",
   "platform_admin_access_ends": "ينتهي وصولك",
-  "platform_admin_no_access": "لا يشمل وصولك أي جزء من إدارة المنصة حتى الآن."
+  "platform_admin_no_access": "لا يشمل وصولك أي جزء من إدارة المنصة حتى الآن.",
+  "platform_admin_action_auth_mfa_challenge": "قُبلت كلمة المرور وطُلب الرمز",
+  "platform_admin_action_auth_mfa_failed": "رمز تحقق خاطئ",
+  "platform_admin_action_auth_mfa_locked": "قُفلت خطوة التحقق بعد رموز خاطئة",
+  "platform_admin_action_mfa_recovery_code_used": "استُخدم رمز استرداد",
+  "platform_admin_action_sessions_end_others": "إنهاء كل الجلسات الأخرى",
+  "platform_admin_action_session_evicted": "حلّ تسجيل دخول أحدث محل الجلسة",
+  "platform_admin_action_session_idle_ended": "انتهت الجلسة بسبب عدم النشاط",
+  "platform_admin_action_session_grant_expired": "انتهت الجلسة: انتهى الوصول",
+  "platform_admin_action_audit_pruned": "حذف سجلات تدقيق قديمة",
+  "platform_admin_action_mfa_enrolled": "تفعيل التحقق بخطوتين",
+  "platform_admin_action_mfa_confirmed": "تأكيد التحقق بخطوتين",
+  "platform_admin_action_mfa_confirm_failed": "فشل تأكيد التحقق بخطوتين",
+  "platform_admin_action_mfa_reset": "إعادة ضبط التحقق بخطوتين",
+  "platform_admin_action_mfa_status": "فحص حالة التحقق بخطوتين"
 }
