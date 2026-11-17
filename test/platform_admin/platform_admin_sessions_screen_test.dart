@@ -29,6 +29,7 @@ void main() {
     double textScale = 1.0,
     Size size = PlatformAdminHarness.phone,
     bool loaded = true,
+    bool darkTheme = false,
   }) async {
     if (loaded) await controller.loadSessions();
     service.calls.clear();
@@ -39,6 +40,7 @@ void main() {
       controller: controller,
       locale: locale,
       textScale: textScale,
+      darkTheme: darkTheme,
     ));
     await tester.pump();
   }
@@ -438,7 +440,7 @@ void main() {
       await tester.tap(arabic);
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('سيتم تسجيل خروج كل الأجهزة الأخرى'), findsOneWidget);
+      expect(find.textContaining('سيتم تسجيل خروج جميع الأجهزة الأخرى'), findsOneWidget);
     });
   });
 
@@ -463,6 +465,22 @@ void main() {
         await tester.drag(find.byType(ListView), const Offset(0, -600));
         await tester.pump();
         expect(tester.takeException(), isNull, reason: '${locale.languageCode} scrolled');
+      }
+    });
+
+    testWidgets('and in the dark theme, with the sessions of a second factor and the button that ends the others',
+        (WidgetTester tester) async {
+      service.onSessions = () async => PlatformAdminResult<List<PlatformSessionModel>>.success(
+          fixtureRows('sessions_with_mfa_method').map(PlatformSessionModel.fromJson).toList());
+
+      for (final Locale locale in <Locale>[PlatformAdminHarness.english, PlatformAdminHarness.arabic]) {
+        await pumpSessions(tester,
+            locale: locale, textScale: 2.0, size: PlatformAdminHarness.narrowPhone, darkTheme: true);
+        await tester.scrollUntilVisible(find.byType(OutlinedButton), 300, scrollable: find.byType(Scrollable).first);
+
+        expect(find.byType(OutlinedButton), findsOneWidget, reason: locale.languageCode);
+        expect(tester.takeException(), isNull, reason: '${locale.languageCode} dark');
+        await tester.pumpWidget(const SizedBox());
       }
     });
   });
