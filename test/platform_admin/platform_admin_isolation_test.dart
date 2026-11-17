@@ -131,8 +131,12 @@ void main() {
       final PlatformAdminApiClient client =
           PlatformAdminApiClient(baseUrl: AppConstants.baseUrl, languageCode: () => 'en');
       client.dio.httpClientAdapter = platformAdapter;
-      final PlatformAdminRepository nextLaunch =
-          PlatformAdminRepository(apiClient: client, tokenStore: SecurePlatformAdminTokenStore());
+      // The token of the fixture ends at 14:00 UTC on 2026-11-17: a clock that is not pinned makes this test fail from then on.
+      final PlatformAdminRepository nextLaunch = PlatformAdminRepository(
+        apiClient: client,
+        tokenStore: SecurePlatformAdminTokenStore(),
+        now: () => DateTime.utc(2026, 11, 17, 10),
+      );
 
       expect((await nextLaunch.restore()).value!.adminId, 4);
     });
