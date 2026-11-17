@@ -38,6 +38,13 @@ jobs:
       - name: Check translation keys
         run: dart run tool/check_translations.dart
 
+      # The platform admin shell is compiled in only when this flag is set, so the
+      # full run below skips the tests that need it on. This step is their proof
+      # that a build with the flag on registers and shows what it should. It comes
+      # first so that a failure elsewhere in the full run cannot hide it.
+      - name: Test the platform admin shell with its flag on
+        run: flutter test --dart-define=GCC_PLATFORM_ADMIN_ENABLED=true test/platform_admin
+
       - name: Test
         run: flutter test
 

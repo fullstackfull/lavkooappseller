@@ -1,0 +1,26 @@
+{
+  "data": {
+    "scope": "restricted",
+    "generated_at": "2026-11-17T06:00:00Z",
+    "markets": [
+      {
+        "code": "AE",
+        "path": "ae",
+        "currency": "AED",
+        "active": true,
+        "storefront_enabled": true,
+        "legal_ready": true,
+        "legal_entity": "Lavkoo Trading Co."
+      },
+      {
+        "code": "KW",
+        "path": "kw",
+        "currency": "KWD",
+        "active": true,
+        "storefront_enabled": true,
+        "legal_ready": false,
+        "legal_entity": "Lavkoo Trading Co."
+      }
+    ]
+  }
+}

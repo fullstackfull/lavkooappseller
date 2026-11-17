@@ -1,0 +1,18 @@
+{
+  "data": {
+    "token": "lkpa_TESTTOKEN0123456789TESTTOKEN0123456789TESTTOKEN0123456789TESTTOK",
+    "token_type": "Bearer",
+    "expires_at": "2026-11-17T14:00:00Z",
+    "me": {
+      "admin_id": 5,
+      "name": "Admin eAsyS",
+      "level": 1,
+      "scope": "restricted",
+      "markets": [
+        "AE",
+        "KW"
+      ],
+      "token_expires_at": "2026-11-17T14:00:00Z"
+    }
+  }
+}

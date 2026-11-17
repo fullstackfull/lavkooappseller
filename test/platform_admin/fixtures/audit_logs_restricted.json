@@ -1,0 +1,107 @@
+{
+  "data": [
+    {
+      "id": 25,
+      "admin_id": 5,
+      "action": "overview.view",
+      "market": "SA",
+      "token_id": 3,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 403,
+        "params": {
+          "market": "SA"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 23,
+      "admin_id": 5,
+      "action": "alerts.view",
+      "market": null,
+      "token_id": 3,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 15,
+      "admin_id": 5,
+      "action": "overview.view",
+      "market": "AE",
+      "token_id": 3,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200,
+        "params": {
+          "market": "AE"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 14,
+      "admin_id": 5,
+      "action": "overview.view",
+      "market": null,
+      "token_id": 3,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 8,
+      "admin_id": 5,
+      "action": "markets.view",
+      "market": null,
+      "token_id": 3,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 5,
+      "admin_id": 5,
+      "action": "me.view",
+      "market": null,
+      "token_id": 3,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 2,
+      "admin_id": 5,
+      "action": "auth.login",
+      "market": null,
+      "token_id": 6,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "device_name": "Country manager phone"
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    }
+  ],
+  "meta": {
+    "scope": "restricted",
+    "page": 1,
+    "per_page": 25,
+    "has_more": false
+  }
+}

@@ -125,6 +125,7 @@ import 'package:syriacosmeticsmanger/features/order_edit/domain/repositories/ord
 import 'package:syriacosmeticsmanger/features/order_edit/domain/repositories/order_edit_repository_interface.dart';
 import 'package:syriacosmeticsmanger/features/order_edit/domain/services/order_edit_service.dart';
 import 'package:syriacosmeticsmanger/features/order_edit/domain/services/order_edit_service_interface.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/platform_admin_dependencies.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/barcode_scan_controller.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/coupon_discount_controller.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/repository/cart_repository_interface.dart';
@@ -483,4 +484,6 @@ Future<void> init() async {
   sl.registerFactory(() => VatController(vatServiceInterface: sl()));
   sl.registerFactory(() => AiController(aiServiceInterface: sl()));
   sl.registerFactory(() => OrderEditController(orderEditServiceInterface: sl()));
+
+  registerPlatformAdminDependencies(sl);
 }
