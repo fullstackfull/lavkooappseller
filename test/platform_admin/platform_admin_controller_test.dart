@@ -460,6 +460,14 @@ void main() {
           service.onEndSession = (int id) async => refused<int>('error_unauthenticated');
           return controller.endSession(2);
         },
+        'ending the other sessions': (PlatformAdminController controller) {
+          service.onEndOtherSessions = () async => refused<int>('error_unauthenticated');
+          return controller.endOtherSessions();
+        },
+        'reading what the grant includes again': (PlatformAdminController controller) {
+          service.onProfile = () async => refused<PlatformAdminProfile>('error_unauthenticated');
+          return controller.refreshProfile();
+        },
       };
 
       for (final MapEntry<String, Future<void> Function(PlatformAdminController)> screen in screens.entries) {
@@ -472,6 +480,36 @@ void main() {
         expect(controller.overview, isNull, reason: screen.key);
         expect(controller.profile, isNull, reason: screen.key);
       }
+    });
+
+    test(
+        'calls that are refused together end the session once, say so once, and ask for nothing afterwards, not even a sign-in',
+        () async {
+      final PlatformAdminController controller = await signedInOwnerWithOverview();
+      final Gate<PlatformAdminResult<List<PlatformSessionModel>>> sessions =
+          Gate<PlatformAdminResult<List<PlatformSessionModel>>>();
+      final Gate<PlatformAdminResult<PlatformAuditPage>> audit = Gate<PlatformAdminResult<PlatformAuditPage>>();
+      service.onSessions = () => sessions.future;
+      service.onAuditLogs = (int page) => audit.future;
+      int endings = 0;
+      controller.addListener(() {
+        if (controller.stage == PlatformAdminStage.signedOut) endings++;
+      });
+      final Future<void> loadingSessions = controller.loadSessions();
+      final Future<void> loadingAudit = controller.loadAuditLog();
+      service.calls.clear();
+
+      sessions.open(refused<List<PlatformSessionModel>>('error_unauthenticated'));
+      audit.open(refused<PlatformAuditPage>('error_unauthenticated'));
+      await Future.wait(<Future<void>>[loadingSessions, loadingAudit]);
+      await controller.loadOverview();
+      await controller.loadAlerts();
+      await controller.refreshProfile();
+
+      expect(endings, 1);
+      expect(controller.stage, PlatformAdminStage.signedOut);
+      expect(controller.sessionEnded, isTrue);
+      expect(service.calls, isEmpty, reason: 'no retry, and the password is never sent again by itself');
     });
 
     test('a market the grant does not hold is that market\'s failure, and the session goes on', () async {

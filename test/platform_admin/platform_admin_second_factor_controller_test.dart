@@ -744,6 +744,20 @@ void main() {
       expect(controller.sessionEnded, isFalse);
     });
 
+    test('a refusal that comes after the admin signed out is not the end of a session that already ended', () async {
+      final PlatformAdminController controller = await signedIn();
+      final Gate<PlatformAdminResult<int>> gate = Gate<PlatformAdminResult<int>>();
+      service.onEndOtherSessions = () => gate.future;
+      final Future<PlatformAdminResult<int>?> pending = controller.endOtherSessions();
+
+      await controller.signOut();
+      gate.open(refused<int>('error_unauthenticated'));
+      await pending;
+
+      expect(controller.sessionEnded, isFalse, reason: 'a person ending their session is not a session that ended');
+      expect(controller.stage, PlatformAdminStage.signedOut);
+    });
+
     test('is not asked of the server when nobody is signed in', () async {
       final PlatformAdminController controller = newController();
 

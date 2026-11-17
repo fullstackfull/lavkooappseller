@@ -421,6 +421,22 @@ void main() {
       expect(controller.sessionEnded, isFalse);
     });
 
+    test(
+        'and a refusal of the session that comes after the admin signed out is not the end of a session that already ended',
+        () async {
+      final PlatformAdminController controller = await signedInAs(owner());
+      final Gate<PlatformAdminResult<PlatformAdminProfile>> gate = Gate<PlatformAdminResult<PlatformAdminProfile>>();
+      service.onProfile = () => gate.future;
+      final Future<void> pending = controller.refreshProfile();
+
+      await controller.signOut();
+      gate.open(refused<PlatformAdminProfile>('error_unauthenticated'));
+      await pending;
+
+      expect(controller.sessionEnded, isFalse);
+      expect(controller.stage, PlatformAdminStage.signedOut);
+    });
+
     test('after a long time away is how the app learns that the grant was narrowed', () async {
       final PlatformAdminController controller = await signedInAs(owner());
       controller.onAppBackgrounded();

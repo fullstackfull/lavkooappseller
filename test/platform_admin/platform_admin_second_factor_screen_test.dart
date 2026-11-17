@@ -325,13 +325,18 @@ void main() {
       expect(controller.secondFactorEnd, PlatformAdminSecondFactorEnd.expired);
     });
 
-    testWidgets('leaves no timer running when the screen is left first', (WidgetTester tester) async {
+    testWidgets('leaves no timer running when the screen is left first: nothing acts for a screen that is gone',
+        (WidgetTester tester) async {
       await pumpSecondStep(tester);
 
       await tester.pumpWidget(const SizedBox());
+      now = DateTime.utc(2026, 11, 17, 10, 10);
       await tester.pump(const Duration(minutes: 10));
 
       expect(tester.takeException(), isNull);
+      expect(controller.stage, PlatformAdminStage.secondFactor,
+          reason: 'it is the shell that decides, when it shows the screen');
+      expect(controller.secondFactorEnd, isNull);
     });
   });
 
