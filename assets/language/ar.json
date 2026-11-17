@@ -1946,5 +1946,18 @@
   "platform_admin_mfa_wrong_code": "لم يعمل هذا الرمز. تحقّق منه وحاول مرة أخرى.",
   "platform_admin_mfa_tries_left": "المحاولات المتبقية",
   "platform_admin_mfa_expired": "استغرق تسجيل الدخول وقتًا طويلًا. أدخل كلمة المرور مرة أخرى.",
-  "platform_admin_mfa_tries_used": "عدد كبير من الرموز الخاطئة. أدخل كلمة المرور مرة أخرى."
+  "platform_admin_mfa_tries_used": "عدد كبير من الرموز الخاطئة. أدخل كلمة المرور مرة أخرى.",
+  "platform_admin_second_factor": "التحقق بخطوتين",
+  "platform_admin_mfa_totp": "تطبيق المصادقة",
+  "platform_admin_mfa_recovery_code": "رمز الاسترداد",
+  "platform_admin_mfa_recovery_low": "رموز الاسترداد المتبقية",
+  "platform_admin_mfa_recovery_low_advice": "اطلب من مالك المنصة رموزًا جديدة قبل أن تنفد.",
+  "platform_admin_mfa_recovery_none": "لا توجد لديك رموز استرداد. اطلب من مالك المنصة إعادة تفعيل التحقق بخطوتين.",
+  "platform_admin_end_other_sessions": "إنهاء جميع الجلسات الأخرى",
+  "platform_admin_end_other_sessions_question": "سيتم تسجيل خروج كل الأجهزة الأخرى المسجّلة بحسابك. يبقى هذا الجهاز مسجّلًا.",
+  "platform_admin_other_sessions_ended": "الجلسات المُنهاة",
+  "platform_admin_no_other_sessions": "لم تكن هناك جلسات أخرى مفتوحة.",
+  "platform_admin_sign_out_question": "تسجيل الخروج من إدارة المنصة على هذا الهاتف؟",
+  "platform_admin_access_ends": "ينتهي وصولك",
+  "platform_admin_no_access": "لا يشمل وصولك أي جزء من إدارة المنصة حتى الآن."
 }

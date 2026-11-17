@@ -1946,5 +1946,18 @@
   "platform_admin_mfa_wrong_code": "That code did not work. Check it and try again.",
   "platform_admin_mfa_tries_left": "Tries left",
   "platform_admin_mfa_expired": "The sign-in took too long. Enter your password again.",
-  "platform_admin_mfa_tries_used": "Too many wrong codes. Enter your password again."
+  "platform_admin_mfa_tries_used": "Too many wrong codes. Enter your password again.",
+  "platform_admin_second_factor": "Second factor",
+  "platform_admin_mfa_totp": "Authenticator app",
+  "platform_admin_mfa_recovery_code": "Recovery code",
+  "platform_admin_mfa_recovery_low": "Recovery codes left",
+  "platform_admin_mfa_recovery_low_advice": "Ask the platform owner for new ones before you run out.",
+  "platform_admin_mfa_recovery_none": "You have no recovery codes left. Ask the platform owner to set up your second factor again.",
+  "platform_admin_end_other_sessions": "End all other sessions",
+  "platform_admin_end_other_sessions_question": "Every other device signed in as you will be signed out. This device stays signed in.",
+  "platform_admin_other_sessions_ended": "Sessions ended",
+  "platform_admin_no_other_sessions": "There were no other open sessions.",
+  "platform_admin_sign_out_question": "Sign out of platform admin on this phone?",
+  "platform_admin_access_ends": "Your access ends",
+  "platform_admin_no_access": "No part of the platform admin is included in your access yet."
 }

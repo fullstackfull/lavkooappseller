@@ -243,6 +243,205 @@ void main() {
     });
   });
 
+  group('how each session passed the second factor', () {
+    setUp(() {
+      service.onSessions = () async => PlatformAdminResult<List<PlatformSessionModel>>.success(
+          fixtureRows('sessions_with_mfa_method').map(PlatformSessionModel.fromJson).toList());
+    });
+
+    testWidgets('is on its tile in words, and a session that passed none says nothing of one',
+        (WidgetTester tester) async {
+      await pumpSessions(tester, size: PlatformAdminHarness.tallPhone);
+
+      expect(find.text('Second factor:'), findsNWidgets(3));
+      expect(find.text('Authenticator app'), findsNWidgets(2));
+      expect(find.text('Recovery code'), findsOneWidget);
+      final Finder staging = find.byWidgetPredicate(
+          (Widget widget) => widget is PlatformSessionTile && widget.session.deviceName == 'Staging phone');
+      expect(find.descendant(of: staging, matching: find.text('Second factor:')), findsNothing);
+    });
+
+    testWidgets('is said in Arabic too', (WidgetTester tester) async {
+      await pumpSessions(tester, locale: PlatformAdminHarness.arabic, size: PlatformAdminHarness.tallPhone);
+
+      expect(find.text('التحقق بخطوتين:'), findsNWidgets(3));
+      expect(find.text('تطبيق المصادقة'), findsNWidgets(2));
+      expect(find.text('رمز الاسترداد'), findsOneWidget);
+    });
+
+    testWidgets('is not said for a server that does not say it', (WidgetTester tester) async {
+      service.onSessions = () async => PlatformAdminResult<List<PlatformSessionModel>>.success(
+          fixtureRows('sessions_owner').map(PlatformSessionModel.fromJson).toList());
+
+      await pumpSessions(tester);
+
+      expect(find.text('Second factor:'), findsNothing);
+    });
+  });
+
+  group('ending all the other sessions', () {
+    Finder button() => find.widgetWithText(OutlinedButton, 'End all other sessions');
+
+    Future<void> tapEndOthers(WidgetTester tester) async {
+      await tester.scrollUntilVisible(button(), 300, scrollable: find.byType(Scrollable).first);
+      await tester.tap(button());
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> confirm(WidgetTester tester) async {
+      await tester.tap(find.text('Confirm'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('is offered under the list while there is another session, and says what it is',
+        (WidgetTester tester) async {
+      await pumpSessions(tester);
+      await tester.scrollUntilVisible(button(), 300, scrollable: find.byType(Scrollable).first);
+
+      expect(button(), findsOneWidget);
+      expect(find.byIcon(Icons.devices_other_outlined), findsOneWidget);
+      expect(tester.widget<OutlinedButton>(button()).onPressed, isNotNull);
+    });
+
+    testWidgets('is not offered when this is the only session there is, or while there is no list',
+        (WidgetTester tester) async {
+      service.onSessions = () async => PlatformAdminResult<List<PlatformSessionModel>>.success(
+          fixtureRows('sessions_owner')
+              .map(PlatformSessionModel.fromJson)
+              .where((PlatformSessionModel session) => session.isCurrent)
+              .toList());
+      await pumpSessions(tester);
+      expect(button(), findsNothing);
+
+      service.onSessions = () async => unreachable<List<PlatformSessionModel>>();
+      controller = PlatformAdminController(platformAdminServiceInterface: service);
+      service.onRestore = () async => PlatformAdminResult<PlatformAdminProfile?>.success(ownerProfile());
+      await controller.restoreSession();
+      await tester.pumpWidget(const SizedBox());
+      await pumpSessions(tester);
+      expect(button(), findsNothing);
+    });
+
+    testWidgets('is not offered to a grant that does not include the sessions', (WidgetTester tester) async {
+      controller = PlatformAdminController(platformAdminServiceInterface: service);
+      service.onRestore = () async => PlatformAdminResult<PlatformAdminProfile?>.success(
+          PlatformAdminProfile.fromJson(fixtureData('me_restricted_capabilities')));
+      await controller.restoreSession();
+
+      await pumpSessions(tester);
+
+      expect(find.text('Owner iPad'), findsOneWidget, reason: 'the list is there: it was asked for');
+      expect(button(), findsNothing);
+    });
+
+    testWidgets('asks first, naming what will happen, and asks nothing of the server if it is declined',
+        (WidgetTester tester) async {
+      await pumpSessions(tester);
+
+      await tapEndOthers(tester);
+
+      expect(find.text('Every other device signed in as you will be signed out. This device stays signed in.'),
+          findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(service.calls, isEmpty);
+    });
+
+    testWidgets('ends them when confirmed, says how many it ended, and reads the list again',
+        (WidgetTester tester) async {
+      await pumpSessions(tester);
+
+      await tapEndOthers(tester);
+      await confirm(tester);
+
+      expect(service.calls, <String>['endOtherSessions', 'sessions']);
+      expect(find.text('Sessions ended: 2'), findsOneWidget);
+    });
+
+    testWidgets('says when there was nothing to end', (WidgetTester tester) async {
+      service.onEndOtherSessions = () async => const PlatformAdminResult<int>.success(0);
+      await pumpSessions(tester);
+
+      await tapEndOthers(tester);
+      await confirm(tester);
+
+      expect(find.text('There were no other open sessions.'), findsOneWidget);
+    });
+
+    testWidgets('says why when it could not, and leaves the list as it was', (WidgetTester tester) async {
+      service.onEndOtherSessions = () async => unreachable<int>();
+      await pumpSessions(tester);
+
+      await tapEndOthers(tester);
+      await confirm(tester);
+
+      expect(find.text('Could not reach the server'), findsOneWidget);
+      expect(find.text('Owner iPad'), findsOneWidget);
+      expect(service.count('sessions'), 0);
+    });
+
+    testWidgets('a part the grant leaves out is said as that, and the app reads what the grant includes again',
+        (WidgetTester tester) async {
+      service.onEndOtherSessions = () async => refused<int>('error_capability_not_allowed');
+      await pumpSessions(tester);
+
+      await tapEndOthers(tester);
+      await confirm(tester);
+
+      expect(find.text('This part is not included in your access.'), findsOneWidget);
+      expect(service.count('profile'), 1);
+    });
+
+    testWidgets('a session that is over ends the shell\'s session, once, instead of saying anything here',
+        (WidgetTester tester) async {
+      service.onEndOtherSessions = () async => refused<int>('error_unauthenticated');
+      await pumpSessions(tester);
+
+      await tapEndOthers(tester);
+      await tester.tap(find.text('Confirm'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(controller.stage, PlatformAdminStage.signedOut);
+      expect(controller.sessionEnded, isTrue);
+      expect(service.count('sessions'), 0);
+    });
+
+    testWidgets('is busy while it waits, and every other way of ending a session waits with it',
+        (WidgetTester tester) async {
+      final Gate<PlatformAdminResult<int>> gate = Gate<PlatformAdminResult<int>>();
+      service.onEndOtherSessions = () => gate.future;
+      await pumpSessions(tester);
+
+      await tapEndOthers(tester);
+      await tester.tap(find.text('Confirm'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(tester.widget<OutlinedButton>(button()).onPressed, isNull);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(
+          tester
+              .widgetList<TextButton>(find.widgetWithText(TextButton, 'End session'))
+              .every((TextButton ending) => ending.onPressed == null),
+          isTrue);
+      gate.open(const PlatformAdminResult<int>.success(2));
+      await tester.pumpAndSettle();
+      expect(tester.widget<OutlinedButton>(button()).onPressed, isNotNull);
+    });
+
+    testWidgets('is said in Arabic', (WidgetTester tester) async {
+      await pumpSessions(tester, locale: PlatformAdminHarness.arabic);
+      final Finder arabic = find.widgetWithText(OutlinedButton, 'إنهاء جميع الجلسات الأخرى');
+
+      await tester.scrollUntilVisible(arabic, 300, scrollable: find.byType(Scrollable).first);
+      await tester.tap(arabic);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('سيتم تسجيل خروج كل الأجهزة الأخرى'), findsOneWidget);
+    });
+  });
+
   group('in Arabic', () {
     testWidgets('reads from the right, in Arabic, with no key showing through', (WidgetTester tester) async {
       await pumpSessions(tester, locale: PlatformAdminHarness.arabic);

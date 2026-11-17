@@ -176,6 +176,17 @@ abstract final class PlatformAdminTexts {
           ? '${getTranslated('platform_admin_mfa_wrong_code', context)!}\n${getTranslated('platform_admin_mfa_tries_left', context)!}: $triesLeft'
           : failureTitle(context, failure);
 
+  /// How a session passed the second factor.
+  static String mfaMethodName(BuildContext context, PlatformAdminMfaMethod method) => switch (method) {
+        PlatformAdminMfaMethod.totp => getTranslated('platform_admin_mfa_totp', context)!,
+        PlatformAdminMfaMethod.recoveryCode => getTranslated('platform_admin_mfa_recovery_code', context)!,
+      };
+
+  /// What to say when few recovery codes are left. With none, the admin has to ask for a new second factor; with some, for new codes.
+  static String recoveryCodesLow(BuildContext context, int left) => left == 0
+      ? getTranslated('platform_admin_mfa_recovery_none', context)!
+      : '${getTranslated('platform_admin_mfa_recovery_low', context)!}: $left. ${getTranslated('platform_admin_mfa_recovery_low_advice', context)!}';
+
   /// Why the second step was left, said on the password step.
   static String secondFactorEnd(BuildContext context, PlatformAdminSecondFactorEnd end) => switch (end) {
         PlatformAdminSecondFactorEnd.expired => getTranslated('platform_admin_mfa_expired', context)!,

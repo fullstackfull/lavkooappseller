@@ -4,9 +4,11 @@ import 'package:syriacosmeticsmanger/common/basewidgets/custom_button_widget.dar
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_confirmation_dialog_widget.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_snackbar_widget.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/controllers/platform_admin_controller.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_capability_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_session_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/widgets/platform_admin_state_widgets.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/widgets/platform_admin_sign_out.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/widgets/platform_admin_texts.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/widgets/platform_session_tile.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
@@ -65,17 +67,26 @@ class PlatformAdminSessionsScreen extends StatelessWidget {
                     child: PlatformSessionTile(
                       session: session,
                       isEnding: controller.endingSessionId == session.id,
-                      onEnd:
-                          controller.endingSessionId == null ? () => _confirmEnd(context, controller, session) : null,
+                      onEnd: controller.endingSessionId == null && !controller.isEndingOtherSessions
+                          ? () => _confirmEnd(context, controller, session)
+                          : null,
                     ),
                   ),
                 ),
+              if (controller.can(PlatformCapability.sessions) &&
+                  (sessions?.any((PlatformSessionModel session) => !session.isCurrent) ?? false)) ...[
+                const SizedBox(height: Dimensions.paddingSizeExtraSmall),
+                _EndOthersButton(
+                  isEnding: controller.isEndingOtherSessions,
+                  onPressed: controller.endingSessionId == null ? () => _confirmEndOthers(context, controller) : null,
+                ),
+              ],
               const SizedBox(height: Dimensions.paddingSizeDefault),
               CustomButtonWidget(
                 borderRadius: 16,
                 backgroundColor: Theme.of(context).colorScheme.error,
                 btnTxt: getTranslated('logout', context),
-                onTap: () => _signOut(context, controller),
+                onTap: () => signOutOfPlatformAdmin(context, controller),
               ),
               const SizedBox(height: Dimensions.paddingSizeExtraSmall),
               Text(
@@ -119,14 +130,69 @@ class PlatformAdminSessionsScreen extends StatelessWidget {
     );
   }
 
-  /// Over on this phone at once. The shell is left afterwards, if it is still the screen in front.
-  Future<void> _signOut(BuildContext context, PlatformAdminController controller) async {
-    final NavigatorState navigator = Navigator.of(context);
-    final Route<dynamic>? shell = ModalRoute.of(context);
+  Future<void> _confirmEndOthers(BuildContext context, PlatformAdminController controller) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => CustomConfirmationDialogWidget(
+        title: getTranslated('platform_admin_end_other_sessions', dialogContext)!,
+        description: getTranslated('platform_admin_end_other_sessions_question', dialogContext)!,
+        yesButtonText: getTranslated('confirm', dialogContext)!,
+        noButtonText: getTranslated('cancel', dialogContext)!,
+        onYesPressed: () => Navigator.pop(dialogContext, true),
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
 
-    await controller.signOut();
+    final PlatformAdminResult<int>? result = await controller.endOtherSessions();
+    if (result == null || !context.mounted) return;
 
-    if (shell?.isCurrent ?? false) navigator.pop();
+    final PlatformAdminFailure? failure = result.failure;
+    final int ended = result.value ?? 0;
+    showCustomSnackBarWidget(
+      failure != null
+          ? PlatformAdminTexts.failureTitle(context, failure)
+          : ended == 0
+              ? getTranslated('platform_admin_no_other_sessions', context)
+              : '${getTranslated('platform_admin_other_sessions_ended', context)!}: $ended',
+      context,
+      sanckBarType: failure != null
+          ? SnackBarType.error
+          : ended == 0
+              ? SnackBarType.warning
+              : SnackBarType.success,
+    );
+  }
+}
+
+/// Ends every session of the admin but this one, for a lost phone. It is the one button of this screen that ends more than one thing, so it asks first.
+class _EndOthersButton extends StatelessWidget {
+  final bool isEnding;
+  final VoidCallback? onPressed;
+
+  const _EndOthersButton({required this.isEnding, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = Theme.of(context).colorScheme.error;
+
+    return OutlinedButton.icon(
+      onPressed: isEnding ? null : onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: color.withValues(alpha: .5)),
+        padding: const EdgeInsets.symmetric(
+            vertical: Dimensions.paddingSizeSmall, horizontal: Dimensions.paddingSizeDefault),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimensions.radiusExtraLarge)),
+      ),
+      icon: isEnding
+          ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.devices_other_outlined, size: Dimensions.iconSizeDefault),
+      label: Text(
+        getTranslated('platform_admin_end_other_sessions', context)!,
+        textAlign: TextAlign.center,
+        style: robotoMedium.copyWith(fontSize: Dimensions.fontSizeDefault, color: color),
+      ),
+    );
   }
 }
 
