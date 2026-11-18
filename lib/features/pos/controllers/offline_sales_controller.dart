@@ -18,7 +18,11 @@ import 'package:syriacosmeticsmanger/features/pos/domain/services/cart_service_i
 /// never loses a sale and never leaves the cashier guessing.
 ///
 /// The queue is one list on the device and it outlives a sign-out, so a sale carries the seller who took it: the server records a replayed sale under the seller of the session that sends it.
-/// A seller's session lists, sends, retries and removes that seller's sales and no one else's, which stay queued until their seller signs in.
+/// A seller's session lists, sends, retries and removes the sales of that seller, and the sales that have no seller; the sales of another seller stay queued until their seller signs in.
+///
+/// The app learns who is signed in from the profile: the id of the seller in its answer, which a sign-out forgets. Until the answer of the next session arrives, the sales of a seller are out of sight and
+/// unsent, and a sale rung up in the meantime has no seller yet: it is given the seller of its own session when the answer comes. The answer needs a connection, so a sale rung up in a session that never
+/// gets it keeps no seller, and when that session ends it is sent under whoever signs in next, as every sale was before.
 class OfflineSalesController extends ChangeNotifier {
   final CartServiceInterface cartServiceInterface;
   final SharedPreferences sharedPreferences;
@@ -40,6 +44,13 @@ class OfflineSalesController extends ChangeNotifier {
 
   /// Every sale on the device, whoever took it.
   List<PendingPosOrder> _pending = <PendingPosOrder>[];
+
+  /// The sales rung up while the app did not know who was signed in, each with the session it was rung up in: the seller of that session is given to it when the app learns who it is. A sale an earlier
+  /// version queued is not among them.
+  final Map<String, int> _awaitingSeller = <String, int>{};
+
+  /// The profile of the app, once it has been found. The controller follows it, because its answer is what tells the app who is signed in.
+  ProfileController? _profile;
 
   List<PendingPosOrder> get _ownSales {
     final String? sellerId = _signedInSellerId();
@@ -81,6 +92,12 @@ class OfflineSalesController extends ChangeNotifier {
     });
   }
 
+  @override
+  void dispose() {
+    _profile?.removeListener(_sellerMayHaveChanged);
+    super.dispose();
+  }
+
   /// Reads the queue from the disk, which [initialise] does together with the watch on the connection.
   @visibleForTesting
   void loadFromStorage() => _load();
@@ -102,6 +119,7 @@ class OfflineSalesController extends ChangeNotifier {
     required String customerName,
     String? idempotencyKey,
   }) async {
+    final String? sellerId = _signedInSellerId();
     final PendingPosOrder order = PendingPosOrder(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       body: orderBody,
@@ -109,8 +127,11 @@ class OfflineSalesController extends ChangeNotifier {
       orderAmount: orderAmount,
       customerName: customerName,
       idempotencyKey: idempotencyKey ?? PosIdempotencyKey.generate(),
-      sellerId: _signedInSellerId(),
+      sellerId: sellerId,
     );
+    if (sellerId == null) {
+      _awaitingSeller[order.id] = _sessionsEnded();
+    }
     _pending = [..._pending, order];
     await _persist();
     notifyListeners();
@@ -145,21 +166,52 @@ class OfflineSalesController extends ChangeNotifier {
 
   /// The id of the seller who is signed in, or null while the app does not know it.
   ///
-  /// The app keeps it only in the profile, which is fetched after the sign-in and is not cleared by a sign-out: before its answer arrives the seller is not known, and until the next answer arrives
-  /// it still names the seller who signed out.
+  /// The app keeps it only in the profile, which is fetched after the sign-in and which forgets it at a sign-out: before the answer of the new session arrives the seller is not known, and it is never
+  /// the one who signed out.
   String? _signedInSellerId() {
     final String? Function()? override = _signedInSellerIdOverride;
     if (override != null) {
       return override();
     }
 
-    final BuildContext? context = Get.context;
-    if (context == null) {
-      return null;
+    return _followedProfile()?.userId?.toString();
+  }
+
+  /// The profile of the app, which the controller starts following the first time it is found: before the first frame there is no navigator to read a provider from.
+  ProfileController? _followedProfile() {
+    if (_profile == null) {
+      final BuildContext? context = Get.context;
+      if (context == null) {
+        return null;
+      }
+
+      _profile = Provider.of<ProfileController>(context, listen: false)..addListener(_sellerMayHaveChanged);
     }
 
-    return Provider.of<ProfileController>(context, listen: false).userId?.toString();
+    return _profile;
   }
+
+  void _sellerMayHaveChanged() {
+    _giveSellerToSalesAwaitingIt();
+    notifyListeners();
+  }
+
+  /// A sale rung up while the app did not know who was signed in is given the seller that the answer of its own session names. The seller is written on the sale and on the disk, so that a seller who signs
+  /// in later does not take it for theirs; the answer of a later session names another seller and gives them none.
+  void _giveSellerToSalesAwaitingIt() {
+    final String? sellerId = _signedInSellerId();
+    if (sellerId == null || _awaitingSeller.isEmpty) {
+      return;
+    }
+
+    final int session = _sessionsEnded();
+    _pending = _pending.map((PendingPosOrder order) => order.sellerId == null && _awaitingSeller[order.id] == session ? order.copyWith(sellerId: sellerId) : order).toList();
+    _awaitingSeller.clear();
+    _persist();
+  }
+
+  /// How many sessions had ended when this was asked, by the count of the profile; a test that says who is signed in has no profile and one session.
+  int _sessionsEnded() => _followedProfile()?.sessionsEnded ?? 0;
 
   /// Replays every queued sale that is still replayed by itself. A sale that fails stays queued with its attempt count bumped and its last error; once it has used its attempts (OutboxPolicy)
   /// it is not replayed again by the return of the connection, and it is not dropped either: it waits for the seller, so a permanently rejected sale never blocks the ones behind it and is never lost silently.
@@ -223,9 +275,9 @@ class OfflineSalesController extends ChangeNotifier {
       }
     }
 
-    // The replay takes as long as the network does, and the seller goes on selling: a sale queued meanwhile, a failed sale removed, the failed sales reopened. The queue is rebuilt from what it
-    // holds now, with only the outcome of this pass applied to it; assigning the list the pass began with would drop a sale that was queued while it ran.
-    _pending = _pending.where((PendingPosOrder order) => !syncedIds.contains(order.id)).map((PendingPosOrder order) => replayed[order.id] ?? order).toList();
+    // The replay takes as long as the network does, and the seller goes on selling: a sale queued meanwhile, a failed sale removed, the failed sales reopened, a sale given its seller. The queue is
+    // rebuilt from what it holds now, with only the outcome of this pass applied to it; assigning the list the pass began with would drop a sale that was queued while it ran.
+    _pending = _pending.where((PendingPosOrder order) => !syncedIds.contains(order.id)).map((PendingPosOrder order) => _withOutcome(order, replayed[order.id])).toList();
     await _persist();
 
     _isSyncing = false;
@@ -233,6 +285,9 @@ class OfflineSalesController extends ChangeNotifier {
     notifyListeners();
     return synced;
   }
+
+  /// The sale as the queue holds it now, with the failed attempt that the pass counted against it.
+  PendingPosOrder _withOutcome(PendingPosOrder current, PendingPosOrder? failedAttempt) => failedAttempt == null ? current : current.copyWith(attempts: failedAttempt.attempts, lastError: failedAttempt.lastError);
 
   /// The seller asks for the sales that could not be sent to be tried again: each of this seller's is given its attempts back and the queue is replayed. The failed sales of another seller are left as they are.
   Future<int> retryFailedSales() async {

@@ -16,8 +16,9 @@ class PendingPosOrder {
   /// The key the sale was first sent with (PosIdempotencyKey): a replay sends the same one. A sale that an earlier version queued has none until its first replay.
   final String? idempotencyKey;
 
-  /// The seller who took the sale. The server records a replayed sale under the seller of the session that sends it, so only this seller's session may send it. A sale that an earlier version
-  /// queued, or one taken while the app did not know who was signed in, has no owner: it is sent under whoever is signed in, as every sale was before.
+  /// The seller who took the sale. The server records a replayed sale under the seller of the session that sends it, so only this seller's session may send it. A sale taken while the app did not
+  /// know who was signed in is given its seller as soon as the app learns it. A sale that an earlier version queued, or one whose run ended before the app learned it, has no owner: it is sent
+  /// under whoever is signed in, as every sale was before.
   final String? sellerId;
 
   const PendingPosOrder({
@@ -35,7 +36,7 @@ class PendingPosOrder {
   /// Whether the seller who is signed in (null while the app does not know) may list, send, retry and remove this sale.
   bool belongsTo(String? signedInSellerId) => sellerId == null || sellerId == signedInSellerId;
 
-  PendingPosOrder copyWith({int? attempts, String? lastError, String? idempotencyKey}) => PendingPosOrder(
+  PendingPosOrder copyWith({int? attempts, String? lastError, String? idempotencyKey, String? sellerId}) => PendingPosOrder(
         id: id,
         body: body,
         createdAt: createdAt,
@@ -44,7 +45,7 @@ class PendingPosOrder {
         attempts: attempts ?? this.attempts,
         lastError: lastError ?? this.lastError,
         idempotencyKey: idempotencyKey ?? this.idempotencyKey,
-        sellerId: sellerId,
+        sellerId: sellerId ?? this.sellerId,
       );
 
   Map<String, dynamic> toJson() => {

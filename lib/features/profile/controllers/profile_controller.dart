@@ -34,10 +34,17 @@ class ProfileController with ChangeNotifier {
   String? _countryDialCode = '+880';
   String? get countryDialCode => _countryDialCode;
 
+  /// How many sessions have ended since the app started: what the profile of one session is told apart from the profile of the next by.
+  int _sessionsEnded = 0;
+  int get sessionsEnded => _sessionsEnded;
 
   Future<ResponseModel> getSellerInfo() async {
     ResponseModel responseModel;
+    final int sessionsEndedBeforeRequest = _sessionsEnded;
     ApiResponse apiResponse = await profileServiceInterface.getSellerInfo();
+    if (sessionsEndedBeforeRequest != _sessionsEnded) {
+      return ResponseModel(false, 'session_ended');
+    }
     if (apiResponse.response != null && apiResponse.response!.statusCode == 200) {
       _userInfoModel = ProfileInfoModel.fromJson(apiResponse.response!.data);
       _userId = _userInfoModel!.id;
@@ -58,6 +65,13 @@ class ProfileController with ChangeNotifier {
     }
     notifyListeners();
     return responseModel;
+  }
+
+  /// The session of the seller has ended: nobody is known to be signed in until the profile of the next session has answered, and an answer to a request that the ended session made is dropped when it
+  /// arrives. The profile itself is left as it is, because the screens of the ended session are still on the stack for a moment and read it.
+  void forgetSignedInSeller() {
+    _sessionsEnded++;
+    _userId = null;
   }
 
   void setFreeDeliveryStatus(String val){
