@@ -3,8 +3,8 @@ name: CI
 on:
   push:
     branches: [main, 'claude/**']
+  # Every pull request, whatever its base: a pull request stacked on another has its own run, which a filter on the base `main` never gave it.
   pull_request:
-    branches: [main]
 
 jobs:
   analyze-and-test:
