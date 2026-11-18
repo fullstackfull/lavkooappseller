@@ -45,6 +45,11 @@ jobs:
       - name: Test the platform admin shell with its flag on
         run: flutter test --dart-define=GCC_PLATFORM_ADMIN_ENABLED=true test/platform_admin
 
+      # A test of the work in flight runs by name before the full run: the full run is red on main for test/app_version_gate_test.dart, and a step after a failed step does
+      # not run, so a named step is the only way its result can be read.
+      - name: Test that the seller app makes no theme call (F-03, K-18)
+        run: flutter test test/no_theme_call_test.dart
+
       - name: Test
         run: flutter test
 
