@@ -38,17 +38,35 @@ jobs:
       - name: Check translation keys
         run: dart run tool/check_translations.dart
 
+      # Each feature's tests run by name before the full run: the whole run below is red on main for one known test (test/app_version_gate_test.dart), and a step after a failed
+      # step does not run unless it says `if: always()`, so a named step is the only way the result of one feature can be read on its own.
+      - name: Test the market scope, the market choice, the sign-in header and the version helper (K-01, K-02, K-10, K-12, K-14)
+        if: always()
+        run: flutter test test/dio_storefront_header_test.dart test/market_scope_test.dart test/seller_market_choice_test.dart test/dio_auth_header_test.dart test/version_helper_test.dart
+
+      - name: Test the point-of-sale scan of country-scoped codes (K-05, K-13)
+        if: always()
+        run: flutter test test/pos_scan
+
+      - name: Test the order edit refusal and the approved review average (K-07)
+        if: always()
+        run: flutter test test/order_edit_submit_contract_test.dart test/order_edit_submit_flow_test.dart test/product_review_average_test.dart
+
       # The platform admin shell is compiled in only when this flag is set, so the
       # full run below skips the tests that need it on. This step is their proof
       # that a build with the flag on registers and shows what it should. It comes
       # first so that a failure elsewhere in the full run cannot hide it.
       - name: Test the platform admin shell with its flag on
+        if: always()
         run: flutter test --dart-define=GCC_PLATFORM_ADMIN_ENABLED=true test/platform_admin
 
-      # A test of the work in flight runs by name before the full run: the full run is red on main for test/app_version_gate_test.dart, and a step after a failed step does
-      # not run, so a named step is the only way its result can be read.
       - name: Test that the seller app makes no theme call (F-03, K-18)
+        if: always()
         run: flutter test test/no_theme_call_test.dart
+
+      - name: Test the push route and the rating rule (K-07, K-11)
+        if: always()
+        run: flutter test test/notification_route_test.dart test/approved_rating_screens_test.dart test/product_card_rating_test.dart
 
       - name: Test
         run: flutter test
