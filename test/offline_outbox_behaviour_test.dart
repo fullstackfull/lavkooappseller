@@ -311,6 +311,32 @@ void main() {
       expect(find.textContaining('unsynced_sales'), findsNothing);
     });
 
+    testWidgets('a failed sale is removed only when the seller says yes, and a no leaves it where it was', (WidgetTester tester) async {
+      final _Outbox outbox = await _outbox(<PendingPosOrder>[_sale('one', attempts: 10, lastError: 'refused', key: 'key-one')]);
+
+      await tester.pumpWidget(_app(outbox.controller, const FailedSalesSheet(formatAmount: _amountText)));
+      await tester.tap(find.byIcon(Icons.delete_outline_rounded));
+      await tester.pumpAndSettle();
+
+      expect(find.text('remove_sale_confirmation'), findsOneWidget);
+      expect(outbox.ids, <String>['one'], reason: 'asking is not removing');
+
+      await tester.tap(find.text('no'));
+      await tester.pumpAndSettle();
+
+      expect(outbox.ids, <String>['one']);
+      expect(outbox.storedIds, <String>['one'], reason: 'and it is still on the disk');
+
+      await tester.tap(find.byIcon(Icons.delete_outline_rounded));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('yes'));
+      await tester.pumpAndSettle();
+
+      expect(outbox.ids, isEmpty);
+      expect(outbox.storedIds, isEmpty);
+      expect(find.textContaining('Layla'), findsNothing, reason: 'the sheet no longer lists it');
+    });
+
     testWidgets('Retry in the sheet replays the failed sales under their own keys', (WidgetTester tester) async {
       final _Outbox outbox = await _outbox(<PendingPosOrder>[_sale('one', attempts: 10, lastError: 'refused', key: 'key-one')]);
 
@@ -323,6 +349,26 @@ void main() {
   });
 
   group('the banner above the POS', () {
+    testWidgets('says how many sales wait and how many of them could not be sent, and offers their details', (WidgetTester tester) async {
+      final _Outbox outbox = await _outbox(<PendingPosOrder>[_sale('failed', attempts: 10, lastError: 'refused', key: 'key-f'), _sale('waiting', attempts: 1, key: 'key-w')]);
+
+      await tester.pumpWidget(_app(outbox.controller, const OfflineSalesBanner()));
+
+      expect(find.textContaining('unsynced_sales: 2'), findsOneWidget);
+      expect(find.textContaining('sales_not_sent: 1'), findsOneWidget);
+      expect(find.text('details'), findsOneWidget);
+    });
+
+    testWidgets('does not offer details while no sale has failed', (WidgetTester tester) async {
+      final _Outbox outbox = await _outbox(<PendingPosOrder>[_sale('waiting', attempts: 1, key: 'key-w')]);
+
+      await tester.pumpWidget(_app(outbox.controller, const OfflineSalesBanner()));
+
+      expect(find.textContaining('unsynced_sales: 1'), findsOneWidget);
+      expect(find.textContaining('sales_not_sent'), findsNothing);
+      expect(find.text('details'), findsNothing);
+    });
+
     testWidgets('Retry reopens and replays the failed sales when every sale in the queue has failed', (WidgetTester tester) async {
       final _Outbox outbox = await _outbox(<PendingPosOrder>[_sale('one', attempts: 10, lastError: 'refused', key: 'key-one')]);
 

@@ -78,6 +78,7 @@ void main() {
         await tester.pump();
 
         expect(find.text('Aspirin is not available for order place'), findsOneWidget);
+        expect(find.text('order_placed_successfully'), findsNothing, reason: 'a refusal is never shown as a placed order');
         expect(counter.cart.collectedCashController.text, '1600', reason: 'the cart is as the cashier left it, so the retry is the same sale');
         expect(counter.cart.extraDiscountController.text, '25');
         expect(counter.cart.isLoading, isFalse);
