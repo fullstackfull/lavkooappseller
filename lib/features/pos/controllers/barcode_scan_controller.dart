@@ -73,7 +73,9 @@ class BarcodeScanController extends ChangeNotifier{
     _isLoading = true;
     ApiResponse response = await cartServiceInterface.getProductFromScan(productCode, country: country);
 
-    if(response.response?.statusCode == 200) {
+    if(_foundNoProduct(response)) {
+      _tellNoProductWasFound();
+    }else if(response.response?.statusCode == 200) {
       _scanProduct = Product.fromJson(response.response!.data);
       Provider.of<ProductController>(Get.context!, listen: false).initData(_scanProduct!,1, Get.context!);
       if(scanProduct!.variation!.isNotEmpty || scanProduct!.digitalProductFileTypes!.isNotEmpty){
@@ -97,6 +99,18 @@ class BarcodeScanController extends ChangeNotifier{
     }
     _isLoading = false;
     notifyListeners();
+  }
+
+  /// A code that no product of the market answers to is a 200 with an empty list, where a product is an object.
+  bool _foundNoProduct(ApiResponse response) => response.response?.statusCode == 200 && response.response?.data is! Map;
+
+  void _tellNoProductWasFound() {
+    final BuildContext? navigatorContext = Get.context;
+    if(navigatorContext == null) {
+      return;
+    }
+
+    showCustomSnackBarWidget(getTranslated('product_not_found', navigatorContext), navigatorContext, sanckBarType: SnackBarType.error);
   }
 
   /// No product is picked for the seller: the sheet lists the candidates and the seller decides.

@@ -183,25 +183,10 @@ class ScanFixture {
   }
 
   /// Scans [code] the way the scanner screen does after it reads one, and lets the screen settle on what the seller would see.
-  /// A scan that throws fails the test; [scanThatThrows] is for the one that is expected to.
+  /// A scan that throws fails the test.
   Future<void> scan(WidgetTester tester, String code, {String? country}) async {
     await tester.runAsync(() => scanner.getProductFromScan(Get.context!, code, country: country));
     await _showWhatTheSellerSees(tester);
-  }
-
-  /// Scans [code] and hands back what the scan threw, or null when it threw nothing.
-  Future<Object?> scanThatThrows(WidgetTester tester, String code, {String? country}) async {
-    Object? thrown;
-    await tester.runAsync(() async {
-      try {
-        await scanner.getProductFromScan(Get.context!, code, country: country);
-      } catch (error) {
-        thrown = error;
-      }
-    });
-    await _showWhatTheSellerSees(tester);
-
-    return thrown;
   }
 
   /// A snack bar is shown for a moment and then gone, so the screen is stepped to the moment it is on show rather than settled.

@@ -18,6 +18,8 @@ const String _enTitle = 'Several products share this code';
 const String _enOpenListButton = 'Open product list';
 const String _enMarketUnavailable = 'Scanning is not available for this market.';
 const String _arMarketUnavailable = 'المسح غير متاح لهذا السوق.';
+const String _enProductNotFound = 'Product not found';
+const String _arProductNotFound = 'لم يتم العثور على المنتج';
 
 Finder get _sheet => find.byType(AmbiguousCodeSheetWidget);
 
@@ -66,23 +68,56 @@ void main() {
   });
 
   group('a scan that finds nothing', () {
-    testWidgets('is still an empty list that is no product: nothing is added and nothing is shown, as before',
-        (WidgetTester tester) async {
+    testWidgets('tells the seller no product was found, adds nothing, and ends the scan', (WidgetTester tester) async {
       final ScanFixture fixture =
           await ScanFixture.pump(tester, adapter: ScriptedAdapter.always(ScriptedAnswer.json(<Object?>[])));
 
-      // As before this change, nothing reads an empty list: it reaches the product reader, which refuses it, and nobody catches that.
-      final Object? thrown = await fixture.scanThatThrows(tester, 'UNKNOWN');
-      await tester.pump(const Duration(seconds: 1));
-
-      expect(thrown, isA<TypeError>());
+      await fixture.scan(tester, 'UNKNOWN');
 
       expect(fixture.adapter.requests.single.uri.toString(), '$_scanUrl?code=UNKNOWN');
+      expect(find.text(_enProductNotFound), findsOneWidget);
       expect(fixture.cart.added, isEmpty);
       expect(fixture.products.initialised, isEmpty);
       expect(fixture.scanner.scanProduct, isNull);
+      expect(fixture.scanner.isLoading, isFalse, reason: 'the scan is over, so the seller can scan again');
       expect(_sheet, findsNothing);
-      expect(find.byType(SnackBar), findsNothing);
+    });
+
+    testWidgets('says so in Arabic when the app is in Arabic', (WidgetTester tester) async {
+      final ScanFixture fixture = await ScanFixture.pump(
+        tester,
+        adapter: ScriptedAdapter.always(ScriptedAnswer.json(<Object?>[])),
+        locale: PosScanHarness.arabic,
+      );
+
+      await fixture.scan(tester, 'UNKNOWN');
+
+      expect(find.text(_arProductNotFound), findsOneWidget);
+      expect(find.text(_enProductNotFound), findsNothing);
+    });
+
+    testWidgets('says so when the seller works in a market, and asks for that market only', (WidgetTester tester) async {
+      final ScanFixture fixture = await ScanFixture.pump(
+        tester,
+        adapter: ScriptedAdapter.always(ScriptedAnswer.json(<Object?>[])),
+        storefrontsEnabled: true,
+        stored: <String, Object>{'storefront_country': 'KW'},
+      );
+
+      await fixture.scan(tester, 'UNKNOWN');
+
+      expect(fixture.adapter.requests.single.uri.toString(), '$_scanUrl?code=UNKNOWN&country=KW');
+      expect(find.text(_enProductNotFound), findsOneWidget);
+      expect(fixture.cart.added, isEmpty);
+    });
+
+    testWidgets('does not say so when a product was found', (WidgetTester tester) async {
+      final ScanFixture fixture = await ScanFixture.pump(tester, adapter: ScriptedAdapter.always(oneProduct()));
+
+      await fixture.scan(tester, 'ABC123');
+
+      expect(find.text(_enProductNotFound), findsNothing);
+      expect(fixture.cart.added, hasLength(1));
     });
   });
 
