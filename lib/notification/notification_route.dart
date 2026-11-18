@@ -18,7 +18,14 @@ class NotificationRoute {
   /// The screen a notification opens. The order of the checks is the order the tap of a local notification always had: an order number opens the order unless the message is about a refund.
   ///
   /// [legacyOrderKey] is the order number that an older server also puts in the title key of the notification part; it is read only when the data names no order.
-  static NotificationTarget targetOf(NotificationBody? payload, {String? legacyOrderKey}) {
+  ///
+  /// A seller who is signed out is taken nowhere: every screen a notification opens asks the server for the seller's data, and with no credential that is a 401 and a session wipe on top of the login
+  /// screen the seller is looking at. The device stays registered for pushes after a sign-out, so a tap on an old notification can come at any time.
+  static NotificationTarget targetOf(NotificationBody? payload, {required bool signedIn, String? legacyOrderKey}) {
+    if (!signedIn) {
+      return NotificationTarget.none;
+    }
+
     final String? type = payload?.type;
 
     if (type == chatType) {
