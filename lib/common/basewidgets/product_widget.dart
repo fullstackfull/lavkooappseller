@@ -8,6 +8,7 @@ import 'package:syriacosmeticsmanger/features/addProduct/screens/add_product_tab
 import 'package:syriacosmeticsmanger/features/product/domain/models/filter_model.dart';
 import 'package:syriacosmeticsmanger/features/product/domain/models/product_model.dart';
 import 'package:syriacosmeticsmanger/helper/color_helper.dart';
+import 'package:syriacosmeticsmanger/helper/product_helper.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 import 'package:syriacosmeticsmanger/features/product/controllers/product_controller.dart';
 import 'package:syriacosmeticsmanger/features/profile/controllers/profile_controller.dart';
@@ -33,14 +34,7 @@ class _ProductWidgetState extends State<ProductWidget> {
   Widget build(BuildContext context) {
     double imageSize = MediaQuery.of(context).size.width / 2.8;
 
-    double totalRatting = 0;
-    double averageProductRatting = 0;
-    if (widget.productModel.reviews!.isNotEmpty) {
-      for (int i = 0; i < widget.productModel.reviews!.length; i++) {
-        totalRatting += widget.productModel.reviews![i].rating!;
-      }
-      averageProductRatting = totalRatting / widget.productModel.reviews!.length;
-    }
+    final double averageProductRatting = ProductHelper.getApprovedReviewAverage(widget.productModel.reviews);
 
     return GestureDetector(
       onTap: () => Navigator.push(
