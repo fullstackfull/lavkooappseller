@@ -38,6 +38,11 @@ jobs:
       - name: Check translation keys
         run: dart run tool/check_translations.dart
 
+      # A named step, so that the result of this test can be read on its own: the whole run below is red on main for one known test (the version gate).
+      - name: Test that a burst of 401s signs the seller out once (K-12)
+        if: always()
+        run: flutter test test/api_checker_unauthorized_test.dart
+
       - name: Test
         run: flutter test
 
