@@ -7,6 +7,7 @@ import 'package:syriacosmeticsmanger/features/pos/controllers/customer_controlle
 import 'package:syriacosmeticsmanger/features/pos/domain/models/customer_body.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/invoice_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/place_order_body.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_customer_id.dart';
 import 'package:syriacosmeticsmanger/data/model/response/base/api_response.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/cart_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/services/cart_service_interface.dart';
@@ -499,9 +500,9 @@ class CartController extends ChangeNotifier{
     if(userCart.userIndex != null && userCart.userIndex != 0 && isUserExists(userCart.userId!)) {
       updateHoldUser(userCart);
     } else if (userCart.userId == 0) {
-      int randomNumber = Random().nextInt(10000);
-      userCart.userId = randomNumber;
-      userCart.customerName = '${userCart.customerName}-$randomNumber';
+      int heldWalkInId = PosCustomerId.newHeldWalkInId(Random());
+      userCart.userId = heldWalkInId;
+      userCart.customerName = PosCustomerId.heldWalkInName(userCart.customerName, heldWalkInId);
       addUserCart(userCart);
     } else {
       addUserCart(userCart);
@@ -533,7 +534,7 @@ class CartController extends ChangeNotifier{
     saveCardData();
 
 
-    Provider.of<CustomerController>(Get.context!, listen: false).setCustomerInfo( (tempCart.customerName?.contains('walk.ing') ?? false) ? 0 : tempCart.userId, tempCart.customerName, tempCart.phoneNumber, true, 0);
+    Provider.of<CustomerController>(Get.context!, listen: false).setCustomerInfo(PosCustomerId.forServer(tempCart.userId), tempCart.customerName, tempCart.phoneNumber, true, 0);
     _currentCartModel = tempCart;
 
     notifyListeners();
@@ -593,7 +594,8 @@ class CartController extends ChangeNotifier{
     List<TemporaryCartListModel> localCartList = cartServiceInterface.getCartList();
 
     if(localCartList.isNotEmpty) {
-      _customerCartList = cartServiceInterface.getCartList();
+      PosCustomerId.markLegacyWalkInCarts(localCartList);
+      _customerCartList = localCartList;
     }
   }
 
