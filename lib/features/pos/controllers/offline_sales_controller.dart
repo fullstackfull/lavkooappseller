@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:syriacosmeticsmanger/core/app_context.dart';
 import 'package:syriacosmeticsmanger/features/auth/controllers/auth_controller.dart';
+import 'package:syriacosmeticsmanger/features/profile/controllers/profile_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/outbox_policy.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pending_pos_order.dart';
@@ -15,6 +16,9 @@ import 'package:syriacosmeticsmanger/features/pos/domain/services/cart_service_i
 /// A sale rung up without connectivity is written to disk immediately and
 /// replayed automatically as soon as the network comes back, so an outage
 /// never loses a sale and never leaves the cashier guessing.
+///
+/// The queue is one list on the device and it outlives a sign-out, so a sale carries the seller who took it: the server records a replayed sale under the seller of the session that sends it.
+/// A seller's session lists, sends, retries and removes that seller's sales and no one else's, which stay queued until their seller signs in.
 class OfflineSalesController extends ChangeNotifier {
   final CartServiceInterface cartServiceInterface;
   final SharedPreferences sharedPreferences;
@@ -22,21 +26,35 @@ class OfflineSalesController extends ChangeNotifier {
   /// Whether there is a session to replay sales under. The app reads it from the signed-in seller; a test says it.
   final bool Function()? _hasSessionOverride;
 
-  OfflineSalesController({required this.cartServiceInterface, required this.sharedPreferences, bool Function()? hasSession}) : _hasSessionOverride = hasSession;
+  /// The id of the seller who is signed in, or null while it is not known. The app reads it from the profile; a test says it.
+  final String? Function()? _signedInSellerIdOverride;
+
+  OfflineSalesController({required this.cartServiceInterface, required this.sharedPreferences, bool Function()? hasSession, String? Function()? signedInSellerId})
+      : _hasSessionOverride = hasSession,
+        _signedInSellerIdOverride = signedInSellerId;
 
   static const String _storageKey = 'offline_pos_orders';
 
   /// The last error of a sale that the server refused without saying why; the sheet shows a general message for it.
   static const String refusedWithoutReason = 'sale_refused';
 
+  /// Every sale on the device, whoever took it.
   List<PendingPosOrder> _pending = <PendingPosOrder>[];
-  List<PendingPosOrder> get pending => List.unmodifiable(_pending);
 
-  int get pendingCount => _pending.length;
-  bool get hasPending => _pending.isNotEmpty;
+  List<PendingPosOrder> get _ownSales {
+    final String? sellerId = _signedInSellerId();
+
+    return _pending.where((PendingPosOrder order) => order.belongsTo(sellerId)).toList();
+  }
+
+  /// The sales of the seller who is signed in. A sale another seller took is not listed, counted or shown as a failure here.
+  List<PendingPosOrder> get pending => List.unmodifiable(_ownSales);
+
+  int get pendingCount => _ownSales.length;
+  bool get hasPending => _ownSales.isNotEmpty;
 
   /// The sales that have used their attempts: kept, shown to the seller with their last error, and retried or removed by the seller (OutboxPolicy).
-  List<PendingPosOrder> get failedSales => OutboxPolicy.failedAmong(_pending);
+  List<PendingPosOrder> get failedSales => OutboxPolicy.failedAmong(_ownSales);
   int get failedCount => failedSales.length;
 
   bool _isSyncing = false;
@@ -91,6 +109,7 @@ class OfflineSalesController extends ChangeNotifier {
       orderAmount: orderAmount,
       customerName: customerName,
       idempotencyKey: idempotencyKey ?? PosIdempotencyKey.generate(),
+      sellerId: _signedInSellerId(),
     );
     _pending = [..._pending, order];
     await _persist();
@@ -98,8 +117,10 @@ class OfflineSalesController extends ChangeNotifier {
     return order;
   }
 
+  /// Removes a sale of the seller who is signed in; the id of a sale another seller took removes nothing.
   Future<void> remove(String id) async {
-    _pending = _pending.where((o) => o.id != id).toList();
+    final String? sellerId = _signedInSellerId();
+    _pending = _pending.where((PendingPosOrder order) => order.id != id || !order.belongsTo(sellerId)).toList();
     await _persist();
     notifyListeners();
   }
@@ -122,10 +143,28 @@ class OfflineSalesController extends ChangeNotifier {
     return Provider.of<AuthController>(context, listen: false).isLoggedIn();
   }
 
+  /// The id of the seller who is signed in, or null while the app does not know it.
+  ///
+  /// The app keeps it only in the profile, which is fetched after the sign-in and is not cleared by a sign-out: before its answer arrives the seller is not known, and until the next answer arrives
+  /// it still names the seller who signed out.
+  String? _signedInSellerId() {
+    final String? Function()? override = _signedInSellerIdOverride;
+    if (override != null) {
+      return override();
+    }
+
+    final BuildContext? context = Get.context;
+    if (context == null) {
+      return null;
+    }
+
+    return Provider.of<ProfileController>(context, listen: false).userId?.toString();
+  }
+
   /// Replays every queued sale that is still replayed by itself. A sale that fails stays queued with its attempt count bumped and its last error; once it has used its attempts (OutboxPolicy)
   /// it is not replayed again by the return of the connection, and it is not dropped either: it waits for the seller, so a permanently rejected sale never blocks the ones behind it and is never lost silently.
   Future<int> syncPending() async {
-    if (_isSyncing || _pending.isEmpty) return 0;
+    if (_isSyncing || !hasPending) return 0;
 
     // A queued sale belongs to the session that took it. The queue outlives a
     // sign-out — it has its own storage key — so without this a returning
@@ -148,6 +187,12 @@ class OfflineSalesController extends ChangeNotifier {
 
     // The loop walks the sales the queue held when it began; a sale is replayed, not removed, until the whole pass is over.
     for (final PendingPosOrder order in List<PendingPosOrder>.of(_pending)) {
+      // A sale another seller took stays queued, uncounted and unsent: sent now, the server would record it under this seller. The seller is asked again for each sale, because the replay takes
+      // as long as the network does and another seller can sign in while it runs.
+      if (!order.belongsTo(_signedInSellerId())) {
+        continue;
+      }
+
       if (!OutboxPolicy.isReplayedAutomatically(order)) {
         continue;
       }
@@ -189,17 +234,22 @@ class OfflineSalesController extends ChangeNotifier {
     return synced;
   }
 
-  /// The seller asks for the sales that could not be sent to be tried again: each is given its attempts back and the queue is replayed.
+  /// The seller asks for the sales that could not be sent to be tried again: each of this seller's is given its attempts back and the queue is replayed. The failed sales of another seller are left as they are.
   Future<int> retryFailedSales() async {
-    _pending = OutboxPolicy.withFailedSalesReopened(_pending);
+    final Map<String, PendingPosOrder> reopened = <String, PendingPosOrder>{
+      for (final PendingPosOrder order in OutboxPolicy.withFailedSalesReopened(_ownSales)) order.id: order,
+    };
+    _pending = _pending.map((PendingPosOrder order) => reopened[order.id] ?? order).toList();
     await _persist();
     notifyListeners();
 
     return syncPending();
   }
 
+  /// Empties the queue of the seller who is signed in; the sales of another seller stay.
   Future<void> clear() async {
-    _pending = <PendingPosOrder>[];
+    final String? sellerId = _signedInSellerId();
+    _pending = _pending.where((PendingPosOrder order) => !order.belongsTo(sellerId)).toList();
     await _persist();
     notifyListeners();
   }

@@ -16,6 +16,10 @@ class PendingPosOrder {
   /// The key the sale was first sent with (PosIdempotencyKey): a replay sends the same one. A sale that an earlier version queued has none until its first replay.
   final String? idempotencyKey;
 
+  /// The seller who took the sale. The server records a replayed sale under the seller of the session that sends it, so only this seller's session may send it. A sale that an earlier version
+  /// queued, or one taken while the app did not know who was signed in, has no owner: it is sent under whoever is signed in, as every sale was before.
+  final String? sellerId;
+
   const PendingPosOrder({
     required this.id,
     required this.body,
@@ -25,7 +29,11 @@ class PendingPosOrder {
     this.attempts = 0,
     this.lastError,
     this.idempotencyKey,
+    this.sellerId,
   });
+
+  /// Whether the seller who is signed in (null while the app does not know) may list, send, retry and remove this sale.
+  bool belongsTo(String? signedInSellerId) => sellerId == null || sellerId == signedInSellerId;
 
   PendingPosOrder copyWith({int? attempts, String? lastError, String? idempotencyKey}) => PendingPosOrder(
         id: id,
@@ -36,6 +44,7 @@ class PendingPosOrder {
         attempts: attempts ?? this.attempts,
         lastError: lastError ?? this.lastError,
         idempotencyKey: idempotencyKey ?? this.idempotencyKey,
+        sellerId: sellerId,
       );
 
   Map<String, dynamic> toJson() => {
@@ -47,6 +56,7 @@ class PendingPosOrder {
         'attempts': attempts,
         'last_error': lastError,
         'idempotency_key': idempotencyKey,
+        'seller_id': sellerId,
       };
 
   factory PendingPosOrder.fromJson(Map<String, dynamic> json) => PendingPosOrder(
@@ -58,6 +68,7 @@ class PendingPosOrder {
         attempts: int.tryParse(json['attempts']?.toString() ?? '') ?? 0,
         lastError: json['last_error']?.toString(),
         idempotencyKey: json['idempotency_key']?.toString(),
+        sellerId: json['seller_id']?.toString(),
       );
 
   String encode() => jsonEncode(toJson());
