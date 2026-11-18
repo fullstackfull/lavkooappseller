@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/cart_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/temporary_cart_for_customer_model.dart';
 import 'package:syriacosmeticsmanger/features/product/domain/models/product_model.dart';
+import 'package:syriacosmeticsmanger/features/product/domain/models/product_rating.dart';
 import 'package:syriacosmeticsmanger/helper/price_converter.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/cart_controller.dart';
@@ -140,13 +141,7 @@ class CartBottomSheetWidgetState extends State<CartBottomSheetWidget> {
                   widget.product?.clearanceSale != null ? widget.product!.clearanceSale!.discountType : widget.product!.discountType)!;
               double priceWithQuantity = priceWithDiscount * productProvider.quantity!;
 
-              double total = 0, avg = 0;
-              for (var review in widget.product!.reviews!) {
-                total += review.rating!;
-              }
-              avg = total / widget.product!.reviews!.length;
-
-              String ratting = widget.product!.reviews != null && widget.product!.reviews!.isNotEmpty ? avg.toString() : "0";
+              String ratting = ProductRating.averageOf(widget.product?.reviews).toString();
 
               return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
