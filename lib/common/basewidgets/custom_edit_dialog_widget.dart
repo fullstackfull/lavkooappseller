@@ -8,6 +8,7 @@ import 'package:syriacosmeticsmanger/common/basewidgets/textfeild/custom_text_fe
 import 'package:syriacosmeticsmanger/common/basewidgets/textfeild/guideline_warning_widget.dart';
 import 'package:syriacosmeticsmanger/features/profile/domain/models/withdraw_model.dart';
 import 'package:syriacosmeticsmanger/features/shop/screens/shop_screen.dart';
+import 'package:syriacosmeticsmanger/features/storefront/market_money.dart';
 import 'package:syriacosmeticsmanger/features/transaction/domain/models/transaction_model.dart';
 import 'package:syriacosmeticsmanger/features/wallet/controllers/wallet_controller.dart';
 import 'package:syriacosmeticsmanger/helper/price_converter.dart';
@@ -324,7 +325,7 @@ class CustomEditDialogWidgetState extends State<CustomEditDialogWidget> {
                   border: true,
                   labelText: getTranslated('enter_withdraw_amount', context) ?? '',
                   hintText: getTranslated('enter_withdraw_amount', context) ?? '',
-                  inputFormatters: [
+                  inputFormatters: MarketMoney.inputFormatters(outsideMarket: [
                     TextInputFormatter.withFunction((oldValue, newValue) {
                       final text = newValue.text;
 
@@ -346,7 +347,7 @@ class CustomEditDialogWidgetState extends State<CustomEditDialogWidget> {
                         selection: TextSelection.collapsed(offset: filtered.length),
                       );
                     }),
-                  ],
+                  ]),
                 ),
               ),
 

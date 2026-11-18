@@ -9,6 +9,7 @@ import 'package:syriacosmeticsmanger/features/pos/domain/models/cart_model.dart'
 import 'package:syriacosmeticsmanger/features/pos/widgets/extra_discount_and_coupon_dialog_widget.dart';
 import 'package:syriacosmeticsmanger/features/pos/widgets/pos_appbar_widget.dart';
 import 'package:syriacosmeticsmanger/features/splash/controllers/splash_controller.dart';
+import 'package:syriacosmeticsmanger/features/storefront/market_money.dart';
 import 'package:syriacosmeticsmanger/helper/price_converter.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/cart_controller.dart';
@@ -419,6 +420,7 @@ class PosScreenState extends State<PosScreen> {
                                                   borderColor: cartController.isPaidAmountLess ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary,
                                                   //showBorder: true,
                                                   isAmount: true,
+                                                  inputFormatters: MarketMoney.inputFormatters(),
                                                   focusBorder: true,
                                                   onChanged: (value) {
                                                     double? amount = double.tryParse(value);

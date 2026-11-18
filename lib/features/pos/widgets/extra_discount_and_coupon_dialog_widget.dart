@@ -5,6 +5,7 @@ import 'package:syriacosmeticsmanger/features/pos/controllers/coupon_discount_co
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/cart_controller.dart';
 import 'package:syriacosmeticsmanger/core/app_context.dart';
+import 'package:syriacosmeticsmanger/features/storefront/market_money.dart';
 import 'package:syriacosmeticsmanger/utill/dimensions.dart';
 import 'package:syriacosmeticsmanger/utill/styles.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_button_widget.dart';
@@ -73,6 +74,7 @@ class ExtraDiscountAndCouponDialogWidget extends StatelessWidget {
                   border: true,
                   maxSize: couponDiscountController.discountTypeIndex == 1? 2 : null,
                   isAmount: true,
+                  inputFormatters: couponDiscountController.discountTypeIndex == 0 ? MarketMoney.inputFormatters() : null,
                 ),
                 title: couponDiscountController.discountTypeIndex == 1?
                 getTranslated('discount_percentage', context):

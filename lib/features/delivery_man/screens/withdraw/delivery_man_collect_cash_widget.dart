@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:syriacosmeticsmanger/helper/price_converter.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 import 'package:syriacosmeticsmanger/features/delivery_man/controllers/delivery_man_controller.dart';
-import 'package:syriacosmeticsmanger/features/splash/controllers/splash_controller.dart';
+import 'package:syriacosmeticsmanger/features/storefront/market_money.dart';
 import 'package:syriacosmeticsmanger/theme/controllers/theme_controller.dart';
 import 'package:syriacosmeticsmanger/utill/dimensions.dart';
 import 'package:syriacosmeticsmanger/utill/styles.dart';
@@ -59,6 +59,7 @@ class CollectedCashFromDeliveryManDialogState extends State<CollectedCashFromDel
                             IntrinsicWidth(
                               child: TextFormField(
                                 inputFormatters: [
+                                 ...?MarketMoney.inputFormatters(),
                                  LengthLimitingTextInputFormatter(20),
                                 ],
                                 keyboardType: TextInputType.number,
@@ -87,7 +88,7 @@ class CollectedCashFromDeliveryManDialogState extends State<CollectedCashFromDel
                               ),
                             ),
 
-                            Text(Provider.of<SplashController>(context, listen: false).myCurrency!.symbol!,
+                            Text(PriceConverter.currencyMark(context),
                               style: robotoBold.copyWith(
                                   fontSize: Dimensions.fontSizeExtraLargeTwenty,
                                   color:isTextFieldEmpty? Theme.of(context).hintColor :
