@@ -10,7 +10,12 @@ import 'package:syriacosmeticsmanger/utill/styles.dart';
 /// The sales that the offline outbox could not send. Each stays on the device with the reason the server gave, until the seller retries it or removes it: a sale is the only record of money
 /// taken at the counter, so the app never deletes one by itself.
 class FailedSalesSheet extends StatelessWidget {
-  const FailedSalesSheet({super.key});
+  const FailedSalesSheet({super.key, this.formatAmount = amountText});
+
+  /// How the amount of a sale is written. It is the shop's currency format; a test gives its own, because that format needs the providers of the whole app.
+  final String Function(BuildContext context, double amount) formatAmount;
+
+  static String amountText(BuildContext context, double amount) => PriceConverter.convertPrice(context, amount);
 
   static Future<void> show(BuildContext context) => showModalBottomSheet<void>(
         context: context,
@@ -35,17 +40,18 @@ class FailedSalesSheet extends StatelessWidget {
                 const SizedBox(height: Dimensions.paddingSizeSmall),
                 Text(getTranslated('sales_not_sent_explained', context) ?? '', style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall)),
                 const SizedBox(height: Dimensions.paddingSizeSmall),
-                if (failed.isEmpty)
-                  Text(getTranslated('sales_synced', context) ?? '', style: robotoMedium)
-                else
+                if (failed.isNotEmpty)
                   Flexible(
                     child: ListView.separated(
                       shrinkWrap: true,
                       itemCount: failed.length,
                       separatorBuilder: (BuildContext context, int index) => const Divider(),
-                      itemBuilder: (BuildContext context, int index) => _FailedSaleTile(order: failed[index]),
+                      itemBuilder: (BuildContext context, int index) => _FailedSaleTile(order: failed[index], formatAmount: formatAmount),
                     ),
-                  ),
+                  )
+                // A retry gives a failed sale its attempts back, so the list is empty while the sales are still unsent: the sheet says how many wait, and never that everything is synced.
+                else if (offline.hasPending)
+                  Text('${getTranslated('unsynced_sales', context)}: ${offline.pendingCount}', style: robotoMedium),
                 const SizedBox(height: Dimensions.paddingSizeSmall),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -68,17 +74,18 @@ class FailedSalesSheet extends StatelessWidget {
 }
 
 class _FailedSaleTile extends StatelessWidget {
-  const _FailedSaleTile({required this.order});
+  const _FailedSaleTile({required this.order, required this.formatAmount});
 
   final PendingPosOrder order;
+  final String Function(BuildContext context, double amount) formatAmount;
 
   @override
   Widget build(BuildContext context) {
-    final String? reason = order.lastError;
+    final String? reason = order.lastError == OfflineSalesController.refusedWithoutReason ? getTranslated('something_went_wrong', context) : order.lastError;
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      title: Text('${order.customerName} · ${PriceConverter.convertPrice(context, order.orderAmount)}', style: robotoMedium),
+      title: Text('${order.customerName} · ${formatAmount(context, order.orderAmount)}', style: robotoMedium),
       subtitle: Text(
         '${order.createdAt.toLocal().toString().substring(0, 16)}${reason == null || reason.isEmpty ? '' : '\n${getTranslated('reason', context)}: $reason'}',
         style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall),

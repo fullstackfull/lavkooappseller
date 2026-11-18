@@ -73,7 +73,8 @@ class OfflineSalesBanner extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2, color: tone),
                       )
                     : TextButton(
-                        onPressed: offline.isOnline ? () => offline.syncPending() : null,
+                        // The failed sales are not replayed by themselves, so a Retry that only replays would do nothing when every sale has failed.
+                        onPressed: offline.isOnline ? () => offline.failedCount > 0 ? offline.retryFailedSales() : offline.syncPending() : null,
                         style: TextButton.styleFrom(
                           foregroundColor: tone,
                           padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeSmall),

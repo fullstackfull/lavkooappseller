@@ -16,6 +16,10 @@ class PosOrderAnswer {
     return data['order_id'] != null;
   }
 
+  /// Whether an answer, with its HTTP status, says a sale was recorded: the status is 200 and the answer names the order. It is the one rule the cart controller and the POS screen both ask, so that
+  /// what happens to the cart after a sale cannot be decided by the status code alone.
+  static bool isPlacedAnswer({required int? statusCode, required dynamic data}) => statusCode == 200 && isPlaced(data);
+
   /// What the server said when it refused the sale, or null when it said nothing.
   static String? refusalMessage(dynamic data) {
     if (data is! Map) {

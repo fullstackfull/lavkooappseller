@@ -408,10 +408,11 @@ class CartController extends ChangeNotifier{
     }
 
     // The server refuses a sale with a 200 that names no order: nothing was recorded, so the cart stays as it is and the cashier is told why.
-    if(response.response?.statusCode == 200 && !PosOrderAnswer.isPlaced(response.response?.data)) {
+    final bool placed = PosOrderAnswer.isPlacedAnswer(statusCode: response.response?.statusCode, data: response.response?.data);
+    if(response.response?.statusCode == 200 && !placed) {
       showCustomSnackBarWidget(PosOrderAnswer.refusalMessage(response.response?.data) ?? getTranslated('something_went_wrong', Get.context!), Get.context!, isToaster: true, isError: false, sanckBarType: SnackBarType.error);
       _isLoading = false;
-    } else if(response.response?.statusCode == 200) {
+    } else if(placed) {
       _isLoading = false;
       _couponCodeAmount = 0;
       _productDiscount = 0;

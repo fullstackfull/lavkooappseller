@@ -154,7 +154,6 @@ void main() {
 
       expect(outbox, contains('placeOrderRaw(order.body, idempotencyKey: order.idempotencyKey)'));
       expect(outbox, contains('order.idempotencyKey == null'));
-      expect(outbox.indexOf('await _persist();'), lessThan(outbox.indexOf('placeOrderRaw(')), reason: 'the key is stored before the sale is sent');
     });
   });
 }

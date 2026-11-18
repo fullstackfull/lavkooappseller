@@ -42,27 +42,48 @@ void main() {
     });
   });
 
+  group('an answer with its status', () {
+    test('says a sale was recorded when the status is 200 and the answer names the order', () {
+      expect(PosOrderAnswer.isPlacedAnswer(statusCode: 200, data: <String, dynamic>{'order_id': 7}), isTrue);
+    });
+
+    test('says nothing was recorded for a 200 that is a refusal, and for a 200 that names no order', () {
+      expect(PosOrderAnswer.isPlacedAnswer(statusCode: 200, data: <String, dynamic>{'product_not_available': true, 'message': 'Aspirin is not available for order place'}), isFalse);
+      expect(PosOrderAnswer.isPlacedAnswer(statusCode: 200, data: <String, dynamic>{'checkProductTypeForWalkingCustomer': true}), isFalse);
+      expect(PosOrderAnswer.isPlacedAnswer(statusCode: 200, data: <String, dynamic>{}), isFalse);
+      expect(PosOrderAnswer.isPlacedAnswer(statusCode: 200, data: null), isFalse);
+    });
+
+    test('says nothing was recorded for any other status, whatever the answer names', () {
+      expect(PosOrderAnswer.isPlacedAnswer(statusCode: 500, data: <String, dynamic>{'order_id': 7}), isFalse);
+      expect(PosOrderAnswer.isPlacedAnswer(statusCode: 401, data: <String, dynamic>{'order_id': 7}), isFalse);
+      expect(PosOrderAnswer.isPlacedAnswer(statusCode: null, data: <String, dynamic>{'order_id': 7}), isFalse);
+    });
+  });
+
   group('the code of the seller app', () {
     String code(String path) => File(path).readAsStringSync();
 
-    test('a 200 that names no order keeps the cart and tells the cashier why', () {
+    test('the cart controller and the POS screen ask the same rule, so the status code alone never decides what happens to a cart', () {
       final String cart = code('lib/features/pos/controllers/cart_controller.dart');
-      final int refusal = cart.indexOf('!PosOrderAnswer.isPlaced(response.response?.data)');
-      final int success = cart.indexOf("getTranslated('order_placed_successfully'");
+      final String screen = code('lib/features/pos/screens/pos_screen.dart');
+      final int sale = screen.indexOf('cartController.placeOrder(');
 
-      expect(refusal, greaterThan(0), reason: 'the refusal is checked');
-      expect(success, greaterThan(refusal), reason: 'before the success is shown');
+      expect(sale, greaterThan(0), reason: 'the screen sends the sale through the cart controller');
+
+      final String afterTheSale = screen.substring(sale, screen.indexOf('cartController.removeModifiedTax()', sale));
+
+      expect(cart, contains('PosOrderAnswer.isPlacedAnswer(statusCode: response.response?.statusCode, data: response.response?.data)'));
       expect(cart, contains('PosOrderAnswer.refusalMessage(response.response?.data)'));
+      expect(afterTheSale, contains('PosOrderAnswer.isPlacedAnswer(statusCode: value.response?.statusCode, data: value.response?.data)'));
+      expect(afterTheSale, isNot(contains('statusCode == 200')), reason: 'a refusal comes with a 200 too, and the cart a refused sale keeps must keep its priced lines');
     });
 
-    test('a queued sale the server refused is not counted as synced and stays queued with the reason', () {
+    test('the outbox asks the same rule for a replayed sale', () {
       final String outbox = code('lib/features/pos/controllers/offline_sales_controller.dart');
-      final int check = outbox.indexOf('PosOrderAnswer.isPlaced(response?.response?.data)');
-      final int counted = outbox.indexOf('synced++');
 
-      expect(check, greaterThan(0));
-      expect(counted, greaterThan(check), reason: 'a sale is counted only after the answer is checked');
-      expect(outbox, contains('lastError: PosOrderAnswer.refusalMessage(response?.response?.data)'));
+      expect(outbox, contains('PosOrderAnswer.isPlaced(response?.response?.data)'));
+      expect(outbox, contains('PosOrderAnswer.refusalMessage(response?.response?.data)'));
     });
   });
 }

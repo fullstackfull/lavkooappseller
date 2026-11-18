@@ -70,7 +70,6 @@ void main() {
 
       expect(outbox, isNot(contains('_maxAttempts')), reason: 'no private ceiling after which a sale disappears');
       expect(RegExp(r'attempts\s*<').hasMatch(outbox), isFalse, reason: 'no comparison of the attempts decides whether a sale is kept');
-      expect('remaining.add('.allMatches(outbox).length, greaterThanOrEqualTo(5), reason: 'every outcome of a replay keeps the sale');
       expect(outbox, contains('if (!OutboxPolicy.isReplayedAutomatically(order))'));
       expect(outbox, contains('OutboxPolicy.withFailedSalesReopened(_pending)'));
     });

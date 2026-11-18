@@ -19,9 +19,15 @@ class OfflineSalesController extends ChangeNotifier {
   final CartServiceInterface cartServiceInterface;
   final SharedPreferences sharedPreferences;
 
-  OfflineSalesController({required this.cartServiceInterface, required this.sharedPreferences});
+  /// Whether there is a session to replay sales under. The app reads it from the signed-in seller; a test says it.
+  final bool Function()? _hasSessionOverride;
+
+  OfflineSalesController({required this.cartServiceInterface, required this.sharedPreferences, bool Function()? hasSession}) : _hasSessionOverride = hasSession;
 
   static const String _storageKey = 'offline_pos_orders';
+
+  /// The last error of a sale that the server refused without saying why; the sheet shows a general message for it.
+  static const String refusedWithoutReason = 'sale_refused';
 
   List<PendingPosOrder> _pending = <PendingPosOrder>[];
   List<PendingPosOrder> get pending => List.unmodifiable(_pending);
@@ -56,6 +62,10 @@ class OfflineSalesController extends ChangeNotifier {
       }
     });
   }
+
+  /// Reads the queue from the disk, which [initialise] does together with the watch on the connection.
+  @visibleForTesting
+  void loadFromStorage() => _load();
 
   void _load() {
     final List<String> raw = sharedPreferences.getStringList(_storageKey) ?? <String>[];
@@ -99,6 +109,11 @@ class OfflineSalesController extends ChangeNotifier {
   /// Before the first frame there is no navigator to read a provider from, and
   /// a sync that early has nothing to authenticate with anyway.
   bool _hasSession() {
+    final bool Function()? override = _hasSessionOverride;
+    if (override != null) {
+      return override();
+    }
+
     final BuildContext? context = Get.context;
     if (context == null) {
       return false;
@@ -128,11 +143,12 @@ class OfflineSalesController extends ChangeNotifier {
     }
 
     int synced = 0;
-    final List<PendingPosOrder> remaining = <PendingPosOrder>[];
+    final Set<String> syncedIds = <String>{};
+    final Map<String, PendingPosOrder> replayed = <String, PendingPosOrder>{};
 
-    for (final PendingPosOrder order in _pending) {
+    // The loop walks the sales the queue held when it began; a sale is replayed, not removed, until the whole pass is over.
+    for (final PendingPosOrder order in List<PendingPosOrder>.of(_pending)) {
       if (!OutboxPolicy.isReplayedAutomatically(order)) {
-        remaining.add(order);
         continue;
       }
 
@@ -142,33 +158,29 @@ class OfflineSalesController extends ChangeNotifier {
         if (statusCode == 200) {
           if (PosOrderAnswer.isPlaced(response?.response?.data)) {
             synced++;
+            syncedIds.add(order.id);
             continue;
           }
 
           // The server answered but refused the sale (a product that is not available): nothing was recorded, so it is not synced. It fails like any other replay, with the reason.
-          final PendingPosOrder refused = order.copyWith(attempts: order.attempts + 1, lastError: PosOrderAnswer.refusalMessage(response?.response?.data) ?? 'sale_refused');
-          remaining.add(refused);
+          replayed[order.id] = order.copyWith(attempts: order.attempts + 1, lastError: PosOrderAnswer.refusalMessage(response?.response?.data) ?? refusedWithoutReason);
           continue;
         }
         // A rejected session is not a reason to burn an attempt: the sale is
         // still good, and it will go through once the seller signs back in.
         if (statusCode == 401) {
-          remaining.add(order);
           continue;
         }
 
-        final PendingPosOrder retried = order.copyWith(
-          attempts: order.attempts + 1,
-          lastError: response?.error?.toString(),
-        );
-        remaining.add(retried);
+        replayed[order.id] = order.copyWith(attempts: order.attempts + 1, lastError: response?.error?.toString());
       } catch (e) {
-        final PendingPosOrder retried = order.copyWith(attempts: order.attempts + 1, lastError: e.toString());
-        remaining.add(retried);
+        replayed[order.id] = order.copyWith(attempts: order.attempts + 1, lastError: e.toString());
       }
     }
 
-    _pending = remaining;
+    // The replay takes as long as the network does, and the seller goes on selling: a sale queued meanwhile, a failed sale removed, the failed sales reopened. The queue is rebuilt from what it
+    // holds now, with only the outcome of this pass applied to it; assigning the list the pass began with would drop a sale that was queued while it ran.
+    _pending = _pending.where((PendingPosOrder order) => !syncedIds.contains(order.id)).map((PendingPosOrder order) => replayed[order.id] ?? order).toList();
     await _persist();
 
     _isSyncing = false;

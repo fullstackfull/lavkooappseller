@@ -6,6 +6,7 @@ import 'package:syriacosmeticsmanger/features/pos/controllers/coupon_discount_co
 import 'package:syriacosmeticsmanger/features/pos/controllers/customer_controller.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/place_order_body.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_customer_id.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_order_answer.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/cart_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/widgets/extra_discount_and_coupon_dialog_widget.dart';
 import 'package:syriacosmeticsmanger/features/pos/widgets/pos_appbar_widget.dart';
@@ -606,7 +607,8 @@ class PosScreenState extends State<PosScreen> {
                                                   PlaceOrderBody placeOrderBody = onPlaceOrder(paidAmount: _paidAmountController.text);
 
                                                   cartController.placeOrder(Get.context!, placeOrderBody).then((value) {
-                                                    if(value.response?.statusCode == 200) {
+                                                    // A refusal comes with a 200 too, and the cart a refused sale keeps must keep its priced lines: the retry is sent with them.
+                                                    if(PosOrderAnswer.isPlacedAnswer(statusCode: value.response?.statusCode, data: value.response?.data)) {
                                                       couponAmount = 0;
                                                       extraDiscountAmount = 0;
                                                       cartController.removeModifiedTax();
