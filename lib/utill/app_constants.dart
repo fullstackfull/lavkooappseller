@@ -401,6 +401,8 @@ class AppConstants {
   static const String maintenanceModeTopic = 'maintenance_mode_start_vendor';
   static const String userEmail = 'user_email';
   static const String langKey = 'lang';
+  static const String storefrontCountry = 'storefront_country';
+  static const String storefrontHeader = 'X-Storefront';
   static const String showCookies = 'cookies';
   static const String bluetoothMacAddress = 'bluetooth_mac_address';
 

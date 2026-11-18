@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syriacosmeticsmanger/data/datasource/remote/dio/logging_interceptor.dart';
+import 'package:syriacosmeticsmanger/features/storefront/storefront_config.dart';
 import 'package:syriacosmeticsmanger/utill/app_constants.dart';
 
 class DioClient {
@@ -53,6 +54,10 @@ class DioClient {
         AppConstants.langKey: _language,
         'X-localization': _language,
         'Accept-Language': _language,
+        if (StorefrontConfig.enabled)
+          AppConstants.storefrontHeader: StorefrontConfig.resolveHeaderValue(
+            sharedPreferences.getString(AppConstants.storefrontCountry),
+          ),
       };
     _instances.add(this);
     // The logging interceptor stringifies every response body; that cost (and
