@@ -7,15 +7,19 @@ import 'package:syriacosmeticsmanger/data/datasource/remote/exception/api_error_
 import 'package:syriacosmeticsmanger/features/pos/domain/models/customer_body.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/place_order_body.dart';
 import 'package:syriacosmeticsmanger/data/model/response/base/api_response.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/product_scan_refusal_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/temporary_cart_for_customer_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/repository/cart_repository_interface.dart';
+import 'package:syriacosmeticsmanger/features/storefront/seller_market_choice.dart';
+import 'package:syriacosmeticsmanger/features/storefront/storefront_config.dart';
 import 'package:syriacosmeticsmanger/utill/app_constants.dart';
 
 
 class CartRepository implements CartRepositoryInterface{
   final DioClient? dioClient;
   final SharedPreferences? sharedPreferences;
-  CartRepository({required this.dioClient, required this.sharedPreferences});
+  final bool storefrontsEnabled;
+  CartRepository({required this.dioClient, required this.sharedPreferences, this.storefrontsEnabled = StorefrontConfig.enabled});
 
   @override
   Future<ApiResponse> getCouponDiscount(String couponCode, int? userId, double orderAmount) async {
@@ -56,13 +60,24 @@ class CartRepository implements CartRepositoryInterface{
   }
 
   @override
-  Future<ApiResponse> getProductFromScan(String? productCode) async {
+  Future<ApiResponse> getProductFromScan(String? productCode, {String? country}) async {
     try {
-      final response = await dioClient!.get('${AppConstants.getProductFromProductCode}?code=$productCode');
+      final String? scanCountry = country ?? _marketCountryCode();
+      final String countryQuery = scanCountry == null ? '' : '&country=$scanCountry';
+      final response = await dioClient!.get('${AppConstants.getProductFromProductCode}?code=$productCode$countryQuery');
       return ApiResponse.withSuccess(response);
     } catch (e) {
-      return ApiResponse.withError(ApiErrorHandler.getMessage(e));
+      return ApiResponse.withError(ProductScanRefusal.fromException(e) ?? ApiErrorHandler.getMessage(e));
     }
+  }
+
+  /// The market the seller works in, or null while storefronts are off: a request then carries no country at all.
+  String? _marketCountryCode() {
+    final SharedPreferences? preferences = sharedPreferences;
+    if (preferences == null) {
+      return null;
+    }
+    return SellerMarketChoice(preferences, enabled: storefrontsEnabled).current().countryCode;
   }
 
   @override

@@ -31,8 +31,8 @@ class CartService implements CartServiceInterface{
   }
 
   @override
-  Future getProductFromScan(String? productCode) {
-    return cartRepositoryInterface.getProductFromScan(productCode);
+  Future getProductFromScan(String? productCode, {String? country}) {
+    return cartRepositoryInterface.getProductFromScan(productCode, country: country);
   }
 
   @override
