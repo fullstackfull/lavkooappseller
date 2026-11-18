@@ -42,9 +42,9 @@ jobs:
         run: flutter test
 
       # The work in flight is read by name after the full run, and even when the full run is red (test/app_version_gate_test.dart is on main).
-      - name: Test who a POS sale is for, a registered customer or a walk-in (K-06)
+      - name: Test who a POS sale is for and what a 200 answer means (K-06)
         if: always()
-        run: flutter test test/pos_customer_id_test.dart
+        run: flutter test test/pos_customer_id_test.dart test/pos_order_answer_test.dart
 
   build-android:
     runs-on: ubuntu-latest

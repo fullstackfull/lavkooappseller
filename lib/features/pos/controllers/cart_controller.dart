@@ -8,6 +8,7 @@ import 'package:syriacosmeticsmanger/features/pos/domain/models/customer_body.da
 import 'package:syriacosmeticsmanger/features/pos/domain/models/invoice_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/place_order_body.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_customer_id.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_order_answer.dart';
 import 'package:syriacosmeticsmanger/data/model/response/base/api_response.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/cart_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/services/cart_service_interface.dart';
@@ -403,8 +404,9 @@ class CartController extends ChangeNotifier{
       return response;
     }
 
-    if(response.response?.statusCode == 200 && response.response?.data['checkProductTypeForWalkingCustomer'] == true) {
-      showCustomSnackBarWidget(response.response?.data['message'], Get.context!, isToaster: true, isError: false, sanckBarType: SnackBarType.error);
+    // The server refuses a sale with a 200 that names no order: nothing was recorded, so the cart stays as it is and the cashier is told why.
+    if(response.response?.statusCode == 200 && !PosOrderAnswer.isPlaced(response.response?.data)) {
+      showCustomSnackBarWidget(PosOrderAnswer.refusalMessage(response.response?.data) ?? getTranslated('something_went_wrong', Get.context!), Get.context!, isToaster: true, isError: false, sanckBarType: SnackBarType.error);
       _isLoading = false;
     } else if(response.response?.statusCode == 200) {
       _isLoading = false;

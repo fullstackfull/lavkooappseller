@@ -5,6 +5,7 @@ import 'package:syriacosmeticsmanger/core/app_context.dart';
 import 'package:syriacosmeticsmanger/features/auth/controllers/auth_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pending_pos_order.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_order_answer.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/services/cart_service_interface.dart';
 
 /// Outbox for POS sales made while the device was offline.
@@ -122,7 +123,14 @@ class OfflineSalesController extends ChangeNotifier {
         final dynamic response = await cartServiceInterface.placeOrderRaw(order.body);
         final int? statusCode = response?.response?.statusCode as int?;
         if (statusCode == 200) {
-          synced++;
+          if (PosOrderAnswer.isPlaced(response?.response?.data)) {
+            synced++;
+            continue;
+          }
+
+          // The server answered but refused the sale (a product that is not available): nothing was recorded, so it is not synced. It fails like any other replay, with the reason.
+          final PendingPosOrder refused = order.copyWith(attempts: order.attempts + 1, lastError: PosOrderAnswer.refusalMessage(response?.response?.data) ?? 'sale_refused');
+          if (refused.attempts < _maxAttempts) remaining.add(refused);
           continue;
         }
         // A rejected session is not a reason to burn an attempt: the sale is
