@@ -1,0 +1,80 @@
+{
+  "data": {
+    "scope": "all",
+    "market": "SA",
+    "generated_at": "2026-11-17T06:00:00Z",
+    "window": {
+      "from": "2026-10-19",
+      "to": "2026-11-17",
+      "days": 30,
+      "clamped": false,
+      "timezone": "Asia/Dhaka"
+    },
+    "freshness": {
+      "mode": "live",
+      "cached": false
+    },
+    "attribution": {
+      "orders": {
+        "rule": "all_lines_one_market",
+        "via": "order_details.product_id > products.storefront_country"
+      },
+      "refund_requests": {
+        "rule": "product_market",
+        "via": "refund_requests.product_id > products.storefront_country"
+      },
+      "stock": {
+        "rule": "live_physical_products_by_market",
+        "via": "products.storefront_country"
+      },
+      "products_country": "column",
+      "currency": {
+        "per_order": false,
+        "reason": "order_currency_not_recorded"
+      }
+    },
+    "markets": [
+      {
+        "market": "SA",
+        "storefront_currency": "SAR",
+        "active": true,
+        "orders": {
+          "total": 6,
+          "by_status": {
+            "pending": 1,
+            "confirmed": 1,
+            "processing": 1,
+            "out_for_delivery": 0,
+            "delivered": 2,
+            "returned": 0,
+            "failed": 0,
+            "canceled": 0,
+            "on_hold": 1
+          },
+          "latest_at": "2026-11-17T12:00:00Z"
+        },
+        "sales": {
+          "by_currency": null,
+          "reason": "order_currency_not_recorded"
+        },
+        "pending_fulfilment": {
+          "count": 4
+        },
+        "returns": {
+          "refund_requests": 2,
+          "pending": 1
+        },
+        "stock": {
+          "zero": 1,
+          "low": 3
+        },
+        "alerts": {
+          "critical": 0,
+          "warning": 0,
+          "info": 1
+        }
+      }
+    ],
+    "unattributed": null
+  }
+}

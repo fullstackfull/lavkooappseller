@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_button_widget.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/textfeild/custom_text_feild_widget.dart';
 import 'package:syriacosmeticsmanger/features/more/screens/html_view_screen.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/widgets/platform_admin_entry_button.dart';
 import 'package:syriacosmeticsmanger/features/splash/domain/models/business_pages_model.dart';
 import 'package:syriacosmeticsmanger/helper/email_checker.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
@@ -306,6 +307,8 @@ class LoginScreenState extends State<LoginScreen> {
                   );
                 },
               ).animateSectionEntrance(index: 5),
+
+              const PlatformAdminEntryButton(),
             ],
           ),
         ),
