@@ -17,6 +17,7 @@ import 'package:syriacosmeticsmanger/features/profile/controllers/profile_contro
 import 'package:syriacosmeticsmanger/features/review/controllers/product_review_controller.dart';
 import 'package:syriacosmeticsmanger/features/shipping/controllers/shipping_controller.dart';
 import 'package:syriacosmeticsmanger/features/splash/controllers/splash_controller.dart';
+import 'package:syriacosmeticsmanger/features/storefront/widgets/market_labeled_action.dart';
 import 'package:syriacosmeticsmanger/utill/dimensions.dart';
 import 'package:syriacosmeticsmanger/utill/images.dart';
 import 'package:syriacosmeticsmanger/utill/styles.dart';
@@ -112,7 +113,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                   snap: true,
                   title: Image.asset(Images.logoWithAppName, height: 35),
                   actions: [
-                    Consumer<NotificationController>(
+                    MarketLabeledAction(action: Consumer<NotificationController>(
                       builder: (context, notificationController, _) {
                         return InkWell(onTap: ()=> Navigator.push(context, MaterialPageRoute(builder: (_)=> const NotificationScreen())),
                           child: Stack(
@@ -135,7 +136,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                           ),
                         );
                       }
-                    )
+                    ))
                   ],
                 ),
 

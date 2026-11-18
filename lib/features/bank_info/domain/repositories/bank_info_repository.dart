@@ -17,7 +17,7 @@ class BankInfoRepository implements BankInfoRepositoryInterface{
   @override
   Future<http.StreamedResponse> updateBank(ProfileInfoModel userInfoModel, ProfileBody seller, String token) async {
     http.MultipartRequest request = http.MultipartRequest('POST', Uri.parse('${AppConstants.baseUrl}${AppConstants.sellerAndBankUpdate}'));
-    request.headers.addAll(<String,String>{'Authorization': 'Bearer $token'});
+    request.headers.addAll(dioClient!.multipartHeaders(token: token));
 
     Map<String, String> fields = {};
     fields.addAll(<String, String>{

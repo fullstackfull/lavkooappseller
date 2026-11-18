@@ -5,6 +5,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_asset_image_widget.dart' show CustomAssetImageWidget;
 import 'package:syriacosmeticsmanger/features/order/domain/models/order_model.dart';
 import 'package:syriacosmeticsmanger/features/order_details/widgets/order_list_filter_bottomsheet_widget.dart';
+import 'package:syriacosmeticsmanger/features/storefront/widgets/market_labeled_action.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/customer_controller.dart';
 import 'package:syriacosmeticsmanger/helper/color_helper.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
@@ -71,7 +72,7 @@ class _OrderScreenState extends State<OrderScreen> {
         isBackButtonExist: widget.isBacButtonExist,
         isAction: true, isFilter: true,
 
-        widget: Consumer<OrderController>(
+        widget: MarketLabeledAction(action: Consumer<OrderController>(
           builder: (context, orderController, _) {
             return Stack(
               children: [
@@ -110,7 +111,7 @@ class _OrderScreenState extends State<OrderScreen> {
               ],
             );
           }
-        ),
+        )),
       ),
 
       body: Consumer<OrderController>(builder: (context, order, child) {

@@ -1,0 +1,291 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:syriacosmeticsmanger/core/app_context.dart';
+import 'package:syriacosmeticsmanger/features/action_center/controllers/action_center_controller.dart';
+import 'package:syriacosmeticsmanger/features/action_center/domain/services/action_center_service_interface.dart';
+import 'package:syriacosmeticsmanger/features/home/controllers/seller_analytics_controller.dart';
+import 'package:syriacosmeticsmanger/features/home/domain/services/seller_analytics_service_interface.dart';
+import 'package:syriacosmeticsmanger/features/notification/controllers/notification_controller.dart';
+import 'package:syriacosmeticsmanger/features/notification/domain/services/notification_service_interface.dart';
+import 'package:syriacosmeticsmanger/features/order/controllers/order_controller.dart';
+import 'package:syriacosmeticsmanger/features/order/domain/services/order_service_interface.dart';
+import 'package:syriacosmeticsmanger/features/pos/controllers/cart_controller.dart';
+import 'package:syriacosmeticsmanger/features/pos/controllers/customer_controller.dart';
+import 'package:syriacosmeticsmanger/features/pos/controllers/offline_sales_controller.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/pending_pos_order.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/services/cart_service_interface.dart';
+import 'package:syriacosmeticsmanger/features/product/controllers/product_controller.dart';
+import 'package:syriacosmeticsmanger/features/product/domain/models/filter_model.dart';
+import 'package:syriacosmeticsmanger/features/product/domain/models/product_model.dart';
+import 'package:syriacosmeticsmanger/features/product/domain/services/product_service_interface.dart';
+import 'package:syriacosmeticsmanger/features/profile/controllers/profile_controller.dart';
+import 'package:syriacosmeticsmanger/features/profile/domain/services/profice_service_interface.dart';
+import 'package:syriacosmeticsmanger/features/seller_center/controllers/seller_center_controller.dart';
+import 'package:syriacosmeticsmanger/features/seller_center/domain/services/seller_center_service_interface.dart';
+import 'package:syriacosmeticsmanger/features/statement/controllers/statement_controller.dart';
+import 'package:syriacosmeticsmanger/features/statement/domain/models/statement_models.dart';
+import 'package:syriacosmeticsmanger/features/statement/domain/services/statement_service_interface.dart';
+
+class _UnusedCartService extends Fake implements CartServiceInterface {}
+
+class _UnusedOrderService extends Fake implements OrderServiceInterface {}
+
+class _UnusedNotificationService extends Fake implements NotificationServiceInterface {}
+
+class _UnusedAnalyticsService extends Fake implements SellerAnalyticsServiceInterface {}
+
+class _UnusedSellerCenterService extends Fake implements SellerCenterServiceInterface {}
+
+class _UnusedActionCenterService extends Fake implements ActionCenterServiceInterface {}
+
+class _UnusedProductService extends Fake implements ProductServiceInterface {}
+
+class _UnusedProfileService extends Fake implements ProfileServiceInterface {}
+
+class _UnusedStatementService extends Fake implements StatementServiceInterface {}
+
+class _RecordingCart extends CartController {
+  _RecordingCart(this._calls) : super(cartServiceInterface: _UnusedCartService());
+
+  final List<String> _calls;
+
+  @override
+  void removeAllCartList() => _calls.add('cart.removeAllCartList');
+
+  @override
+  void clearCardForCancel() => _calls.add('cart.clearCardForCancel');
+
+  @override
+  void removeModifiedTax({bool isUpdate = false}) => _calls.add('cart.removeModifiedTax');
+
+  @override
+  void resetUserCard() => _calls.add('cart.resetUserCard');
+
+  @override
+  void saveCardData() => _calls.add('cart.saveCardData');
+}
+
+class _RecordingOrders extends OrderController {
+  _RecordingOrders(this._calls, this._selectedTab) : super(orderServiceInterface: _UnusedOrderService());
+
+  final List<String> _calls;
+  final int _selectedTab;
+
+  @override
+  int get orderTypeIndex => _selectedTab;
+
+  @override
+  void setIndex(BuildContext context, int index, {bool notify = true}) => _calls.add('orders.setIndex($index)');
+}
+
+class _RecordingNotifications extends NotificationController {
+  _RecordingNotifications(this._calls) : super(notificationServiceInterface: _UnusedNotificationService());
+
+  final List<String> _calls;
+
+  @override
+  Future<void> getNotificationList(int offset) async => _calls.add('notifications.getNotificationList($offset)');
+}
+
+class _RecordingAnalytics extends SellerAnalyticsController {
+  _RecordingAnalytics(this._calls) : super(sellerAnalyticsServiceInterface: _UnusedAnalyticsService());
+
+  final List<String> _calls;
+
+  @override
+  void setAnalyticsFilterType(int index, {bool notify = true}) => _calls.add('analytics.setAnalyticsFilterType($index)');
+
+  @override
+  void setRevenueFilterType(int index, {bool notify = true}) => _calls.add('analytics.setRevenueFilterType($index)');
+
+  @override
+  Future<void> getAnalyticsFilterData(String? type) async => _calls.add('analytics.getAnalyticsFilterData($type)');
+
+  @override
+  Future<void> getDashboardRevenueData(String? filterType) async => _calls.add('analytics.getDashboardRevenueData($filterType)');
+}
+
+class _RecordingSellerCenter extends SellerCenterController {
+  _RecordingSellerCenter(this._calls) : super(sellerCenterServiceInterface: _UnusedSellerCenterService());
+
+  final List<String> _calls;
+
+  @override
+  Future<void> getSellerCenterOverview() async => _calls.add('sellerCenter.getSellerCenterOverview');
+
+  @override
+  Future<void> getActivities() async => _calls.add('sellerCenter.getActivities');
+}
+
+class _RecordingActionCenter extends ActionCenterController {
+  _RecordingActionCenter(this._calls) : super(actionCenterServiceInterface: _UnusedActionCenterService());
+
+  final List<String> _calls;
+
+  @override
+  Future<void> getInsights({String? severity, bool clearSeverity = false}) async =>
+      _calls.add('actionCenter.getInsights(clearSeverity: $clearSeverity)');
+}
+
+class _RecordingProducts extends ProductController {
+  _RecordingProducts(this._calls, {required this.posListLoaded, required this.sellerListLoaded})
+      : super(productServiceInterface: _UnusedProductService());
+
+  final List<String> _calls;
+  final bool posListLoaded;
+  final bool sellerListLoaded;
+
+  static ProductModel _loadedList() =>
+      ProductModel.fromJson(<String, dynamic>{'total_size': 0, 'limit': 10, 'offset': 1, 'products': <dynamic>[]});
+
+  @override
+  ProductModel? get posProductModel => posListLoaded ? _loadedList() : null;
+
+  @override
+  ProductModel? get sellerProductModel => sellerListLoaded ? _loadedList() : null;
+
+  @override
+  List<String> get posSelectedCategoryIds => <String>['7'];
+
+  @override
+  Future<void> getStockOutProductList(int offset, String languageCode, {bool reload = false}) async =>
+      _calls.add('products.getStockOutProductList($offset, $languageCode, reload: $reload)');
+
+  @override
+  Future<void> getTopSellingProductList(int offset, BuildContext context, String languageCode, {bool reload = false}) async =>
+      _calls.add('products.getTopSellingProductList($offset, $languageCode, reload: $reload)');
+
+  @override
+  Future<void> getMostPopularProductList(int offset, BuildContext context, String languageCode, {bool reload = false}) async =>
+      _calls.add('products.getMostPopularProductList($offset, $languageCode, reload: $reload)');
+
+  @override
+  Future<void> getStockLimitStatus(BuildContext context) async => _calls.add('products.getStockLimitStatus');
+
+  @override
+  Future<void> getPosProductList(int offset, BuildContext context, List<String> id, {bool reload = true}) async =>
+      _calls.add('products.getPosProductList($offset, $id)');
+
+  @override
+  Future<void> getSellerProductList(String sellerId, int offset, String languageCode, String search,
+          {FilterModel? filterSearchModel}) async =>
+      _calls.add('products.getSellerProductList($sellerId, $offset, $languageCode)');
+}
+
+class _SignedInProfile extends ProfileController {
+  _SignedInProfile() : super(profileServiceInterface: _UnusedProfileService());
+
+  @override
+  int? get userId => 42;
+}
+
+class _RecordingStatements extends StatementController {
+  _RecordingStatements(this._calls, {required this.loaded}) : super(statementServiceInterface: _UnusedStatementService());
+
+  final List<String> _calls;
+  final bool loaded;
+
+  @override
+  StatementModel? get statement => loaded ? const StatementModel() : null;
+
+  @override
+  Future<void> getStatement({
+    String? entryType,
+    String? status,
+    DateTime? from,
+    DateTime? to,
+    bool clearEntryType = false,
+    bool clearStatus = false,
+    bool clearDates = false,
+  }) async =>
+      _calls.add('statement.getStatement');
+}
+
+/// The queue of sales made offline, with every way of changing it recorded: a switch of market must not touch it.
+class _WatchedOutbox extends OfflineSalesController {
+  _WatchedOutbox(this._calls, SharedPreferences preferences)
+      : super(cartServiceInterface: _UnusedCartService(), sharedPreferences: preferences);
+
+  final List<String> _calls;
+
+  @override
+  Future<PendingPosOrder> enqueue({
+    required Map<String, dynamic> orderBody,
+    required double orderAmount,
+    required String customerName,
+  }) async {
+    _calls.add('outbox.enqueue');
+    return super.enqueue(orderBody: orderBody, orderAmount: orderAmount, customerName: customerName);
+  }
+
+  @override
+  Future<void> remove(String id) async => _calls.add('outbox.remove');
+
+  @override
+  Future<int> syncPending() async {
+    _calls.add('outbox.syncPending');
+    return 0;
+  }
+
+  @override
+  Future<void> clear() async => _calls.add('outbox.clear');
+}
+
+/// The controllers the screens read, every one of them recording the calls made to it in one shared log, in the order they were made.
+/// A controller handed in is used as it is, instead of the recording one.
+class FakeScreens {
+  FakeScreens(
+    this.preferences, {
+    CartController? cart,
+    CustomerController? customer,
+    int selectedOrderTab = 3,
+    bool posListLoaded = false,
+    bool sellerListLoaded = false,
+    bool statementLoaded = false,
+  }) {
+    this.cart = cart ?? _RecordingCart(calls);
+    this.customer = customer ?? CustomerController(cartServiceInterface: _UnusedCartService());
+    orders = _RecordingOrders(calls, selectedOrderTab);
+    products = _RecordingProducts(calls, posListLoaded: posListLoaded, sellerListLoaded: sellerListLoaded);
+    statements = _RecordingStatements(calls, loaded: statementLoaded);
+  }
+
+  final SharedPreferences preferences;
+
+  /// What was called on the controllers, in order.
+  final List<String> calls = <String>[];
+
+  late final CartController cart;
+  late final CustomerController customer;
+  late final OrderController orders;
+  late final ProductController products;
+  late final StatementController statements;
+
+  List<SingleChildWidget> get providers => <SingleChildWidget>[
+        ChangeNotifierProvider<CartController>.value(value: cart),
+        ChangeNotifierProvider<CustomerController>.value(value: customer),
+        ChangeNotifierProvider<OrderController>.value(value: orders),
+        ChangeNotifierProvider<NotificationController>.value(value: _RecordingNotifications(calls)),
+        ChangeNotifierProvider<SellerAnalyticsController>.value(value: _RecordingAnalytics(calls)),
+        ChangeNotifierProvider<SellerCenterController>.value(value: _RecordingSellerCenter(calls)),
+        ChangeNotifierProvider<ActionCenterController>.value(value: _RecordingActionCenter(calls)),
+        ChangeNotifierProvider<ProductController>.value(value: products),
+        ChangeNotifierProvider<ProfileController>.value(value: _SignedInProfile()),
+        ChangeNotifierProvider<StatementController>.value(value: statements),
+        ChangeNotifierProvider<OfflineSalesController>.value(value: _WatchedOutbox(calls, preferences)),
+      ];
+
+  /// Mounts the app as `main.dart` does for the code that reaches the controllers through the navigator: the providers above the
+  /// navigator, and the navigator under the key the app keeps for it.
+  Future<void> mount(WidgetTester tester) {
+    return tester.pumpWidget(
+      MultiProvider(
+        providers: providers,
+        child: MaterialApp(navigatorKey: navigatorKey, home: const SizedBox.shrink()),
+      ),
+    );
+  }
+}
