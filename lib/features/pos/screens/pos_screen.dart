@@ -5,6 +5,8 @@ import 'package:syriacosmeticsmanger/common/basewidgets/textfeild/custom_text_fe
 import 'package:syriacosmeticsmanger/features/pos/controllers/coupon_discount_controller.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/customer_controller.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/place_order_body.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_customer_id.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_order_answer.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/cart_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/widgets/extra_discount_and_coupon_dialog_widget.dart';
 import 'package:syriacosmeticsmanger/features/pos/widgets/pos_appbar_widget.dart';
@@ -567,7 +569,7 @@ class PosScreenState extends State<PosScreen> {
 
                                           CustomerController customerController = Provider.of<CustomerController>(context, listen: false);
 
-                                          if(hasDigitalProduct && (customerController.customerId.toString().length == 4 || customerController.customerId == 0)) {
+                                          if(hasDigitalProduct && PosCustomerId.isWalkIn(customerController.customerId)) {
                                             showCustomSnackBarWidget(getTranslated('orders_with_digital_products', context), context, sanckBarType: SnackBarType.warning);
                                           } else if((cartController.paymentTypeIndex == 0 && cartController.isPaidAmountLess)) {
                                             showCustomSnackBarWidget(getTranslated('paid_amount_cannot_less_then_order_amount', context), context, sanckBarType: SnackBarType.warning);
@@ -605,7 +607,8 @@ class PosScreenState extends State<PosScreen> {
                                                   PlaceOrderBody placeOrderBody = onPlaceOrder(paidAmount: _paidAmountController.text);
 
                                                   cartController.placeOrder(Get.context!, placeOrderBody).then((value) {
-                                                    if(value.response?.statusCode == 200) {
+                                                    // A refusal comes with a 200 too, and the cart a refused sale keeps must keep its priced lines: the retry is sent with them.
+                                                    if(PosOrderAnswer.isPlacedAnswer(statusCode: value.response?.statusCode, data: value.response?.data)) {
                                                       couponAmount = 0;
                                                       extraDiscountAmount = 0;
                                                       cartController.removeModifiedTax();
@@ -824,7 +827,7 @@ PlaceOrderBody onPlaceOrder({String? paidAmount}) {
     couponCode: cartController.currentCartModel?.couponCode,
     couponAmount: cartController.currentCartModel?.couponAmount,
     orderAmount: double.tryParse(PriceConverter.convertPriceWithoutSymbol(Get.context!, cartController.amount)),
-    userId:  customerController.customerId.toString().length == 4 ? 0 : customerController.customerId,
+    userId:  PosCustomerId.forServer(customerController.customerId),
     extraDiscountType: couponDiscountController.selectedDiscountType,
     paymentMethod: cartController.paymentTypeIndex == 0 ? 'cash' : cartController.paymentTypeIndex == 1 ? 'card' : 'wallet' ,
     extraDiscount: couponDiscountController.extraDiscountController.text.trim().isEmpty ? 0.0 :

@@ -13,6 +13,9 @@ class PendingPosOrder {
   final int attempts;
   final String? lastError;
 
+  /// The key the sale was first sent with (PosIdempotencyKey): a replay sends the same one. A sale that an earlier version queued has none until its first replay.
+  final String? idempotencyKey;
+
   const PendingPosOrder({
     required this.id,
     required this.body,
@@ -21,9 +24,10 @@ class PendingPosOrder {
     required this.customerName,
     this.attempts = 0,
     this.lastError,
+    this.idempotencyKey,
   });
 
-  PendingPosOrder copyWith({int? attempts, String? lastError}) => PendingPosOrder(
+  PendingPosOrder copyWith({int? attempts, String? lastError, String? idempotencyKey}) => PendingPosOrder(
         id: id,
         body: body,
         createdAt: createdAt,
@@ -31,6 +35,7 @@ class PendingPosOrder {
         customerName: customerName,
         attempts: attempts ?? this.attempts,
         lastError: lastError ?? this.lastError,
+        idempotencyKey: idempotencyKey ?? this.idempotencyKey,
       );
 
   Map<String, dynamic> toJson() => {
@@ -41,6 +46,7 @@ class PendingPosOrder {
         'customer_name': customerName,
         'attempts': attempts,
         'last_error': lastError,
+        'idempotency_key': idempotencyKey,
       };
 
   factory PendingPosOrder.fromJson(Map<String, dynamic> json) => PendingPosOrder(
@@ -51,6 +57,7 @@ class PendingPosOrder {
         customerName: json['customer_name']?.toString() ?? '',
         attempts: int.tryParse(json['attempts']?.toString() ?? '') ?? 0,
         lastError: json['last_error']?.toString(),
+        idempotencyKey: json['idempotency_key']?.toString(),
       );
 
   String encode() => jsonEncode(toJson());

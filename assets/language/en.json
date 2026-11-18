@@ -1984,5 +1984,9 @@
   "platform_admin_action_mfa_confirmed": "Second factor confirmed",
   "platform_admin_action_mfa_confirm_failed": "Second factor confirmation failed",
   "platform_admin_action_mfa_reset": "Second factor reset",
-  "platform_admin_action_mfa_status": "Second factor status checked"
+  "platform_admin_action_mfa_status": "Second factor status checked",
+  "sales_not_sent": "Sales that could not be sent",
+  "sales_not_sent_explained": "These sales were rung up on this device and the server did not accept them after several tries. They stay here with the reason until you retry or remove them.",
+  "remove_sale": "Remove this sale from the device",
+  "remove_sale_confirmation": "The server never recorded this sale. If you remove it, no copy of it is left. Remove it?"
 }

@@ -1,4 +1,3 @@
-import 'package:barcode_scan2/gen/protos/protos.pbenum.dart';
 import 'package:barcode_scan2/model/android_options.dart';
 import 'package:barcode_scan2/model/scan_options.dart';
 import 'package:barcode_scan2/platform_wrapper.dart';
@@ -10,6 +9,7 @@ import 'package:syriacosmeticsmanger/common/basewidgets/custom_snackbar_widget.d
 import 'package:syriacosmeticsmanger/data/model/response/base/api_response.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/cart_controller.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/cart_model.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/product_barcode_formats.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/product_scan_refusal_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/services/cart_service_interface.dart';
 import 'package:syriacosmeticsmanger/features/pos/widgets/ambiguous_code_sheet_widget.dart';
@@ -49,7 +49,7 @@ class BarcodeScanController extends ChangeNotifier{
             'flash_on': 'flash on',
             'flash_off': 'flash off',
           },
-          restrictFormat: [BarcodeFormat.code128],
+          restrictFormat: productBarcodeFormats,
           useCamera: -1,
           autoEnableFlash: false,
           android: AndroidOptions(

@@ -1984,5 +1984,9 @@
   "platform_admin_action_mfa_confirmed": "تأكيد التحقق بخطوتين",
   "platform_admin_action_mfa_confirm_failed": "فشل تأكيد التحقق بخطوتين",
   "platform_admin_action_mfa_reset": "إعادة ضبط التحقق بخطوتين",
-  "platform_admin_action_mfa_status": "فحص حالة التحقق بخطوتين"
+  "platform_admin_action_mfa_status": "فحص حالة التحقق بخطوتين",
+  "sales_not_sent": "مبيعات تعذّر إرسالها",
+  "sales_not_sent_explained": "سُجّلت هذه المبيعات على هذا الجهاز ولم يقبلها الخادم بعد عدة محاولات. تبقى هنا مع سبب الرفض إلى أن تعيد المحاولة أو تحذفها.",
+  "remove_sale": "حذف هذه البيعة من الجهاز",
+  "remove_sale_confirmation": "لم يسجّل الخادم هذه البيعة قط. إذا حذفتها فلن تبقى منها أي نسخة. هل تريد حذفها؟"
 }
