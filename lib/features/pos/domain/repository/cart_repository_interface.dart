@@ -9,7 +9,7 @@ abstract class CartRepositoryInterface implements RepositoryInterface{
   Future<ApiResponse> placeOrder(PlaceOrderBody placeOrderBody);
   /// Replays an order body captured earlier (offline sales outbox).
   Future<ApiResponse> placeOrderRaw(Map<String, dynamic> orderBody);
-  Future<ApiResponse> getProductFromScan(String? productCode);
+  Future<ApiResponse> getProductFromScan(String? productCode, {String? country});
   Future<ApiResponse> getCustomerList(String type);
   Future<ApiResponse> customerSearch(String name);
   Future<ApiResponse> addNewCustomer(CustomerBody customerBody);
