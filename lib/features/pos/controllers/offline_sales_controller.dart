@@ -5,6 +5,7 @@ import 'package:syriacosmeticsmanger/core/app_context.dart';
 import 'package:syriacosmeticsmanger/features/auth/controllers/auth_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pending_pos_order.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_idempotency_key.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_order_answer.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/services/cart_service_interface.dart';
 
@@ -67,6 +68,7 @@ class OfflineSalesController extends ChangeNotifier {
     required Map<String, dynamic> orderBody,
     required double orderAmount,
     required String customerName,
+    String? idempotencyKey,
   }) async {
     final PendingPosOrder order = PendingPosOrder(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
@@ -74,6 +76,7 @@ class OfflineSalesController extends ChangeNotifier {
       createdAt: DateTime.now(),
       orderAmount: orderAmount,
       customerName: customerName,
+      idempotencyKey: idempotencyKey ?? PosIdempotencyKey.generate(),
     );
     _pending = [..._pending, order];
     await _persist();
@@ -115,12 +118,18 @@ class OfflineSalesController extends ChangeNotifier {
     _isSyncing = true;
     notifyListeners();
 
+    // A sale an earlier version queued has no key yet. It is given one before it is sent and the key is stored first, so that a replay whose answer is lost is replayed under the same key.
+    if (_pending.any((PendingPosOrder order) => order.idempotencyKey == null)) {
+      _pending = _pending.map((PendingPosOrder order) => order.idempotencyKey == null ? order.copyWith(idempotencyKey: PosIdempotencyKey.generate()) : order).toList();
+      await _persist();
+    }
+
     int synced = 0;
     final List<PendingPosOrder> remaining = <PendingPosOrder>[];
 
     for (final PendingPosOrder order in _pending) {
       try {
-        final dynamic response = await cartServiceInterface.placeOrderRaw(order.body);
+        final dynamic response = await cartServiceInterface.placeOrderRaw(order.body, idempotencyKey: order.idempotencyKey);
         final int? statusCode = response?.response?.statusCode as int?;
         if (statusCode == 200) {
           if (PosOrderAnswer.isPlaced(response?.response?.data)) {

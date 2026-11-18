@@ -8,6 +8,7 @@ import 'package:syriacosmeticsmanger/features/pos/domain/models/customer_body.da
 import 'package:syriacosmeticsmanger/features/pos/domain/models/invoice_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/place_order_body.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_customer_id.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_idempotency_key.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_order_answer.dart';
 import 'package:syriacosmeticsmanger/data/model/response/base/api_response.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/cart_model.dart';
@@ -392,14 +393,16 @@ class CartController extends ChangeNotifier{
     _isLoading = true;
     notifyListeners();
 
-    ApiResponse response = await cartServiceInterface.placeOrder(placeOrderBody);
+    // One key for this sale: the request carries it, and when the answer is lost the outbox replays the sale under the same one, so the server records it once.
+    final String idempotencyKey = PosIdempotencyKey.generate();
+    ApiResponse response = await cartServiceInterface.placeOrder(placeOrderBody, idempotencyKey: idempotencyKey);
 
     // The request never reached the server (no connectivity, timeout, DNS).
     // Park the sale in the offline outbox instead of dereferencing a null
     // response, which used to throw in the middle of checkout.
     if(response.response == null) {
       _isLoading = false;
-      if (context.mounted) await _handleOfflineOrder(context, placeOrderBody);
+      if (context.mounted) await _handleOfflineOrder(context, placeOrderBody, idempotencyKey);
       notifyListeners();
       return response;
     }
@@ -446,13 +449,14 @@ class CartController extends ChangeNotifier{
 
   /// Saves a sale that could not be sent and tells the cashier it is safe to
   /// carry on: the outbox replays it automatically when connectivity returns.
-  Future<void> _handleOfflineOrder(BuildContext context, PlaceOrderBody placeOrderBody) async {
+  Future<void> _handleOfflineOrder(BuildContext context, PlaceOrderBody placeOrderBody, String idempotencyKey) async {
     try {
       final OfflineSalesController offlineSales = Provider.of<OfflineSalesController>(context, listen: false);
       await offlineSales.enqueue(
         orderBody: placeOrderBody.toJson(),
         orderAmount: placeOrderBody.orderAmount ?? 0,
         customerName: searchCustomerController.text,
+        idempotencyKey: idempotencyKey,
       );
 
       if (!context.mounted) return;
