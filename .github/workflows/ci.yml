@@ -41,7 +41,7 @@ jobs:
       # A named step, so that the result of these tests can be read on its own: the whole run below is red on main for one known test (the version gate).
       - name: Test the push route and the rating rule (K-07, K-11)
         if: always()
-        run: flutter test test/notification_route_test.dart test/product_rating_test.dart
+        run: flutter test test/notification_route_test.dart test/approved_rating_screens_test.dart
 
       - name: Test
         run: flutter test

@@ -9,7 +9,6 @@ import 'package:syriacosmeticsmanger/features/order_edit/controllers/order_edit_
 import 'package:syriacosmeticsmanger/features/order_edit/domain/models/order_edit_cart_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/cart_controller.dart';
 import 'package:syriacosmeticsmanger/features/product/domain/models/product_model.dart';
-import 'package:syriacosmeticsmanger/features/product/domain/models/product_rating.dart';
 import 'package:syriacosmeticsmanger/helper/price_converter.dart';
 import 'package:syriacosmeticsmanger/helper/product_helper.dart';
 import 'package:syriacosmeticsmanger/localization/controllers/localization_controller.dart';
@@ -147,7 +146,7 @@ class EditProductCartBottomSheetWidgetState extends State<EditProductCartBottomS
 
                   double priceWithQuantity = priceWithDiscount * productProvider.quantity!;
 
-                  String ratting = ProductRating.averageOf(widget.product?.reviews).toString();
+                  String ratting = ProductHelper.getApprovedReviewAverage(widget.product!.reviews).toString();
 
                   if(widget.product != null && widget.product!.colorImagesFullUrl != null && widget.product!.colorImagesFullUrl!.isNotEmpty){
                     for(int i=0; i< widget.product!.colorImagesFullUrl!.length; i++){
