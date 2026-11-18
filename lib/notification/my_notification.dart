@@ -179,7 +179,8 @@ class MyNotification {
       return;
     }
 
-    final Widget? screen = switch (NotificationRoute.targetOf(payload, legacyOrderKey: legacyOrderKey)) {
+    final bool signedIn = Provider.of<AuthController>(navigator.context, listen: false).isLoggedIn();
+    final Widget? screen = switch (NotificationRoute.targetOf(payload, signedIn: signedIn, legacyOrderKey: legacyOrderKey)) {
       NotificationTarget.chat => InboxScreen(fromNotification: true, initIndex: payload?.messageKey == 'message_from_delivery_man' ? 1 : 0),
       NotificationTarget.themeNotifications => const NotificationScreen(),
       NotificationTarget.order => OrderDetailsScreen(orderId: NotificationRoute.orderIdOf(payload, legacyOrderKey: legacyOrderKey), fromNotification: true),

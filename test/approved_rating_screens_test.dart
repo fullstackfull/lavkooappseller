@@ -67,25 +67,34 @@ void main() {
   group('the screens that show it', () {
     String code(String path) => File(path).readAsStringSync();
 
-    test('the product dialog of the POS and the product sheet of an order edit take the rating from the one helper', () {
-      for (final String path in <String>['lib/features/pos/widgets/product_variation_selection_dialog_widget.dart', 'lib/features/order_edit/widgets/edit _product_bottomsheet.dart']) {
-        final String source = code(path);
+    test('the product dialog of the POS, the product sheet of an order edit and the card of a product take the rating from the one helper', () {
+      final Map<String, String> reads = <String, String>{
+        'lib/features/pos/widgets/product_variation_selection_dialog_widget.dart': 'ProductHelper.getApprovedReviewAverage(widget.product!.reviews)',
+        'lib/features/order_edit/widgets/edit _product_bottomsheet.dart': 'ProductHelper.getApprovedReviewAverage(widget.product!.reviews)',
+        'lib/common/basewidgets/product_widget.dart': 'ProductHelper.getApprovedReviewAverage(widget.productModel.reviews)',
+      };
 
-        expect(source, contains('ProductHelper.getApprovedReviewAverage(widget.product!.reviews)'), reason: path);
-        expect(source, isNot(contains('total += review.rating')), reason: path);
+      for (final MapEntry<String, String> read in reads.entries) {
+        expect(code(read.key), contains(read.value), reason: read.key);
       }
     });
 
-    test('no file under lib adds up the ratings of the reviews of a product by itself', () {
+    test('no file under lib adds up, folds or reduces the ratings of reviews by itself, whatever the variable is called', () {
       final List<String> found = <String>[];
 
       for (final FileSystemEntity entity in Directory('lib').listSync(recursive: true)) {
-        if (entity is File && entity.path.endsWith('.dart') && entity.readAsStringSync().contains('total += review.rating')) {
-          found.add(entity.path);
+        if (entity is! File || !entity.path.endsWith('.dart')) {
+          continue;
+        }
+        final String withoutComments = entity.readAsStringSync().replaceAll(RegExp(r'//[^\n]*'), '');
+        for (final String statement in withoutComments.split(';')) {
+          if (RegExp(r'\.rating\b').hasMatch(statement) && RegExp(r'\+=|\.fold\(|\.reduce\(').hasMatch(statement)) {
+            found.add('${entity.path}: ${statement.trim().replaceAll(RegExp(r'\s+'), ' ')}');
+          }
         }
       }
 
-      expect(found, isEmpty);
+      expect(found, isEmpty, reason: 'an average of reviews is taken by ProductHelper.getApprovedReviewAverage, which counts the approved ones');
     });
   });
 }
