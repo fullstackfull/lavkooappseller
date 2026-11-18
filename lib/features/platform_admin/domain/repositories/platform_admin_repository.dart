@@ -3,6 +3,7 @@ import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platf
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_json.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_market_models.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_mfa_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_session_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/repositories/platform_admin_api_client.dart';
@@ -29,7 +30,7 @@ class PlatformAdminRepository implements PlatformAdminRepositoryInterface {
       : _now = now ?? DateTime.now;
 
   @override
-  Future<PlatformAdminResult<PlatformAdminSignIn>> signIn({
+  Future<PlatformAdminResult<PlatformAdminSignInStep>> signIn({
     required String email,
     required String password,
     required String deviceName,
@@ -38,19 +39,42 @@ class PlatformAdminRepository implements PlatformAdminRepositoryInterface {
       '/auth/login',
       body: <String, Object?>{'email': email, 'password': password, 'device_name': deviceName},
     );
+    final PlatformAdminResult<PlatformAdminSignInStep> shaped = _shaped(result, (PlatformAdminReply reply) {
+      return reply.data is Map ? PlatformAdminSignInStep.fromJson(PlatformJson.map(reply.data)) : null;
+    });
+    final PlatformAdminSignInStep? step = shaped.value;
+
+    // A refusal, or a challenge: no session exists yet, so there is nothing to keep.
+    if (step is! PlatformAdminSessionOpened) return shaped;
+
+    final PlatformAdminFailure? failure = await _open(step.signIn);
+    return failure == null ? shaped : PlatformAdminResult<PlatformAdminSignInStep>.failure(failure);
+  }
+
+  @override
+  Future<PlatformAdminResult<PlatformAdminSignIn>> signInWithSecondFactor({
+    required String challenge,
+    required PlatformAdminMfaMethod method,
+    required String code,
+  }) async {
+    final PlatformAdminResult<PlatformAdminReply> result = await apiClient.post(
+      '/auth/mfa',
+      body: <String, Object?>{
+        'challenge': challenge,
+        switch (method) {
+          PlatformAdminMfaMethod.totp => 'code',
+          PlatformAdminMfaMethod.recoveryCode => 'recovery_code',
+        }: code,
+      },
+    );
     final PlatformAdminResult<PlatformAdminSignIn> shaped = _shaped(result, (PlatformAdminReply reply) {
       return reply.data is Map ? PlatformAdminSignIn.fromJson(PlatformJson.map(reply.data)) : null;
     });
     final PlatformAdminSignIn? signIn = shaped.value;
-
     if (signIn == null) return shaped;
-    if (signIn.token.isEmpty) {
-      return const PlatformAdminResult<PlatformAdminSignIn>.failure(PlatformAdminFailure.malformed());
-    }
 
-    _token = signIn.token;
-    await tokenStore.write(StoredPlatformSession(token: signIn.token, expiresAt: signIn.expiresAt));
-    return shaped;
+    final PlatformAdminFailure? failure = await _open(signIn);
+    return failure == null ? shaped : PlatformAdminResult<PlatformAdminSignIn>.failure(failure);
   }
 
   @override
@@ -136,6 +160,13 @@ class PlatformAdminRepository implements PlatformAdminRepositoryInterface {
       );
 
   @override
+  Future<PlatformAdminResult<int>> endOtherSessions() => _authenticated<int>(
+        (String token) => apiClient.delete('/sessions', bearerToken: token),
+        (PlatformAdminReply reply) =>
+            reply.data is Map ? PlatformJson.integer(PlatformJson.map(reply.data)['ended']) : null,
+      );
+
+  @override
   Future<PlatformAdminResult<PlatformAuditPage>> auditLogs({required int page, required int perPage}) =>
       _authenticated<PlatformAuditPage>(
         (String token) => apiClient.get(
@@ -176,6 +207,16 @@ class PlatformAdminRepository implements PlatformAdminRepositoryInterface {
     return value == null
         ? PlatformAdminResult<T>.failure(const PlatformAdminFailure.malformed())
         : PlatformAdminResult<T>.success(value);
+  }
+
+  /// Keeps the session an answer opened, here and in the secure storage. An answer with no token is one that
+  /// cannot be used, and keeps nothing.
+  Future<PlatformAdminFailure?> _open(PlatformAdminSignIn signIn) async {
+    if (signIn.token.isEmpty) return const PlatformAdminFailure.malformed();
+
+    _token = signIn.token;
+    await tokenStore.write(StoredPlatformSession(token: signIn.token, expiresAt: signIn.expiresAt));
+    return null;
   }
 
   Future<void> _forget() {

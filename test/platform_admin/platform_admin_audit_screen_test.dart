@@ -66,6 +66,96 @@ void main() {
         rows, <String, dynamic>{'scope': scope, 'page': page, 'per_page': 25, 'has_more': hasMore}));
   }
 
+  group('what the second factor and the sessions add to the log', () {
+    setUp(signIn);
+
+    /// What the line of each action says, in English, as it is written for a person.
+    const Map<int, String> words = <int, String>{
+      60: 'Password accepted, code requested',
+      59: 'Signed in',
+      58: 'Wrong second-factor code',
+      57: 'Second step locked after wrong codes',
+      56: 'Recovery code used',
+      55: 'Ended all other sessions',
+      54: 'Session replaced by a newer sign-in',
+      53: 'Session ended after being idle',
+      52: 'Session ended: access expired',
+      51: 'Old audit lines removed',
+      50: 'Second factor set up',
+      49: 'Second factor confirmed',
+      48: 'Second factor confirmation failed',
+      47: 'Second factor reset',
+      46: 'Second factor status checked',
+      45: 'Access changed',
+    };
+
+    testWidgets('every action of the contract is said in words, and one that is not known is said as its own name',
+        (WidgetTester tester) async {
+      answerWith(fixtureRows('audit_logs_mfa_actions'));
+      await pumpAudit(tester);
+
+      for (final MapEntry<int, String> entry in words.entries) {
+        expect(inLine(entry.key, find.text(entry.value)), findsOneWidget, reason: 'line ${entry.key}');
+      }
+      expect(inLine(44, find.text('auth.mfa_something_new')), findsOneWidget,
+          reason:
+              'what the app has never heard of is shown as it came, and is not hidden or turned into something else');
+    });
+
+    testWidgets('is said in Arabic as well, with no key showing through, and an unknown action still as its own name',
+        (WidgetTester tester) async {
+      answerWith(fixtureRows('audit_logs_mfa_actions'));
+      await pumpAudit(tester, locale: PlatformAdminHarness.arabic);
+
+      expect(inLine(60, find.text('قُبلت كلمة المرور وطُلب الرمز')), findsOneWidget);
+      expect(inLine(56, find.text('استُخدم رمز استرداد')), findsOneWidget);
+      expect(inLine(55, find.text('إنهاء كل الجلسات الأخرى')), findsOneWidget);
+      expect(inLine(44, find.text('auth.mfa_something_new')), findsOneWidget);
+      expect(PlatformAdminHarness.texts(tester).where((String text) => text.startsWith('platform_admin_')), isEmpty);
+    });
+
+    testWidgets(
+        'lines written at the console are the operator\'s, and the operator\'s name and the before and after of a grant are not shown',
+        (WidgetTester tester) async {
+      answerWith(fixtureRows('audit_logs_mfa_actions'));
+      await pumpAudit(tester);
+
+      expect(inLine(51, find.textContaining('Operator')), findsOneWidget);
+      final String everything = PlatformAdminHarness.texts(tester).join(' ');
+      expect(everything, isNot(contains('deploy')));
+      expect(everything, isNot(contains('app-1')));
+      expect(everything, isNot(contains('capabilities')));
+      expect(everything, isNot(contains('hash')));
+    });
+
+    testWidgets('an action with no name at all does not break the screen', (WidgetTester tester) async {
+      answerWith(<Map<String, dynamic>>[
+        <String, dynamic>{'id': 90, 'admin_id': 4, 'created_at': '2026-11-17T06:00:00Z'},
+        <String, dynamic>{'id': 89, 'admin_id': 4, 'action': 7, 'context': 'nothing', 'created_at': 'soon'},
+      ]);
+      await pumpAudit(tester);
+
+      expect(tester.takeException(), isNull);
+      expect(shownIds(tester), <int>[90, 89]);
+    });
+
+    testWidgets('fits at the narrowest width with the text at twice its size, in either language',
+        (WidgetTester tester) async {
+      answerWith(fixtureRows('audit_logs_mfa_actions'));
+
+      for (final Locale locale in <Locale>[PlatformAdminHarness.english, PlatformAdminHarness.arabic]) {
+        await pumpAudit(tester, locale: locale, textScale: 2.0, size: PlatformAdminHarness.narrowPhone);
+        await tester.drag(find.byType(ListView), const Offset(0, -1500));
+        await tester.pump();
+
+        expect(tester.takeException(), isNull, reason: locale.languageCode);
+        await tester.pumpWidget(const SizedBox());
+        controller = PlatformAdminController(platformAdminServiceInterface: service);
+        await signIn();
+      }
+    });
+  });
+
   group('the platform owner', () {
     setUp(signIn);
 
@@ -146,14 +236,15 @@ void main() {
       expect(inLine(97, find.text('Saudi Arabia')), findsNothing);
     });
 
-    testWidgets('an action the app has never heard of is written out from its own name', (WidgetTester tester) async {
+    testWidgets('an action the app has never heard of is shown as its own name, exactly as the server wrote it',
+        (WidgetTester tester) async {
       answerWith(<Map<String, dynamic>>[
         <String, dynamic>{...fixtureRows('audit_logs_owner')[0], 'id': 96, 'action': 'grant.frozen'},
       ]);
 
       await pumpAudit(tester);
 
-      expect(inLine(96, find.text('Grant Frozen')), findsOneWidget);
+      expect(inLine(96, find.text('grant.frozen')), findsOneWidget);
     });
 
     testWidgets('every action the API writes today has words of its own', (WidgetTester tester) async {
@@ -173,6 +264,20 @@ void main() {
         'grant.reactivated',
         'grant.revoked',
         'tokens.revoked',
+        'auth.mfa_challenge',
+        'auth.mfa_failed',
+        'auth.mfa_locked',
+        'mfa.recovery_code_used',
+        'sessions.end_others',
+        'session.evicted',
+        'session.idle_ended',
+        'session.grant_expired',
+        'audit.pruned',
+        'mfa.enrolled',
+        'mfa.confirmed',
+        'mfa.confirm_failed',
+        'mfa.reset',
+        'mfa.status',
       ];
       answerWith(<Map<String, dynamic>>[
         for (final (int index, String action) in actions.indexed)

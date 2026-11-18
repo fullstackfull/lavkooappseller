@@ -5,6 +5,7 @@ import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platf
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_audit_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_market_models.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_mfa_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_session_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/repositories/platform_admin_repository_interface.dart';
@@ -100,6 +101,23 @@ void main() {
 
       expect(repository.signIns, <String>['owner@example.test/a-password/Pixel 9']);
     });
+
+    test('hands the second step to the repository as it is: the challenge, the way and the code', () async {
+      final PlatformAdminService service = serviceAt(DateTime(2026, 11, 17));
+
+      await service.signInWithSecondFactor(
+          challenge: 'lkpc_x', method: PlatformAdminMfaMethod.recoveryCode, code: 'abcde-fghj2');
+
+      expect(repository.secondSteps, <String>['lkpc_x/recoveryCode/abcde-fghj2']);
+    });
+
+    test('asks the repository to end the other sessions, and nothing more', () async {
+      final PlatformAdminService service = serviceAt(DateTime(2026, 11, 17));
+
+      await service.endOtherSessions();
+
+      expect(repository.endOtherSessionsCalls, 1);
+    });
   });
 }
 
@@ -108,6 +126,8 @@ class _RecordingRepository implements PlatformAdminRepositoryInterface {
   final List<String> alertCalls = <String>[];
   final List<String> auditCalls = <String>[];
   final List<String> signIns = <String>[];
+  final List<String> secondSteps = <String>[];
+  int endOtherSessionsCalls = 0;
 
   static const PlatformAdminResult<Never> _nothing = PlatformAdminResult<Never>.failure(PlatformAdminFailure.network());
 
@@ -135,12 +155,28 @@ class _RecordingRepository implements PlatformAdminRepositoryInterface {
   }
 
   @override
-  Future<PlatformAdminResult<PlatformAdminSignIn>> signIn({
+  Future<PlatformAdminResult<PlatformAdminSignInStep>> signIn({
     required String email,
     required String password,
     required String deviceName,
   }) async {
     signIns.add('$email/$password/$deviceName');
+    return _nothing;
+  }
+
+  @override
+  Future<PlatformAdminResult<PlatformAdminSignIn>> signInWithSecondFactor({
+    required String challenge,
+    required PlatformAdminMfaMethod method,
+    required String code,
+  }) async {
+    secondSteps.add('$challenge/${method.name}/$code');
+    return _nothing;
+  }
+
+  @override
+  Future<PlatformAdminResult<int>> endOtherSessions() async {
+    endOtherSessionsCalls++;
     return _nothing;
   }
 

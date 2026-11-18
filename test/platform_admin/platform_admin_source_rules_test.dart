@@ -87,6 +87,89 @@ void main() {
     });
   });
 
+  group('the second step of the sign-in', () {
+    /// The only files that may know what the server gave for the second step: the model that reads it, the layers that carry it and the controller that holds it.
+    bool mayKnowTheChallenge(String path) => <String>[
+          'platform_admin_mfa_models.dart',
+          'platform_admin_session_models.dart',
+          'platform_admin_repository.dart',
+          'platform_admin_repository_interface.dart',
+          'platform_admin_service.dart',
+          'platform_admin_service_interface.dart',
+          'platform_admin_controller.dart',
+        ].any(path.endsWith);
+
+    test('the challenge is named only where it is read, carried and held, and in no screen, text, store or failure',
+        () {
+      // The name of an action of the audit log, auth.mfa_challenge, is a line of the log and not the secret.
+      expect(offences(RegExp(r'(?<!mfa_)[cC]hallenge'), except: mayKnowTheChallenge), isEmpty);
+    });
+
+    test('nothing the shell holds is carried by a route: no argument, no named route, no route settings', () {
+      expect(
+          offences(RegExp(
+              r'\barguments\b|RouteSettings|\.settings\b|pushNamed|pushReplacementNamed|onGenerateRoute|routeName')),
+          isEmpty);
+    });
+
+    test('the token store keeps the session, and has no word for the second step', () {
+      final String store =
+          File('lib/features/platform_admin/domain/repositories/platform_admin_token_store.dart').readAsStringSync();
+
+      expect(store, isNot(contains(RegExp(r'[cC]hallenge|[Mm]fa|[Rr]ecovery|SecondFactor|\bcode\b'))));
+      expect(RegExp(r'jsonEncode\(<String, Object\?>\{([^}]*)\}\)').firstMatch(store)!.group(1)!.trim(),
+          "'token': session.token,\n            'expires_at': session.expiresAt?.toUtc().toIso8601String(),");
+    });
+
+    test('no field of the shell takes part in autofill, and the fields of the second step correct and suggest nothing',
+        () {
+      expect(offences(RegExp(r'autofillHints\s*:|AutofillGroup|AutofillHints\.|autofillConfiguration')), isEmpty);
+
+      final String screen =
+          File('lib/features/platform_admin/screens/platform_admin_second_factor_screen.dart').readAsStringSync();
+      expect(screen, contains('autocorrect: false'));
+      expect(screen, contains('enableSuggestions: false'));
+      expect(screen, contains('enableIMEPersonalizedLearning: false'));
+    });
+
+    test(
+        'what is typed is emptied when the screen is left, and the one timer of the shell is cancelled with its screen',
+        () {
+      final String screen =
+          File('lib/features/platform_admin/screens/platform_admin_second_factor_screen.dart').readAsStringSync();
+
+      expect(RegExp(r'void dispose\(\) \{[^}]*_timer\?\.cancel\(\);[^}]*_code\.clear\(\);').hasMatch(screen), isTrue);
+      expect(
+          offences(RegExp(r'\bTimer\b'),
+              except: (String path) => path.endsWith('platform_admin_second_factor_screen.dart')),
+          isEmpty);
+    });
+  });
+
+  group('the rest of the app', () {
+    test('reaches the shell through two files only: the registration of its objects and the entry on the login screen',
+        () {
+      final List<String> reaching = <String>[
+        for (final FileSystemEntity entity in Directory('lib').listSync(recursive: true))
+          if (entity is File &&
+              entity.path.endsWith('.dart') &&
+              !entity.path.startsWith('lib/features/platform_admin/') &&
+              entity.readAsStringSync().contains('features/platform_admin/'))
+            entity.path,
+      ]..sort();
+
+      expect(reaching, <String>['lib/di_container.dart', 'lib/features/auth/screens/login_screen.dart']);
+    });
+
+    test('and the one shared widget the shell asks more of keeps what it did for everyone else', () {
+      final String field = File('lib/common/basewidgets/textfeild/custom_text_feild_widget.dart').readAsStringSync();
+
+      expect(field, contains('this.autocorrect = true,'));
+      expect(field, contains('this.enableSuggestions = true,'));
+      expect(field, contains('this.enableIMEPersonalizedLearning = true,'));
+    });
+  });
+
   group('what leaves the phone, and what stays on it', () {
     test('nothing prints and nothing logs: not a print, not a debugPrint, not a logger', () {
       expect(

@@ -37,6 +37,9 @@ class PlatformAdminFailureView extends StatelessWidget {
     final String? hint = PlatformAdminTexts.failureHint(context, failure);
     final bool notAllowed = failure.kind == PlatformAdminFailureKind.marketNotAllowed;
 
+    // Asking again for what the grant does not include would only be refused again.
+    final bool refused = notAllowed || failure.kind == PlatformAdminFailureKind.capabilityNotAllowed;
+
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(Dimensions.paddingSizeExtraLarge),
@@ -62,7 +65,7 @@ class PlatformAdminFailureView extends StatelessWidget {
               onPressed: onBackToAllMarkets,
               child: Text(getTranslated('platform_admin_back_to_all_markets', context)!),
             )
-          else if (!notAllowed && onRetry != null)
+          else if (!refused && onRetry != null)
             ElevatedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded, size: Dimensions.iconSizeDefault),
@@ -79,7 +82,10 @@ class PlatformAdminNote extends StatelessWidget {
   final String text;
   final IconData icon;
 
-  const PlatformAdminNote({super.key, required this.text, this.icon = Icons.info_outline});
+  /// Puts the note away. Without it the note stays.
+  final VoidCallback? onDismiss;
+
+  const PlatformAdminNote({super.key, required this.text, this.icon = Icons.info_outline, this.onDismiss});
 
   @override
   Widget build(BuildContext context) {
@@ -94,6 +100,16 @@ class PlatformAdminNote extends StatelessWidget {
         Icon(icon, size: Dimensions.iconSizeDefault, color: Theme.of(context).primaryColor),
         const SizedBox(width: Dimensions.paddingSizeSmall),
         Expanded(child: Text(text, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall))),
+        if (onDismiss != null)
+          InkWell(
+            onTap: onDismiss,
+            borderRadius: BorderRadius.circular(Dimensions.radiusPill),
+            child: Padding(
+              padding: const EdgeInsets.all(Dimensions.paddingSizeVeryTiny),
+              child:
+                  Icon(Icons.close, size: Dimensions.iconSizeDefault, semanticLabel: getTranslated('dismiss', context)),
+            ),
+          ),
       ]),
     );
   }

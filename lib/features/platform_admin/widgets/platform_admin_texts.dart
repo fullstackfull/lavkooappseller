@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_alert_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_audit_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_mfa_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
 import 'package:syriacosmeticsmanger/helper/date_converter.dart';
 import 'package:syriacosmeticsmanger/localization/app_localization.dart';
@@ -67,7 +68,8 @@ abstract final class PlatformAdminTexts {
       };
 
   /// What a line of the audit log says was done. An action the app has not heard of
-  /// is written out from its own name.
+  /// is shown as its own name, as the server wrote it: the log is evidence, and a name the app made up
+  /// from it would be a different line.
   static String auditAction(BuildContext context, String action) => switch (action) {
         'auth.login' => getTranslated('platform_admin_action_auth_login', context)!,
         'auth.login_failed' => getTranslated('platform_admin_action_auth_login_failed', context)!,
@@ -84,7 +86,21 @@ abstract final class PlatformAdminTexts {
         'grant.reactivated' => getTranslated('platform_admin_action_grant_reactivated', context)!,
         'grant.revoked' => getTranslated('platform_admin_action_grant_revoked', context)!,
         'tokens.revoked' => getTranslated('platform_admin_action_tokens_revoked', context)!,
-        _ => action.replaceAll('.', ' ').toTitleCase(),
+        'auth.mfa_challenge' => getTranslated('platform_admin_action_auth_mfa_challenge', context)!,
+        'auth.mfa_failed' => getTranslated('platform_admin_action_auth_mfa_failed', context)!,
+        'auth.mfa_locked' => getTranslated('platform_admin_action_auth_mfa_locked', context)!,
+        'mfa.recovery_code_used' => getTranslated('platform_admin_action_mfa_recovery_code_used', context)!,
+        'sessions.end_others' => getTranslated('platform_admin_action_sessions_end_others', context)!,
+        'session.evicted' => getTranslated('platform_admin_action_session_evicted', context)!,
+        'session.idle_ended' => getTranslated('platform_admin_action_session_idle_ended', context)!,
+        'session.grant_expired' => getTranslated('platform_admin_action_session_grant_expired', context)!,
+        'audit.pruned' => getTranslated('platform_admin_action_audit_pruned', context)!,
+        'mfa.enrolled' => getTranslated('platform_admin_action_mfa_enrolled', context)!,
+        'mfa.confirmed' => getTranslated('platform_admin_action_mfa_confirmed', context)!,
+        'mfa.confirm_failed' => getTranslated('platform_admin_action_mfa_confirm_failed', context)!,
+        'mfa.reset' => getTranslated('platform_admin_action_mfa_reset', context)!,
+        'mfa.status' => getTranslated('platform_admin_action_mfa_status', context)!,
+        _ => action,
       };
 
   /// Who a line of the audit log is about: this admin, another, or the operator at the console.
@@ -132,6 +148,8 @@ abstract final class PlatformAdminTexts {
   static String failureTitle(BuildContext context, PlatformAdminFailure failure) => switch (failure.kind) {
         PlatformAdminFailureKind.network => getTranslated('connection_failed_title', context)!,
         PlatformAdminFailureKind.marketNotAllowed => getTranslated('platform_admin_market_not_allowed', context)!,
+        PlatformAdminFailureKind.capabilityNotAllowed =>
+          getTranslated('platform_admin_capability_not_allowed', context)!,
         PlatformAdminFailureKind.notAvailable => getTranslated('platform_admin_not_available', context)!,
         PlatformAdminFailureKind.notReady => getTranslated('platform_admin_not_ready', context)!,
         PlatformAdminFailureKind.throttled => _tryAgain(context, failure),
@@ -149,7 +167,10 @@ abstract final class PlatformAdminTexts {
 
   static IconData failureIcon(PlatformAdminFailure failure) => switch (failure.kind) {
         PlatformAdminFailureKind.network => Icons.wifi_off_rounded,
-        PlatformAdminFailureKind.marketNotAllowed || PlatformAdminFailureKind.unauthenticated => Icons.lock_outline,
+        PlatformAdminFailureKind.marketNotAllowed ||
+        PlatformAdminFailureKind.capabilityNotAllowed ||
+        PlatformAdminFailureKind.unauthenticated =>
+          Icons.lock_outline,
         PlatformAdminFailureKind.notAvailable => Icons.block_outlined,
         PlatformAdminFailureKind.notReady => Icons.hourglass_empty_rounded,
         PlatformAdminFailureKind.throttled => Icons.timer_outlined,
@@ -162,6 +183,30 @@ abstract final class PlatformAdminTexts {
       failure.kind == PlatformAdminFailureKind.unauthenticated
           ? getTranslated('platform_admin_sign_in_failed', context)!
           : failureTitle(context, failure);
+
+  /// What the second step says when a code did not open a session. A code the API refused is said as that and with how
+  /// many tries are left and nothing more, because the API says no more; anything else is said as what it is.
+  static String secondFactorFailure(BuildContext context, PlatformAdminFailure failure, {required int triesLeft}) =>
+      failure.kind == PlatformAdminFailureKind.unauthenticated
+          ? '${getTranslated('platform_admin_mfa_wrong_code', context)!}\n${getTranslated('platform_admin_mfa_tries_left', context)!}: $triesLeft'
+          : failureTitle(context, failure);
+
+  /// How a session passed the second factor.
+  static String mfaMethodName(BuildContext context, PlatformAdminMfaMethod method) => switch (method) {
+        PlatformAdminMfaMethod.totp => getTranslated('platform_admin_mfa_totp', context)!,
+        PlatformAdminMfaMethod.recoveryCode => getTranslated('platform_admin_mfa_recovery_code', context)!,
+      };
+
+  /// What to say when few recovery codes are left. With none, the admin has to ask for a new second factor; with some, for new codes.
+  static String recoveryCodesLow(BuildContext context, int left) => left == 0
+      ? getTranslated('platform_admin_mfa_recovery_none', context)!
+      : '${getTranslated('platform_admin_mfa_recovery_low', context)!}: $left. ${getTranslated('platform_admin_mfa_recovery_low_advice', context)!}';
+
+  /// Why the second step was left, said on the password step.
+  static String secondFactorEnd(BuildContext context, PlatformAdminSecondFactorEnd end) => switch (end) {
+        PlatformAdminSecondFactorEnd.expired => getTranslated('platform_admin_mfa_expired', context)!,
+        PlatformAdminSecondFactorEnd.triesUsed => getTranslated('platform_admin_mfa_tries_used', context)!,
+      };
 
   /// The time of day a wait ends, in the phone's own zone.
   static String tryAgainClock(DateTime retryAt) => DateFormat('HH:mm').format(retryAt.toLocal());

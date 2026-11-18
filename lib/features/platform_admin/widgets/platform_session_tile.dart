@@ -64,6 +64,9 @@ class PlatformSessionTile extends StatelessWidget {
         ),
         if (expiresAt != null)
           _line(context, getTranslated('platform_admin_expires', context)!, PlatformAdminTexts.moment(expiresAt)),
+        if (session.mfaMethod != null)
+          _line(context, getTranslated('platform_admin_second_factor', context)!,
+              PlatformAdminTexts.mfaMethodName(context, session.mfaMethod!)),
         if (!session.isCurrent) ...[
           const SizedBox(height: Dimensions.paddingSizeSmall),
           Align(

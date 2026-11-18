@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_capability_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 
 import 'support/fixtures.dart';
@@ -32,6 +33,36 @@ void main() {
       expect(failure.kind, PlatformAdminFailureKind.marketNotAllowed);
       expect(failure.code, 'market_not_allowed');
       expect(failure.statusCode, 403);
+    });
+
+    test('a part of the API the grant leaves out is its own failure, and names the part', () {
+      final PlatformAdminFailure failure = failureOf('error_capability_not_allowed');
+
+      expect(failure.kind, PlatformAdminFailureKind.capabilityNotAllowed);
+      expect(failure.code, 'capability_not_allowed');
+      expect(failure.statusCode, 403);
+      expect(failure.capability, PlatformCapability.audit);
+      expect(failureOf('error_capability_not_allowed_markets').capability, PlatformCapability.markets);
+    });
+
+    test('a part the app has never heard of is still a part the grant leaves out, and is named by nothing', () {
+      final PlatformAdminFailure failure = PlatformAdminFailure.fromResponse(
+        statusCode: 403,
+        body: <String, dynamic>{
+          'errors': <Object?>[
+            <String, dynamic>{'code': 'capability_not_allowed', 'message': 'x', 'capability': 'exports'},
+          ],
+        },
+        now: now,
+      );
+
+      expect(failure.kind, PlatformAdminFailureKind.capabilityNotAllowed);
+      expect(failure.capability, isNull);
+    });
+
+    test('a capability refusal is not an authentication failure: the token is good', () {
+      expect(failureOf('error_capability_not_allowed').kind, isNot(PlatformAdminFailureKind.unauthenticated));
+      expect(failureOf('error_capability_not_allowed').kind, isNot(PlatformAdminFailureKind.marketNotAllowed));
     });
 
     test('a session that is not one of mine is not found, and is not the API missing', () {
@@ -163,6 +194,11 @@ void main() {
 
     test('an answer that is not what the contract says is malformed', () {
       expect(const PlatformAdminFailure.malformed().kind, PlatformAdminFailureKind.malformed);
+    });
+
+    test('a failure that names a part says so, and still prints nothing the server said', () {
+      expect(failureOf('error_capability_not_allowed').toString(), contains('capability: audit'));
+      expect(failureOf('error_capability_not_allowed').toString(), isNot(contains('This account')));
     });
 
     test('a failure never prints what the server said, only what happened', () {

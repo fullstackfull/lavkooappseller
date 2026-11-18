@@ -141,8 +141,8 @@ class PlatformMarketSelector extends StatelessWidget {
           value: PlatformMarketCode.all,
           label: PlatformAdminTexts.allMarkets(context, restricted: controller.isRestricted),
         ),
-        for (final PlatformMarketModel market in controller.markets)
-          PlatformChipOption<String>(value: market.code, label: PlatformAdminTexts.marketName(context, market.code)),
+        for (final String code in controller.marketCodes)
+          PlatformChipOption<String>(value: code, label: PlatformAdminTexts.marketName(context, code)),
       ],
       onSelected: (String market) {
         controller.selectMarket(market);

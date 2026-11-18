@@ -1,0 +1,9 @@
+{
+  "errors": [
+    {
+      "code": "capability_not_allowed",
+      "message": "This account may not use that part of the API.",
+      "capability": "markets"
+    }
+  ]
+}

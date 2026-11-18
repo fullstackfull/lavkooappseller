@@ -17,6 +17,10 @@
   "alerts_restricted": {
     "status": 200
   },
+  "audit_logs_mfa_actions": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
   "audit_logs_owner": {
     "status": 200
   },
@@ -31,6 +35,14 @@
   },
   "error_api_switched_off_login": {
     "status": 404
+  },
+  "error_capability_not_allowed": {
+    "status": 403,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "error_capability_not_allowed_markets": {
+    "status": 403,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
   },
   "error_invalid_market": {
     "status": 422
@@ -60,6 +72,10 @@
   "login_failed_wrong_password": {
     "status": 401
   },
+  "login_mfa_required": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
   "login_restricted": {
     "status": 200
   },
@@ -86,6 +102,35 @@
   },
   "me_restricted": {
     "status": 200
+  },
+  "me_restricted_capabilities": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "me_with_capabilities": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "mfa_failed": {
+    "status": 401,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "mfa_success_recovery_code": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "mfa_success_recovery_code_none_left": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "mfa_success_totp": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "mfa_throttled": {
+    "status": 429,
+    "retry_after": "840",
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
   },
   "overview_no_markets": {
     "status": 200
@@ -114,7 +159,19 @@
   "session_revoked": {
     "status": 200
   },
+  "sessions_end_others": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "sessions_end_others_none": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
   "sessions_owner": {
     "status": 200
+  },
+  "sessions_with_mfa_method": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
   }
 }

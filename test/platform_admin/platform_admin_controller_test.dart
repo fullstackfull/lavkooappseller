@@ -114,7 +114,9 @@ void main() {
   });
 
   group('signing in', () {
-    test('succeeds with who the server says, and loads nothing until a screen asks', () async {
+    test(
+        'succeeds with who the server says, read from the API once the session is open, and loads nothing until a screen asks',
+        () async {
       final PlatformAdminController controller = newController();
       await controller.restoreSession();
       service.calls.clear();
@@ -126,17 +128,18 @@ void main() {
       expect(controller.stage, PlatformAdminStage.signedIn);
       expect(controller.profile!.adminId, 4);
       expect(controller.signInFailure, isNull);
-      expect(service.calls, <String>['signIn owner@example.test/Pixel 9']);
+      expect(service.calls, <String>['signIn owner@example.test/Pixel 9', 'profile']);
     });
 
     test('is busy while it asks, and a second tap is ignored', () async {
       final PlatformAdminController controller = newController();
-      final Gate<PlatformAdminResult<PlatformAdminSignIn>> gate = Gate<PlatformAdminResult<PlatformAdminSignIn>>();
+      final Gate<PlatformAdminResult<PlatformAdminSignInStep>> gate =
+          Gate<PlatformAdminResult<PlatformAdminSignInStep>>();
       service.onSignIn = () => gate.future;
 
       final Future<bool> first = controller.signIn(email: 'a@example.test', password: 'x', deviceName: 'Pixel');
       final bool second = await controller.signIn(email: 'a@example.test', password: 'x', deviceName: 'Pixel');
-      gate.open(PlatformAdminResult<PlatformAdminSignIn>.success(ownerSignIn()));
+      gate.open(PlatformAdminResult<PlatformAdminSignInStep>.success(PlatformAdminSessionOpened(ownerSignIn())));
 
       expect(second, isFalse);
       expect(await first, isTrue);
@@ -146,19 +149,20 @@ void main() {
 
     test('shows that it is busy', () async {
       final PlatformAdminController controller = newController();
-      final Gate<PlatformAdminResult<PlatformAdminSignIn>> gate = Gate<PlatformAdminResult<PlatformAdminSignIn>>();
+      final Gate<PlatformAdminResult<PlatformAdminSignInStep>> gate =
+          Gate<PlatformAdminResult<PlatformAdminSignInStep>>();
       service.onSignIn = () => gate.future;
 
       final Future<bool> pending = controller.signIn(email: 'a@example.test', password: 'x', deviceName: 'Pixel');
 
       expect(controller.stage, PlatformAdminStage.signingIn);
-      gate.open(PlatformAdminResult<PlatformAdminSignIn>.success(ownerSignIn()));
+      gate.open(PlatformAdminResult<PlatformAdminSignInStep>.success(PlatformAdminSessionOpened(ownerSignIn())));
       await pending;
     });
 
     test('a refusal leaves the admin signed out with the reason, and is not a session that ended', () async {
       final PlatformAdminController controller = newController();
-      service.onSignIn = () async => refused<PlatformAdminSignIn>('login_failed_wrong_password');
+      service.onSignIn = () async => refused<PlatformAdminSignInStep>('login_failed_wrong_password');
 
       final bool signedIn =
           await controller.signIn(email: 'owner@example.test', password: 'wrong', deviceName: 'Pixel 9');
@@ -172,7 +176,7 @@ void main() {
 
     test('too many attempts says when to try again', () async {
       final PlatformAdminController controller = newController();
-      service.onSignIn = () async => refused<PlatformAdminSignIn>('error_login_throttled');
+      service.onSignIn = () async => refused<PlatformAdminSignInStep>('error_login_throttled');
 
       await controller.signIn(email: 'owner@example.test', password: 'wrong', deviceName: 'Pixel 9');
 
@@ -188,14 +192,14 @@ void main() {
       };
       for (final MapEntry<String, PlatformAdminFailureKind> entry in expected.entries) {
         final PlatformAdminController controller = newController();
-        service.onSignIn = () async => refused<PlatformAdminSignIn>(entry.key);
+        service.onSignIn = () async => refused<PlatformAdminSignInStep>(entry.key);
 
         await controller.signIn(email: 'owner@example.test', password: 'x', deviceName: 'Pixel 9');
 
         expect(controller.signInFailure!.kind, entry.value, reason: entry.key);
       }
       final PlatformAdminController offline = newController();
-      service.onSignIn = () async => unreachable<PlatformAdminSignIn>();
+      service.onSignIn = () async => unreachable<PlatformAdminSignInStep>();
 
       await offline.signIn(email: 'owner@example.test', password: 'x', deviceName: 'Pixel 9');
 
@@ -206,11 +210,12 @@ void main() {
       final PlatformAdminController controller = newController();
       service.onRestore = () async => refused<PlatformAdminProfile?>('error_unauthenticated');
       await controller.restoreSession();
-      service.onSignIn = () async => refused<PlatformAdminSignIn>('login_failed_wrong_password');
+      service.onSignIn = () async => refused<PlatformAdminSignInStep>('login_failed_wrong_password');
       await controller.signIn(email: 'owner@example.test', password: 'wrong', deviceName: 'Pixel 9');
       expect(controller.signInFailure, isNotNull);
 
-      service.onSignIn = () async => PlatformAdminResult<PlatformAdminSignIn>.success(ownerSignIn());
+      service.onSignIn =
+          () async => PlatformAdminResult<PlatformAdminSignInStep>.success(PlatformAdminSessionOpened(ownerSignIn()));
       await controller.signIn(email: 'owner@example.test', password: 'right', deviceName: 'Pixel 9');
 
       expect(controller.signInFailure, isNull);
@@ -455,6 +460,14 @@ void main() {
           service.onEndSession = (int id) async => refused<int>('error_unauthenticated');
           return controller.endSession(2);
         },
+        'ending the other sessions': (PlatformAdminController controller) {
+          service.onEndOtherSessions = () async => refused<int>('error_unauthenticated');
+          return controller.endOtherSessions();
+        },
+        'reading what the grant includes again': (PlatformAdminController controller) {
+          service.onProfile = () async => refused<PlatformAdminProfile>('error_unauthenticated');
+          return controller.refreshProfile();
+        },
       };
 
       for (final MapEntry<String, Future<void> Function(PlatformAdminController)> screen in screens.entries) {
@@ -467,6 +480,36 @@ void main() {
         expect(controller.overview, isNull, reason: screen.key);
         expect(controller.profile, isNull, reason: screen.key);
       }
+    });
+
+    test(
+        'calls that are refused together end the session once, say so once, and ask for nothing afterwards, not even a sign-in',
+        () async {
+      final PlatformAdminController controller = await signedInOwnerWithOverview();
+      final Gate<PlatformAdminResult<List<PlatformSessionModel>>> sessions =
+          Gate<PlatformAdminResult<List<PlatformSessionModel>>>();
+      final Gate<PlatformAdminResult<PlatformAuditPage>> audit = Gate<PlatformAdminResult<PlatformAuditPage>>();
+      service.onSessions = () => sessions.future;
+      service.onAuditLogs = (int page) => audit.future;
+      int endings = 0;
+      controller.addListener(() {
+        if (controller.stage == PlatformAdminStage.signedOut) endings++;
+      });
+      final Future<void> loadingSessions = controller.loadSessions();
+      final Future<void> loadingAudit = controller.loadAuditLog();
+      service.calls.clear();
+
+      sessions.open(refused<List<PlatformSessionModel>>('error_unauthenticated'));
+      audit.open(refused<PlatformAuditPage>('error_unauthenticated'));
+      await Future.wait(<Future<void>>[loadingSessions, loadingAudit]);
+      await controller.loadOverview();
+      await controller.loadAlerts();
+      await controller.refreshProfile();
+
+      expect(endings, 1);
+      expect(controller.stage, PlatformAdminStage.signedOut);
+      expect(controller.sessionEnded, isTrue);
+      expect(service.calls, isEmpty, reason: 'no retry, and the password is never sent again by itself');
     });
 
     test('a market the grant does not hold is that market\'s failure, and the session goes on', () async {
