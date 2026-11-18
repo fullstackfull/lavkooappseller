@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:syriacosmeticsmanger/core/app_context.dart';
 import 'package:syriacosmeticsmanger/features/auth/controllers/auth_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/outbox_policy.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pending_pos_order.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_idempotency_key.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_order_answer.dart';
@@ -21,13 +22,16 @@ class OfflineSalesController extends ChangeNotifier {
   OfflineSalesController({required this.cartServiceInterface, required this.sharedPreferences});
 
   static const String _storageKey = 'offline_pos_orders';
-  static const int _maxAttempts = 10;
 
   List<PendingPosOrder> _pending = <PendingPosOrder>[];
   List<PendingPosOrder> get pending => List.unmodifiable(_pending);
 
   int get pendingCount => _pending.length;
   bool get hasPending => _pending.isNotEmpty;
+
+  /// The sales that have used their attempts: kept, shown to the seller with their last error, and retried or removed by the seller (OutboxPolicy).
+  List<PendingPosOrder> get failedSales => OutboxPolicy.failedAmong(_pending);
+  int get failedCount => failedSales.length;
 
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
@@ -103,9 +107,8 @@ class OfflineSalesController extends ChangeNotifier {
     return Provider.of<AuthController>(context, listen: false).isLoggedIn();
   }
 
-  /// Replays every queued sale. Entries that fail stay queued (with the attempt
-  /// count bumped) unless they have exhausted [_maxAttempts], which keeps a
-  /// permanently rejected order from blocking the ones behind it forever.
+  /// Replays every queued sale that is still replayed by itself. A sale that fails stays queued with its attempt count bumped and its last error; once it has used its attempts (OutboxPolicy)
+  /// it is not replayed again by the return of the connection, and it is not dropped either: it waits for the seller, so a permanently rejected sale never blocks the ones behind it and is never lost silently.
   Future<int> syncPending() async {
     if (_isSyncing || _pending.isEmpty) return 0;
 
@@ -128,6 +131,11 @@ class OfflineSalesController extends ChangeNotifier {
     final List<PendingPosOrder> remaining = <PendingPosOrder>[];
 
     for (final PendingPosOrder order in _pending) {
+      if (!OutboxPolicy.isReplayedAutomatically(order)) {
+        remaining.add(order);
+        continue;
+      }
+
       try {
         final dynamic response = await cartServiceInterface.placeOrderRaw(order.body, idempotencyKey: order.idempotencyKey);
         final int? statusCode = response?.response?.statusCode as int?;
@@ -139,7 +147,7 @@ class OfflineSalesController extends ChangeNotifier {
 
           // The server answered but refused the sale (a product that is not available): nothing was recorded, so it is not synced. It fails like any other replay, with the reason.
           final PendingPosOrder refused = order.copyWith(attempts: order.attempts + 1, lastError: PosOrderAnswer.refusalMessage(response?.response?.data) ?? 'sale_refused');
-          if (refused.attempts < _maxAttempts) remaining.add(refused);
+          remaining.add(refused);
           continue;
         }
         // A rejected session is not a reason to burn an attempt: the sale is
@@ -153,10 +161,10 @@ class OfflineSalesController extends ChangeNotifier {
           attempts: order.attempts + 1,
           lastError: response?.error?.toString(),
         );
-        if (retried.attempts < _maxAttempts) remaining.add(retried);
+        remaining.add(retried);
       } catch (e) {
         final PendingPosOrder retried = order.copyWith(attempts: order.attempts + 1, lastError: e.toString());
-        if (retried.attempts < _maxAttempts) remaining.add(retried);
+        remaining.add(retried);
       }
     }
 
@@ -167,6 +175,15 @@ class OfflineSalesController extends ChangeNotifier {
     _lastSyncMessage = synced > 0 ? 'sales_synced' : null;
     notifyListeners();
     return synced;
+  }
+
+  /// The seller asks for the sales that could not be sent to be tried again: each is given its attempts back and the queue is replayed.
+  Future<int> retryFailedSales() async {
+    _pending = OutboxPolicy.withFailedSalesReopened(_pending);
+    await _persist();
+    notifyListeners();
+
+    return syncPending();
   }
 
   Future<void> clear() async {

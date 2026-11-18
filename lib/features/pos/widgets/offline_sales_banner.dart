@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/glass/glass_container.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/offline_sales_controller.dart';
+import 'package:syriacosmeticsmanger/features/pos/widgets/failed_sales_sheet.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 import 'package:syriacosmeticsmanger/theme/app_glass.dart';
 import 'package:syriacosmeticsmanger/utill/dimensions.dart';
@@ -47,7 +48,7 @@ class OfflineSalesBanner extends StatelessWidget {
               Expanded(
                 child: Text(
                   offline.hasPending
-                      ? '${getTranslated('unsynced_sales', context)}: ${offline.pendingCount}'
+                      ? '${getTranslated('unsynced_sales', context)}: ${offline.pendingCount}${offline.failedCount > 0 ? '\n${getTranslated('sales_not_sent', context)}: ${offline.failedCount}' : ''}'
                       : getTranslated('working_offline', context) ?? '',
                   style: robotoMedium.copyWith(
                     fontSize: Dimensions.fontSizeSmall,
@@ -55,6 +56,16 @@ class OfflineSalesBanner extends StatelessWidget {
                   ),
                 ),
               ),
+              if (offline.failedCount > 0)
+                TextButton(
+                  onPressed: () => FailedSalesSheet.show(context),
+                  style: TextButton.styleFrom(
+                    foregroundColor: tone,
+                    padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeSmall),
+                    minimumSize: const Size(0, 36),
+                  ),
+                  child: Text(getTranslated('details', context) ?? '', style: robotoMedium.copyWith(fontSize: Dimensions.fontSizeSmall)),
+                ),
               if (offline.hasPending)
                 syncing
                     ? SizedBox(
