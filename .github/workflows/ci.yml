@@ -41,6 +41,33 @@ jobs:
       - name: Test
         run: flutter test
 
+      # The seller flows are read by name after the full run, and even when the full run is red (test/app_version_gate_test.dart is
+      # red on main by an owner decision): a step after a failed step does not run unless it says `if: always()`, so a named step is
+      # the only way what one flow proves can be read on its own.
+      - name: Test the order list, the order screen and the change of an order's status, in the request and in the handling of the answer (K-16.4)
+        if: always()
+        run: flutter test test/flows/orders_flow_test.dart
+
+      - name: Test the product list, the delete and the status switch, in the request and in the handling of the answer (K-16.4)
+        if: always()
+        run: flutter test test/flows/products_flow_test.dart
+
+      - name: Test the adding and the updating of a product, in the request and in the handling of the answer (K-16.4)
+        if: always()
+        run: flutter test test/flows/product_save_flow_test.dart
+
+      - name: Test the stock-out list, the quantity updates, the restock requests and the stock ledger, in the request and in the handling of the answer (K-16.4)
+        if: always()
+        run: flutter test test/flows/stock_flow_test.dart
+
+      - name: Test the withdrawal request, the list of withdrawals and the ledger's payouts, in the request and in the handling of the answer (K-16.4)
+        if: always()
+        run: flutter test test/flows/withdrawals_flow_test.dart
+
+      - name: Test the review list, the filter, the status switch and the reply, in the request and in the handling of the answer (K-16.4)
+        if: always()
+        run: flutter test test/flows/reviews_flow_test.dart
+
   build-android:
     runs-on: ubuntu-latest
     needs: analyze-and-test
