@@ -270,9 +270,10 @@ class _WatchedOutbox extends OfflineSalesController {
     required Map<String, dynamic> orderBody,
     required double orderAmount,
     required String customerName,
+    String? idempotencyKey,
   }) async {
     _calls.add('outbox.enqueue');
-    return super.enqueue(orderBody: orderBody, orderAmount: orderAmount, customerName: customerName);
+    return super.enqueue(orderBody: orderBody, orderAmount: orderAmount, customerName: customerName, idempotencyKey: idempotencyKey);
   }
 
   @override
