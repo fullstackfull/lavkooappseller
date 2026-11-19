@@ -19,10 +19,17 @@ class SellerMarketChoice {
       return MarketScope.allMarkets;
     }
 
-    final Object? stored = _preferences.get(AppConstants.storefrontCountry);
-    return MarketScope.fromCountryCode(stored is String ? stored : null) ??
+    return MarketScope.fromCountryCode(_storedCountryCode()) ??
         MarketScope.defaultScope;
   }
+
+  /// The headers that name the storefront a request is for, read when they are asked for: the market the seller works in now, and
+  /// none while storefronts are off.
+  Map<String, String> requestHeaders() => <String, String>{
+        if (enabled)
+          AppConstants.storefrontHeader:
+              StorefrontConfig.resolveHeaderValue(_storedCountryCode()),
+      };
 
   /// Saves [scope] as the market to work in. All Markets is not a market a request can target, so it is refused.
   Future<bool> choose(MarketScope scope) {
@@ -32,5 +39,10 @@ class SellerMarketChoice {
     }
 
     return _preferences.setString(AppConstants.storefrontCountry, countryCode);
+  }
+
+  String? _storedCountryCode() {
+    final Object? stored = _preferences.get(AppConstants.storefrontCountry);
+    return stored is String ? stored : null;
   }
 }

@@ -94,6 +94,13 @@ class SellerAnalyticsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void clearEarningStatistics() {
+    _userEarnings = null;
+    _userCommissions = null;
+    _lim = 0.0;
+    notifyListeners();
+  }
+
   /// The API mixes ints and numeric strings in one array; a leading 0 keeps
   /// the chart's first point on the axis, matching the legacy behaviour.
   List<double?> _parseAmounts(dynamic amounts) {
