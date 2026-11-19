@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_button_widget.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_snackbar_widget.dart';
 import 'package:syriacosmeticsmanger/features/seller_center/controllers/seller_center_controller.dart';
 import 'package:syriacosmeticsmanger/features/seller_center/domain/models/payout_models.dart';
+import 'package:syriacosmeticsmanger/features/storefront/market_money.dart';
 import 'package:syriacosmeticsmanger/helper/price_converter.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 import 'package:syriacosmeticsmanger/utill/dimensions.dart';
@@ -76,7 +76,7 @@ class _RequestPayoutSheetWidgetState extends State<RequestPayoutSheetWidget> {
                 TextField(
                   controller: _amountController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))],
+                  inputFormatters: MarketMoney.inputFormatters(outsideMarket: [MoneyInputFormatter(decimals: 2)]),
                   decoration: InputDecoration(
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(Dimensions.radiusSmall),
