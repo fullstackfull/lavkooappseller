@@ -71,7 +71,7 @@ void main() {
       expect(outbox, isNot(contains('_maxAttempts')), reason: 'no private ceiling after which a sale disappears');
       expect(RegExp(r'attempts\s*<').hasMatch(outbox), isFalse, reason: 'no comparison of the attempts decides whether a sale is kept');
       expect(outbox, contains('if (!OutboxPolicy.isReplayedAutomatically(order))'));
-      expect(outbox, contains('OutboxPolicy.withFailedSalesReopened(_pending)'));
+      expect(outbox, contains('OutboxPolicy.withFailedSalesReopened(_ownSales)'), reason: 'a retry reopens the failed sales of the seller who is signed in, and of no one else');
     });
 
     test('the banner says how many sales could not be sent and opens them', () {
