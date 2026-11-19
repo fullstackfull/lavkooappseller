@@ -17,14 +17,23 @@ ScriptedAnswer errorsRefusal(String code, String message, {int status = 403}) =>
       status: status,
     );
 
+/// What the API answers a seller whose session has expired: the shape the error handler's 401 branch reads first, and
+/// the one answer the app treats as a reason to sign the seller out.
+ScriptedAnswer get expiredSession => ScriptedAnswer.json(<String, Object?>{'loginStatus': 'unauthorized'}, status: 401);
+
 /// A refusal in the `message` shape the older seller endpoints use.
 ScriptedAnswer messageRefusal(String message,
         {int status = 403, Map<String, Object?> extra = const <String, Object?>{}}) =>
     ScriptedAnswer.json(<String, Object?>{...extra, 'message': message}, status: status);
 
-/// What a proxy or a crashed server sends in place of the API's own answer.
+/// What a proxy or a crashed server sends in place of the API's own answer, on a status the error handler names.
 ScriptedAnswer get crashedServer =>
     const ScriptedAnswer.page('<html><body><h1>500 Internal Server Error</h1></body></html>');
+
+/// The same page on a status the error handler does not name, which is what nginx or a CDN in front of the API sends
+/// while the API itself is unreachable.
+ScriptedAnswer get crashedProxy =>
+    const ScriptedAnswer.page('<html><head><title>502 Bad Gateway</title></head></html>', status: 502);
 
 /// An order as `orders/list` and `orders/{id}` send it: the fields the app reads, in the shapes the server sends them.
 Map<String, Object?> orderJson({

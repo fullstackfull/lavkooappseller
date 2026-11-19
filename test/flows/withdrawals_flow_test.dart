@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +6,7 @@ import 'package:syriacosmeticsmanger/core/app_context.dart';
 import 'package:syriacosmeticsmanger/data/datasource/remote/dio/dio_client.dart';
 import 'package:syriacosmeticsmanger/data/model/response/base/api_response.dart';
 import 'package:syriacosmeticsmanger/data/model/response/response_model.dart';
+import 'package:syriacosmeticsmanger/features/auth/controllers/auth_controller.dart';
 import 'package:syriacosmeticsmanger/features/profile/controllers/profile_controller.dart';
 import 'package:syriacosmeticsmanger/features/seller_center/controllers/seller_center_controller.dart';
 import 'package:syriacosmeticsmanger/features/seller_center/domain/repositories/seller_center_repository.dart';
@@ -70,7 +72,8 @@ class _RecordingShopController extends ShopController {
 /// was asked for, and the payout requests of the ledger. The real controllers, services and repositories over the app's
 /// own Dio client, with a scripted server instead of the network.
 class _WithdrawFlow {
-  _WithdrawFlow._(this.adapter, this.wallet, this.transactions, this.payouts, this.profile, this.shop);
+  _WithdrawFlow._(this.adapter, this.wallet, this.transactions, this.payouts, this.profile, this.shop, this.auth,
+      this.routes);
 
   final ScriptedAdapter adapter;
   final WalletController wallet;
@@ -78,6 +81,8 @@ class _WithdrawFlow {
   final SellerCenterController payouts;
   final _RecordingProfileController profile;
   final _RecordingShopController shop;
+  final RecordingAuthController auth;
+  final RouteLog routes;
 
   static Future<_WithdrawFlow> pump(WidgetTester tester, ScriptedAdapter adapter) async {
     final DioClient client = await FlowHarness.client(adapter);
@@ -94,20 +99,24 @@ class _WithdrawFlow {
     );
     final _RecordingProfileController profile = _RecordingProfileController();
     final _RecordingShopController shop = _RecordingShopController();
+    final RecordingAuthController auth = RecordingAuthController();
+    final RouteLog routes = RouteLog();
 
-    await FlowHarness.pump(tester, providers: [
+    await FlowHarness.pump(tester, observers: <NavigatorObserver>[routes], providers: [
       ChangeNotifierProvider<WalletController>.value(value: wallet),
       ChangeNotifierProvider<TransactionController>.value(value: transactions),
       ChangeNotifierProvider<SellerCenterController>.value(value: payouts),
       ChangeNotifierProvider<ProfileController>.value(value: profile),
       ChangeNotifierProvider<ShopController>.value(value: shop),
+      ChangeNotifierProvider<AuthController>.value(value: auth),
     ]);
 
     addTearDown(wallet.dispose);
     addTearDown(transactions.dispose);
     addTearDown(payouts.dispose);
+    addTearDown(auth.dispose);
 
-    return _WithdrawFlow._(adapter, wallet, transactions, payouts, profile, shop);
+    return _WithdrawFlow._(adapter, wallet, transactions, payouts, profile, shop, auth, routes);
   }
 
   /// The seller opens the withdraw sheet: the marketplace's methods are read, the first is chosen, and the two fields it
@@ -253,7 +262,9 @@ void main() {
     // DEFECT K-16.4-D2, written down as the app behaves today rather than as it should. `updateBalance` shows the error
     // handler's key as it came, because it calls showToast with `apiResponse.error.toString()` instead of going through
     // ApiChecker, which is where every other screen gets its words. The payout screen on the same failure shows "No
-    // internet connection", a few hundred lines below in this file, so the contrast is held by a passing test either way.
+    // internet connection", a few hundred lines below in this file, so the contrast is held by a passing test either
+    // way. This is the transport half only: the same line throws outright on a refusal whose status the handler does
+    // not name (D7 below), and never reaches ApiChecker on a 401 (D12 below).
     testWidgets('that fails in transport shows the seller the error handler\'s key, which is a defect',
         (WidgetTester tester) async {
       final _WithdrawFlow flow =
@@ -304,6 +315,75 @@ void main() {
 
       expect(flow.adapter.requests[1].fields['account_number'], '0000000000',
           reason: 'what the seller sends today. It should be "9876543210", the number now in the field');
+    });
+
+    // DEFECT K-16.4-D7, written down as the app behaves today rather than as it should, and the worst of the set
+    // because it is on the path money leaves the marketplace by. `updateBalance` asks `apiResponse.error.isNotEmpty`,
+    // which only holds for the String the error handler answers for a status it names. For every other status the
+    // handler answers the ErrorResponse object itself (D5), which has no `isNotEmpty`, so the line throws before any
+    // toast is shown. 422 is the status the seller API documents for an amount above what may be withdrawn, so the one
+    // refusal a seller is most likely to meet is the one that crashes.
+    testWidgets('that the server refuses with a 422 throws, tells the seller nothing and leaves the button loading, '
+        'which is a defect', (WidgetTester tester) async {
+      final _WithdrawFlow flow = await _WithdrawFlow.pump(
+        tester,
+        _walletServer(<ScriptedAnswer>[errorsRefusal('amount', _aboveWithdrawableText, status: 422)]),
+      );
+      await flow.fillTheSheet(tester);
+
+      final Object? thrown =
+          await FlowHarness.callThatThrows(tester, () => flow.wallet.updateBalance('9999', Get.context!));
+
+      expect(thrown, isA<NoSuchMethodError>(),
+          reason: 'what happens today: wallet_controller.dart reads isNotEmpty off an ErrorResponse. '
+              'It should be null, with the server\'s words shown');
+      expect(toasts, isEmpty, reason: 'what the seller reads today. It should be ["$_aboveWithdrawableText"]');
+      expect(FlowHarness.shown(tester), isEmpty);
+      expect(flow.wallet.isLoading, isTrue,
+          reason: 'the Request button is left spinning, because the throw skipped every _isLoading = false below it. '
+              'It should be false');
+      expect(FlowHarness.screenIsOpen(tester), isTrue);
+      expect(flow.profile.sellerInfoReads, 0);
+    });
+
+    // DEFECT K-16.4-D12, the session half of D2. Because the wallet answers a refusal itself instead of handing it to
+    // ApiChecker, a 401 never reaches the one place that signs a seller out: the seller reads the error handler's key
+    // and is left on the sheet holding a token the API will refuse again. The order list, a few hundred lines away in
+    // orders_flow_test.dart, signs out on the same answer, so the contrast is held by passing tests either way.
+    testWidgets('that the API refuses because the session expired leaves the seller signed in, which is a defect',
+        (WidgetTester tester) async {
+      final _WithdrawFlow flow = await _WithdrawFlow.pump(tester, _walletServer(<ScriptedAnswer>[expiredSession]));
+      await flow.fillTheSheet(tester);
+      final int openedBefore = flow.routes.pushed.length;
+
+      await flow.withdraw(tester);
+
+      expect(toasts, <String>['unauthorized'],
+          reason: 'what the seller reads today: the error handler\'s key, untranslated. '
+              'They should be signed out, as the order list signs them out on the same answer');
+      expect(flow.auth.sessionsWiped, 0, reason: 'what the device still holds today. It should be 1');
+      expect(flow.auth.isUnAuthorize, isFalse);
+      expect(flow.routes.pushed.length, openedBefore, reason: 'no sign-in screen was opened. One should have been');
+      expect(FlowHarness.screenIsOpen(tester), isTrue);
+    });
+
+    // The same line, repeated in `updateWithdrawRequest`: a seller editing a pending request meets the same crash.
+    testWidgets('that is edited into a 422 throws the same way and tells the seller nothing, which is a defect',
+        (WidgetTester tester) async {
+      final _WithdrawFlow flow = await _WithdrawFlow.pump(
+        tester,
+        _walletServer(<ScriptedAnswer>[errorsRefusal('amount', _aboveWithdrawableText, status: 422)]),
+      );
+      await flow.fillTheSheet(tester);
+
+      final Object? thrown = await FlowHarness.callThatThrows(
+          tester, () => flow.wallet.updateWithdrawRequest('9999', 21, Get.context!));
+
+      expect(thrown, isA<NoSuchMethodError>(),
+          reason: 'what happens today. It should be null, with the server\'s words shown');
+      expect(toasts, isEmpty, reason: 'what the seller reads today. It should be ["$_aboveWithdrawableText"]');
+      expect(flow.wallet.isLoading, isTrue, reason: 'the sheet is left loading. It should be false');
+      expect(FlowHarness.screenIsOpen(tester), isTrue);
     });
 
     testWidgets('may be edited while it is pending: a POST to the update address with the request\'s id',

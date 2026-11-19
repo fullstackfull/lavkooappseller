@@ -1,3 +1,4 @@
+import 'package:syriacosmeticsmanger/features/auth/domain/services/auth_service_interface.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/services/cart_service_interface.dart';
 import 'package:syriacosmeticsmanger/features/profile/domain/services/profice_service_interface.dart';
 import 'package:syriacosmeticsmanger/features/shop/domain/services/shop_service_interface.dart';
@@ -19,6 +20,14 @@ class UnusedProfileService implements ProfileServiceInterface {
 
 /// The same for the shop, which a flow only needs to be told to refresh.
 class UnusedShopService implements ShopServiceInterface {
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('the flow does not use ${invocation.memberName}');
+}
+
+/// The same for the seller's session, which a flow only reaches when a request comes back unauthorized: what the
+/// sign-out does to the device is the controller's business, not the flow's, so a flow records it instead.
+class UnusedAuthService implements AuthServiceInterface {
   @override
   dynamic noSuchMethod(Invocation invocation) =>
       throw UnimplementedError('the flow does not use ${invocation.memberName}');

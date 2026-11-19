@@ -10,10 +10,12 @@ import 'package:syriacosmeticsmanger/common/basewidgets/custom_toast.dart';
 import 'package:syriacosmeticsmanger/core/app_context.dart';
 import 'package:syriacosmeticsmanger/data/datasource/remote/dio/dio_client.dart';
 import 'package:syriacosmeticsmanger/data/datasource/remote/dio/logging_interceptor.dart';
+import 'package:syriacosmeticsmanger/features/auth/controllers/auth_controller.dart';
 import 'package:syriacosmeticsmanger/localization/app_localization.dart';
 import 'package:syriacosmeticsmanger/utill/app_constants.dart';
 
 import 'scripted_adapter.dart';
+import 'unused_services.dart';
 
 /// The app around a seller flow, as `main.dart` builds it where the flows are concerned: the app's own navigator key
 /// (which is how `Get.context` finds its way to the screen), the real language files, and the providers the code under
@@ -129,6 +131,21 @@ abstract final class FlowHarness {
     return result;
   }
 
+  /// Runs what the seller's tap would run, for a flow that throws today, and gives back what it threw. [runAsync]
+  /// hands an error the call did not catch to the test framework rather than back to the caller, so it is taken from
+  /// there; a call that completed gives back null, which is how a test says a crash has been fixed.
+  static Future<Object?> callThatThrows(WidgetTester tester, Future<void> Function() call) async {
+    await tester.runAsync(() async {
+      await call();
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+    });
+    final Object? thrown = tester.takeException();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 100));
+    return thrown;
+  }
+
   /// Every message on show in a toast, in the order they are drawn.
   static List<String> shown(WidgetTester tester) => tester
       .widgetList<Text>(find.descendant(of: find.byType(CustomToast), matching: find.byType(Text)))
@@ -142,6 +159,21 @@ abstract final class FlowHarness {
   static Future<void> dismissToast(WidgetTester tester) async {
     await tester.pump(const Duration(seconds: 3));
     await tester.pump(const Duration(milliseconds: 400));
+  }
+}
+
+/// The sign-out the app runs when a request comes back unauthorized, recorded rather than carried out: what it does to
+/// the device is [AuthController]'s business and is covered elsewhere, while what a flow must show is whether it
+/// happens at all, and that it happens once.
+class RecordingAuthController extends AuthController {
+  RecordingAuthController() : super(authServiceInterface: UnusedAuthService());
+
+  int sessionsWiped = 0;
+
+  @override
+  Future<bool> clearSharedData({bool fromUnAuthorizationError = false}) async {
+    sessionsWiped++;
+    return true;
   }
 }
 

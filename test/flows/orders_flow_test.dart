@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:syriacosmeticsmanger/core/app_context.dart';
 import 'package:syriacosmeticsmanger/data/datasource/remote/dio/dio_client.dart';
+import 'package:syriacosmeticsmanger/features/auth/controllers/auth_controller.dart';
+import 'package:syriacosmeticsmanger/features/auth/screens/auth_screen.dart';
 import 'package:syriacosmeticsmanger/features/order/controllers/order_controller.dart';
 import 'package:syriacosmeticsmanger/features/order/domain/repositories/order_repository.dart';
 import 'package:syriacosmeticsmanger/features/order/domain/services/order_service.dart';
@@ -28,6 +30,7 @@ const String _updatePath = '/api/v3/seller/orders/order-detail-info-update';
 const String _enNoInternet = 'No internet connection';
 const String _enTimeout = 'Connection timed out. Please try again';
 const String _enServerError = 'Server error. Please try again later';
+const String _enSomethingWentWrong = 'Something went wrong. Please try again';
 const String _enUpdated = 'Updated Successfully';
 
 /// The same two messages as ar.json writes them: what a seller in any of the six markets actually reads.
@@ -37,11 +40,13 @@ const String _arUpdated = 'تم التحديث بنجاح';
 /// The order list, the order screen and the change of an order's status, as the seller app runs them: the real
 /// controllers, services and repositories over the app's own Dio client, with a scripted server instead of the network.
 class _OrdersFlow {
-  _OrdersFlow._(this.adapter, this.orders, this.details);
+  _OrdersFlow._(this.adapter, this.orders, this.details, this.auth, this.routes);
 
   final ScriptedAdapter adapter;
   final OrderController orders;
   final OrderDetailsController details;
+  final RecordingAuthController auth;
+  final RouteLog routes;
 
   /// The language the seller reads the app in is one choice, not two: the locale the screens are built with is also the
   /// language the API is asked in, which is how the app itself keeps them together.
@@ -56,9 +61,13 @@ class _OrdersFlow {
           OrderDetailsService(orderDetailsRepositoryInterface: OrderDetailsRepository(dioClient: client)),
     );
 
-    await FlowHarness.pump(tester, locale: locale, providers: [
+    final RecordingAuthController auth = RecordingAuthController();
+    final RouteLog routes = RouteLog();
+
+    await FlowHarness.pump(tester, locale: locale, observers: <NavigatorObserver>[routes], providers: [
       ChangeNotifierProvider<OrderController>.value(value: orders),
       ChangeNotifierProvider<OrderDetailsController>.value(value: details),
+      ChangeNotifierProvider<AuthController>.value(value: auth),
       ChangeNotifierProvider<CustomerController>(
           create: (_) => CustomerController(cartServiceInterface: UnusedCartService())),
       ChangeNotifierProvider<CartController>(create: (_) => CartController(cartServiceInterface: UnusedCartService())),
@@ -66,9 +75,16 @@ class _OrdersFlow {
 
     addTearDown(orders.dispose);
     addTearDown(details.dispose);
+    addTearDown(auth.dispose);
 
-    return _OrdersFlow._(adapter, orders, details);
+    return _OrdersFlow._(adapter, orders, details, auth, routes);
   }
+
+  /// A read run as the seller's tap runs it but without drawing the frame after it: the screen an unauthorized answer
+  /// replaces the stack with needs the rest of the app to build, so what happened is read from the state and from the
+  /// routes rather than from the screen.
+  Future<void> loadListWithoutDrawing(WidgetTester tester) =>
+      tester.runAsync(() => orders.getOrderList(Get.context, 1, 'all', null));
 
   Future<void> loadList(
     WidgetTester tester, {
@@ -104,6 +120,23 @@ ScriptedAdapter _serverThatRemembersTheStatus({String initial = 'pending'}) {
     'GET $_detailsPath': (_) => ScriptedAnswer.json(<Object?>[orderLineJson(orderStatus: status)]),
     'POST $_listPath': (_) =>
         ScriptedAnswer.json(orderPageJson(<Map<String, Object?>>[orderJson(orderStatus: status)])),
+  });
+}
+
+/// A server that answers the list with the statuses it was asked for, so that a read which asks for the wrong status
+/// shows up as the wrong orders rather than as the same orders twice.
+ScriptedAdapter _serverThatHonoursTheStatusAsked() {
+  return ScriptedAdapter.routes(<String, ScriptedServer>{
+    'POST $_updatePath': (_) => ScriptedAnswer.json(<String, Object?>{'success': 1, 'message': 'Order updated'}),
+    'GET $_detailsPath': (_) => ScriptedAnswer.json(<Object?>[orderLineJson()]),
+    'POST $_listPath': (RecordedRequest request) {
+      final String asked = request.fields['status']! as String;
+      final List<String> statuses =
+          asked == 'all' ? const <String>['confirmed', 'delivered', 'canceled'] : <String>[asked];
+      return ScriptedAnswer.json(orderPageJson(<Map<String, Object?>>[
+        for (final String status in statuses) orderJson(orderStatus: status),
+      ]));
+    },
   });
 }
 
@@ -337,6 +370,58 @@ void main() {
         });
       }
     });
+
+    // The one answer whose handling changes the session rather than the screen: ApiChecker reads 'unauthorized',
+    // clears what the device holds and replaces the whole stack with the sign-in screen. The latch that keeps a
+    // dashboard's twenty parallel reads from starting twenty sign-outs is the part worth holding down, so both halves
+    // are asserted: that it happens, and that it happens once.
+    group('a session the API no longer accepts', () {
+      testWidgets('signs the seller out once and opens the sign-in screen', (WidgetTester tester) async {
+        final _OrdersFlow flow = await _OrdersFlow.pump(tester, ScriptedAdapter.always(expiredSession));
+        final int openedBefore = flow.routes.pushed.length;
+
+        await flow.loadListWithoutDrawing(tester);
+
+        expect(flow.auth.isUnAuthorize, isTrue);
+        expect(flow.auth.sessionsWiped, 1, reason: 'what the device holds is cleared, once');
+        expect(flow.routes.pushed.length, openedBefore + 1, reason: 'the sign-in screen was pushed');
+        expect((flow.routes.pushed.last as MaterialPageRoute<dynamic>).builder(Get.context!), isA<AuthScreen>());
+        expect(flow.orders.orderModel, isNull, reason: 'there is no list to show a seller who is being signed out');
+      });
+
+      testWidgets('that answers a second read in the same breath does not wipe the session twice',
+          (WidgetTester tester) async {
+        final _OrdersFlow flow = await _OrdersFlow.pump(tester, ScriptedAdapter.always(expiredSession));
+        final int openedBefore = flow.routes.pushed.length;
+
+        await flow.loadListWithoutDrawing(tester);
+        await flow.loadListWithoutDrawing(tester);
+
+        expect(flow.adapter.requests, hasLength(2), reason: 'both reads were refused');
+        expect(flow.auth.sessionsWiped, 1,
+            reason: 'the latch holds: a session the seller may already have signed back into is not wiped again');
+        expect(flow.routes.pushed.length, openedBefore + 1, reason: 'one sign-in screen, not two');
+      });
+    });
+
+    // The answer no part of the error handler names: a proxy in front of the API sends a page rather than the API's
+    // own JSON, on a status the handler has no case for. The default branch hands that page to ErrorResponse.fromJson,
+    // which indexes a String, and the TypeError that follows is not a FormatException, so the `on FormatException`
+    // catch above it does not hold it. It is thrown from inside the repository's own catch block, so it escapes the
+    // repository, the controller never reaches the lines below the call, and the seller is shown nothing at all.
+    testWidgets('that a proxy answers with a page on a status the error handler does not name throws, '
+        'which is a defect', (WidgetTester tester) async {
+      final _OrdersFlow flow = await _OrdersFlow.pump(tester, ScriptedAdapter.always(crashedProxy));
+
+      final Object? thrown =
+          await FlowHarness.callThatThrows(tester, () => flow.orders.getOrderList(Get.context, 1, 'all', null));
+
+      expect(thrown, isA<TypeError>(),
+          reason: 'what happens today: api_error_handler.dart reads an index off the page\'s text. '
+              'It should be null, with "$_enServerError" or another message shown');
+      expect(FlowHarness.shown(tester), isEmpty, reason: 'what the seller reads today. It should not be empty');
+      expect(flow.orders.orderModel, isNull);
+    });
   });
 
   group('the order screen', () {
@@ -471,8 +556,57 @@ void main() {
         <String>['POST $_updatePath', 'GET $_detailsPath', 'POST $_listPath'],
         reason: 'the screens must show what the server now says, not what they showed before',
       );
+      // DEFECT K-16.4-D9, written down as the app behaves today rather than as it should. setUpOrder asks the list for
+      // the status 'all', whatever tab the seller came from, and getOrderList replaces the page wholesale on offset 1.
+      // The test below shows what that does to a seller who came from a tab.
+      expect(flow.adapter.requests.last.fields,
+          <String, Object?>{'limit': 10, 'offset': 1, 'status': 'all', 'date_type': 'all_time'},
+          reason: 'what the re-read asks for today. It should carry the status the seller\'s tab is showing');
       expect(flow.details.orderDetails!.single.order!.orderStatus, 'confirmed');
       expect(flow.orders.orderModel!.orders!.single.orderStatus, 'confirmed');
+      expect(flow.details.isLoading, isFalse);
+    });
+
+    // DEFECT K-16.4-D9 as the seller meets it. The tab stays on Pending and orderType stays 'pending', so the next
+    // page of lazy pagination is page 2 of the pending query appended to a list of every status.
+    testWidgets('that was accepted replaces the seller\'s tab with the list of every status, which is a defect',
+        (WidgetTester tester) async {
+      final _OrdersFlow flow = await _OrdersFlow.pump(tester, _serverThatHonoursTheStatusAsked());
+
+      await FlowHarness.call(tester, () async => flow.orders.setIndex(Get.context!, 1));
+      await flow.loadDetails(tester);
+
+      expect(flow.orders.orderType, 'pending');
+      expect(flow.orders.orderModel!.orders!.map((order) => order.orderStatus), <String?>['pending']);
+
+      await flow.changeStatus(tester, status: 'confirmed');
+
+      expect(flow.orders.orderTypeIndex, 1, reason: 'the Pending tab is still the one highlighted');
+      expect(flow.orders.orderType, 'pending', reason: 'the next page will still be asked for as pending');
+      expect(flow.orders.orderModel!.orders!.map((order) => order.orderStatus),
+          <String?>['confirmed', 'delivered', 'canceled'],
+          reason: 'what the seller is left looking at today. It should be ["pending"], the tab they are on');
+    });
+
+    // DEFECT K-16.4-D10, the second shape of D1's refusal and the worse of the two. The backend answers 202 for the
+    // rules it checks before touching the order (lavkoo OrderController, the deleted customer among them), and
+    // setUpOrder tests for 200 alone. A 202 is a 2xx, so Dio builds a success and `error` is null; ApiChecker then has
+    // no message to show and falls back to its own. D1 mislabels the server's reason; this destroys it.
+    testWidgets('that the server refuses in a 202 loses the reason the server gave, which is a defect',
+        (WidgetTester tester) async {
+      const String deletedCustomerText = 'Customer account has been deleted you can\'t update status';
+      final _OrdersFlow flow = await _OrdersFlow.pump(
+        tester,
+        ScriptedAdapter.always(
+          ScriptedAnswer.json(<String, Object?>{'success': 0, 'message': deletedCustomerText}, status: 202),
+        ),
+      );
+
+      await flow.changeStatus(tester, status: 'confirmed');
+
+      expect(FlowHarness.shown(tester), <String>[_enSomethingWentWrong],
+          reason: 'what the seller reads today. It should be "$deletedCustomerText", the reason the server gave');
+      expect(flow.adapter.requests, hasLength(1), reason: 'nothing is read again, so nothing on screen moves');
       expect(flow.details.isLoading, isFalse);
     });
 

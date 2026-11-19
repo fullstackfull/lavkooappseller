@@ -311,7 +311,10 @@ void main() {
       expect(flow.reviews.isLoading, isFalse);
     });
 
-    testWidgets('by a search sends the words the seller typed', (WidgetTester tester) async {
+    // The search carries the words and nothing else, which is all the request is: what the seller has already narrowed
+    // the list to is dropped, as the test below this one takes down. So this one says only that the words arrive.
+    testWidgets('by a search from an unfiltered list sends the words the seller typed, and nothing else',
+        (WidgetTester tester) async {
       final _ReviewsFlow flow =
           await _ReviewsFlow.pump(tester, ScriptedAdapter.always(_listOf(<Map<String, Object?>>[reviewJson()])));
 
@@ -322,6 +325,33 @@ void main() {
       expect(flow.adapter.only.query, <String, String>{'search': 'serum'});
       expect(flow.reviews.reviewList.single.id, 31);
       expect(flow.reviews.isSearching, isFalse);
+    });
+
+    // DEFECT K-16.4-D8, written down as the app behaves today rather than as it should. The search field and the filter
+    // sheet are the same widget on the review screen, so a seller who has narrowed the list and then types into the
+    // search box is asking for both. searchProductReviewList builds its address as '?search=$search' alone, while the
+    // filter is only carried by buildProductReviewUrl, which the search never calls: one query path filtered, the other
+    // left open. The filter the seller set is still shown as set, so what is on screen and what was asked for disagree.
+    testWidgets('by a search drops the filter the seller already set, which is a defect', (WidgetTester tester) async {
+      final _ReviewsFlow flow =
+          await _ReviewsFlow.pump(tester, ScriptedAdapter.always(_listOf(<Map<String, Object?>>[reviewJson()])));
+      flow.reviews.setReviewStatusIndex(2);
+      flow.reviews.setReviewProductIndex(0, 7, 'Rose Serum', false);
+
+      await FlowHarness.call(tester, () => flow.reviews.filterReviewList(Get.context!, 7, '55'));
+
+      expect(flow.adapter.only.query, <String, String>{'product_id': '7', 'customer_id': '55', 'status': '0'},
+          reason: 'the filter path carries everything the seller chose');
+      flow.adapter.requests.clear();
+
+      await FlowHarness.call(tester, () => flow.reviews.searchReviewList(Get.context!, 'serum'));
+
+      expect(flow.adapter.only.query, <String, String>{'search': 'serum'},
+          reason: 'what the search asks for today. It should also carry status 0, product_id 7 and customer_id 55, '
+              'which are still the filter the screen is showing');
+      expect(flow.reviews.reviewStatusIndex, 2,
+          reason: 'the screen still reads as filtered to the reviews switched off');
+      expect(flow.reviews.selectedProductId, 7, reason: 'and still to the one product');
     });
 
     testWidgets('by a search that is refused is shown in the server\'s words and does not leave the search spinning',

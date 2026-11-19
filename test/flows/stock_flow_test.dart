@@ -531,12 +531,14 @@ void main() {
       });
     });
 
-    // DEFECT K-16.4-D4, written down as the app behaves today rather than as it should, and worse than a blank screen.
-    // `getRestockProductList` closes its `if (statusCode == 200)` without an else, and the only `_isLoading = false` it
-    // has sits inside that branch. So a refusal or a transport failure is told to nobody, and the flag the screen reads
-    // stays raised: the seller is left watching a spinner that will not stop until they leave the screen and come back.
-    // Every other read in this file reports its failure, so this test is the one that holds the exception in place.
-    testWidgets('that fail to load are told to nobody and leave the screen loading, which is a defect',
+    // DEFECT K-16.4-D4, written down as the app behaves today rather than as it should. `getRestockProductList` empties
+    // `restockProductModel` before it asks, then closes its `if (statusCode == 200)` without an else: the only
+    // `_isLoading = false` and the only `notifyListeners` it has sit inside that branch. So a refusal or a transport
+    // failure is told to nobody, the flag is left raised, and no frame is drawn to replace the one the seller is on.
+    // What they are left watching is restock_list_screen.dart's placeholder, which that screen chooses from the model
+    // being null rather than from the flag, and which nothing will now replace. Every other read in this file reports
+    // its failure, so this test is the one that holds the exception in place.
+    testWidgets('that fail to load are told to nobody and leave the screen on its placeholder, which is a defect',
         (WidgetTester tester) async {
       final _StockFlow flow = await _StockFlow.pump(tester, ScriptedAdapter.always(permissionRefusal()));
       flow.restock.brands = <Brands>[];
@@ -545,9 +547,10 @@ void main() {
 
       expect(FlowHarness.shown(tester), isEmpty,
           reason: 'what the seller is told today. It should be ["$permissionRefusalText"], the server\'s own words');
-      expect(flow.restock.isLoading, isTrue,
-          reason: 'the spinner the screen reads is never lowered, so the screen loads for ever');
-      expect(flow.restock.restockProductModel, isNull);
+      expect(flow.restock.restockProductModel, isNull,
+          reason: 'the list was emptied before the request and nothing replaced it, which is what the screen reads to '
+              'choose its placeholder');
+      expect(flow.restock.isLoading, isTrue, reason: 'the flag is left raised as well. It should be false');
       expect(flow.adapter.requests, hasLength(1));
     });
   });
@@ -693,12 +696,35 @@ void main() {
         expect(flow.inventory.isAdjusting, isFalse);
       });
 
+      // DEFECT K-16.4-D11, the write half of the same crash the order list takes on a read. A proxy in front of the API
+      // answers a page rather than JSON, on a status the error handler has no case for, and its default branch
+      // hands that page to ErrorResponse.fromJson. Indexing a String raises a TypeError, which the `on FormatException`
+      // catch above it does not hold, and which is raised from inside the repository's own catch block, so it escapes
+      // the repository: `adjust` never reaches `_isAdjusting = false`, and the sheet is left with its button spinning.
+      testWidgets('that a proxy answers with a page on a status the error handler does not name throws and leaves the '
+          'sheet spinning, which is a defect', (WidgetTester tester) async {
+        final _StockFlow flow = await _StockFlow.pump(tester, ScriptedAdapter.always(crashedProxy));
+
+        final Object? thrown = await FlowHarness.callThatThrows(
+            tester, () => flow.inventory.adjust(productId: 7, delta: -2, reason: 'damage'));
+
+        expect(thrown, isA<TypeError>(),
+            reason: 'what happens today: api_error_handler.dart reads an index off the page\'s text. '
+                'It should be null, with a message shown');
+        expect(FlowHarness.shown(tester), isEmpty, reason: 'what the seller reads today. It should not be empty');
+        expect(flow.inventory.isAdjusting, isTrue,
+            reason: 'the Save button is left spinning, because the throw skipped the lines below the call. '
+                'It should be false');
+      });
+
       // DEFECT K-16.4-D5, written down as the app behaves today rather than as it should. A failed request comes back as
       // `ApiResponse.withError`, which leaves `response` null, so the branch of `adjust` that reads the server's words out
       // of the body has nothing to read and the refusal is always the error the handler produced. ApiErrorHandler.getMessage
       // names every status it knows and answers a String for each, but its `default:` branch -- where the 422 the API
       // documents for this refusal lands -- answers the ErrorResponse object itself, and the screen is handed the name of
-      // an object. The 403 of the test above takes a named branch and reads correctly, which is why only the 422 is wrong.
+      // an object. The 403 of the test above takes a named branch and reads correctly, which is why only the 422 is
+      // wrong. Showing the name of an object is the mild end of it: the same object reaches the wallet, where the
+      // withdrawal 422 of withdrawals_flow_test.dart throws on it rather than showing anything at all.
       testWidgets('that would take the stock below zero answers the name of an object, which is a defect',
           (WidgetTester tester) async {
         final _StockFlow flow =
