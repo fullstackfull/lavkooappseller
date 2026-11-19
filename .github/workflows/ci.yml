@@ -68,6 +68,27 @@ jobs:
         if: always()
         run: flutter test test/notification_route_test.dart test/approved_rating_screens_test.dart test/product_card_rating_test.dart
 
+      - name: Test the market selector and the reload of the screens (K-03)
+        if: always()
+        run: flutter test test/market_selector
+
+      # The market selector is shown only in a build made with this flag, so the full run below tests the build without it: the tests
+      # that name the flag follow it there, and show the selector absent. This step runs the same folder with the flag on, which is the
+      # build the selector is made for, so that what a build with storefronts does is read on its own, and even when the full run is red.
+      - name: Test the market selector, the market header and the reload of the screens with the storefront flag on (K-03)
+        if: always()
+        run: flutter test --dart-define=GCC_STOREFRONTS_ENABLED=true test/market_selector
+
+      # The market's own money is written only in a build made with the flag and a stored market; the full run tests the build without the flag, in which these tests
+      # follow the flag. This step runs the same folder with the flag on, so that what a build with storefronts writes is read on its own.
+      - name: Test the market's own money, its decimals and the amounts typed (K-10)
+        if: always()
+        run: flutter test test/market_money test/market_scope_test.dart
+
+      - name: Test the market's own money with the storefront flag on (K-10)
+        if: always()
+        run: flutter test --dart-define=GCC_STOREFRONTS_ENABLED=true test/market_money test/market_scope_test.dart
+
       - name: Test
         run: flutter test
 

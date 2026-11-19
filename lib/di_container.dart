@@ -29,6 +29,7 @@ import 'package:syriacosmeticsmanger/features/statement/domain/repositories/stat
 import 'package:syriacosmeticsmanger/features/statement/domain/repositories/statement_repository_interface.dart';
 import 'package:syriacosmeticsmanger/features/statement/domain/services/statement_service.dart';
 import 'package:syriacosmeticsmanger/features/statement/domain/services/statement_service_interface.dart';
+import 'package:syriacosmeticsmanger/features/storefront/storefront_dependencies.dart';
 import 'package:syriacosmeticsmanger/features/returns/controllers/return_controller.dart';
 import 'package:syriacosmeticsmanger/features/returns/domain/repositories/return_repository.dart';
 import 'package:syriacosmeticsmanger/features/returns/domain/repositories/return_repository_interface.dart';
@@ -245,6 +246,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => sharedPreferences);
   sl.registerLazySingleton(() => Dio());
   sl.registerLazySingleton(() => LoggingInterceptor());
+  registerStorefrontDependencies(sl);
 
   // Interface
   AuthRepositoryInterface authRepoInterface = AuthRepository(dioClient: sl(), sharedPreferences: sl());

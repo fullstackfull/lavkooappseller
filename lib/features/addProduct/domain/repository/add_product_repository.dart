@@ -89,7 +89,7 @@ class AddProductRepository implements AddProductRepositoryInterface{
     if (kDebugMode) {
       print('==image is exist or not=${imageForUpload.image!.path}');
     }
-    request.headers.addAll(<String, String>{'Authorization': 'Bearer ${Provider.of<AuthController>(context,listen: false).getUserToken()}'});
+    request.headers.addAll(dioClient!.multipartHeaders(token: Provider.of<AuthController>(context,listen: false).getUserToken()));
     if(Platform.isAndroid || Platform.isIOS && imageForUpload.image != null) {
       File file = File(imageForUpload.image!.path);
       request.files.add(http.MultipartFile('image', file.readAsBytes().asStream(), file.lengthSync(), filename: file.path.split('/').last));
@@ -378,7 +378,7 @@ class AddProductRepository implements AddProductRepositoryInterface{
   @override
   Future<ApiResponse> uploadDigitalProduct(File? filePath, String token) async {
     http.MultipartRequest request = http.MultipartRequest('POST', Uri.parse('${AppConstants.baseUrl}${AppConstants.digitalProductUpload}'));
-    request.headers.addAll(<String,String>{'Authorization': 'Bearer $token'});
+    request.headers.addAll(dioClient!.multipartHeaders(token: token));
     if(filePath != null) {
       Uint8List list = await filePath.readAsBytes();
       var part = http.MultipartFile('digital_file_ready', filePath.readAsBytes().asStream(), list.length, filename: basename(filePath.path));
