@@ -30,6 +30,11 @@ class NotificationController with ChangeNotifier{
     notifyListeners();
   }
 
+  void clearNotifications() {
+    notificationModel = null;
+    notifyListeners();
+  }
+
   Future<void> seenNotification(int id) async{
     ResponseModel responseModel = await notificationServiceInterface.seenNotification(id);
     if(responseModel.isSuccess){
