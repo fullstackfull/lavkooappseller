@@ -320,7 +320,7 @@ class CustomEditDialogWidgetState extends State<CustomEditDialogWidget> {
                 padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeSmall),
                 child: CustomTextFieldWidget(
                   controller: _balanceController,
-                  textInputType: TextInputType.number,
+                  textInputType: MarketMoney.keyboardType(outsideMarket: TextInputType.number),
                   textInputAction: TextInputAction.done,
                   border: true,
                   labelText: getTranslated('enter_withdraw_amount', context) ?? '',

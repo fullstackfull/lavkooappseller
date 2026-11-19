@@ -28,7 +28,7 @@ class MarketMoney {
   /// such as 4.35 * 100 = 434.99999999999994, is not cut one unit short.
   static const int _guardDigits = 4;
 
-  static ValueGetter<MarketMoney?> _lookUp = _fromStoredMarket;
+  static ValueGetter<MarketMoney?> _lookUp = fromStoredMarket;
 
   /// The money of [scope], or null for All Markets, which has no currency.
   static MarketMoney? forScope(MarketScope scope) {
@@ -65,16 +65,20 @@ class MarketMoney {
   /// currency settings of the config write the money.
   static MarketMoney? current() => _lookUp();
 
-  /// Makes [current] answer with [lookUp] until it is given null again. The flag
-  /// is a compile-time constant, so a test cannot turn it on and works in a
-  /// market through this.
+  /// Makes [current] answer with [lookUp] until it is given null again, so that
+  /// a test works in a market without storing one.
   @visibleForTesting
   static void lookUpWith(ValueGetter<MarketMoney?>? lookUp) {
-    _lookUp = lookUp ?? _fromStoredMarket;
+    _lookUp = lookUp ?? fromStoredMarket;
   }
 
-  static MarketMoney? _fromStoredMarket() =>
-      StorefrontConfig.enabled ? fromRegisteredPreferences() : null;
+  /// The money of the market stored in the registered preferences while
+  /// storefronts are [enabled], and null while they are off. [enabled] is the
+  /// flag of the build, which is a compile-time constant: a test gives it the
+  /// value the build has not.
+  @visibleForTesting
+  static MarketMoney? fromStoredMarket({bool enabled = StorefrontConfig.enabled}) =>
+      enabled ? fromRegisteredPreferences() : null;
 
   /// The formatters of a field that takes money. In a market they are the
   /// shared [MoneyInputFormatter] with the decimals of the market's currency;
@@ -88,6 +92,15 @@ class MarketMoney {
         ? outsideMarket
         : <TextInputFormatter>[MoneyInputFormatter(decimals: market.decimals)];
   }
+
+  /// The keyboard of a field that takes money. In a market it is the one with a
+  /// decimal point, which the number pad of a phone can lack and the currencies
+  /// of the market need; outside one it is [outsideMarket], which is what the
+  /// field had before.
+  static TextInputType keyboardType({required TextInputType outsideMarket}) =>
+      current() == null
+          ? outsideMarket
+          : const TextInputType.numberWithOptions(decimal: true);
 
   /// [amount] as digits with the decimals of the currency, without the currency
   /// code or grouping: the form an amount is typed and parsed in. [truncate]

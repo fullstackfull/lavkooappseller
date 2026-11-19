@@ -22,6 +22,8 @@ class ExtraDiscountAndCouponDialogWidget extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimensions.paddingSizeSmall)),
       child: Consumer<CouponDiscountController>(
         builder: (context, couponDiscountController, _) {
+          final bool isAmountDiscount = couponDiscountController.discountTypeIndex == 0;
+
           return Container(padding: const EdgeInsets.all(Dimensions.paddingSizeSmall),
             child: Column(mainAxisSize: MainAxisSize.min,
               crossAxisAlignment:CrossAxisAlignment.start,children: [
@@ -70,11 +72,11 @@ class ExtraDiscountAndCouponDialogWidget extends StatelessWidget {
                 customTextField: CustomTextFieldWidget(
                   hintText: getTranslated('discount_hint', context),
                   controller: couponDiscountController.extraDiscountController,
-                  textInputType: TextInputType.number,
+                  textInputType: MarketMoney.keyboardType(outsideMarket: TextInputType.number),
                   border: true,
                   maxSize: couponDiscountController.discountTypeIndex == 1? 2 : null,
-                  isAmount: true,
-                  inputFormatters: couponDiscountController.discountTypeIndex == 0 ? MarketMoney.inputFormatters() : null,
+                  isAmount: !isAmountDiscount || MarketMoney.current() == null,
+                  inputFormatters: isAmountDiscount ? MarketMoney.inputFormatters() : null,
                 ),
                 title: couponDiscountController.discountTypeIndex == 1?
                 getTranslated('discount_percentage', context):

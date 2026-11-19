@@ -118,6 +118,35 @@ void main() {
       expect(MarketMoney.current(), isNull);
     });
 
+    test('the look-up of the stored market gives the market the registered preferences hold when storefronts are on, whatever the build', () async {
+      GetIt.instance.registerSingleton<SharedPreferences>(await _preferencesWith(<String, Object>{AppConstants.storefrontCountry: 'KW'}));
+
+      expect(MarketMoney.fromStoredMarket(enabled: true)?.currencyCode, 'KWD');
+      expect(MarketMoney.fromStoredMarket(enabled: true)?.decimals, 3);
+    });
+
+    test('the look-up of the stored market gives no market when storefronts are off, whatever the build and whatever is stored', () async {
+      GetIt.instance.registerSingleton<SharedPreferences>(await _preferencesWith(<String, Object>{AppConstants.storefrontCountry: 'KW'}));
+
+      expect(MarketMoney.fromStoredMarket(enabled: false), isNull);
+    });
+
+    test('the look-up of the stored market finds none, with storefronts on, when nothing or no GCC market is stored', () async {
+      expect(MarketMoney.fromStoredMarket(enabled: true), isNull);
+
+      GetIt.instance.registerSingleton<SharedPreferences>(await _preferencesWith(<String, Object>{AppConstants.storefrontCountry: 'US'}));
+
+      expect(MarketMoney.fromStoredMarket(enabled: true), isNull);
+    });
+
+    test('the flag of the build is what the look-up of the stored market follows, and what the app asks without a test in between', () async {
+      GetIt.instance.registerSingleton<SharedPreferences>(await _preferencesWith(<String, Object>{AppConstants.storefrontCountry: 'KW'}));
+      const String? expectedCode = StorefrontConfig.enabled ? 'KWD' : null;
+
+      expect(MarketMoney.fromStoredMarket()?.currencyCode, expectedCode);
+      expect(MarketMoney.current()?.currencyCode, expectedCode);
+    });
+
     test('a test can put a market in place, and take it out again', () {
       MarketMoney.lookUpWith(() => _moneyOf(MarketScope.oman));
       expect(MarketMoney.current()?.currencyCode, 'OMR');
@@ -344,6 +373,39 @@ void main() {
       final List<TextInputFormatter> before = <TextInputFormatter>[MoneyInputFormatter(decimals: 2)];
 
       expect(MarketMoney.inputFormatters(outsideMarket: before), same(before));
+    });
+  });
+
+  group('the keyboard of a money field', () {
+    const TextInputType withDecimalPoint = TextInputType.numberWithOptions(decimal: true);
+
+    test('has a decimal point in each of the six markets, whatever the keyboard the field had before', () {
+      for (final MarketScope scope in MarketScope.gccMarkets) {
+        MarketMoney.lookUpWith(() => _moneyOf(scope));
+
+        expect(MarketMoney.keyboardType(outsideMarket: TextInputType.number), withDecimalPoint, reason: scope.name);
+        expect(MarketMoney.keyboardType(outsideMarket: TextInputType.text), withDecimalPoint, reason: scope.name);
+      }
+    });
+
+    test('is not the number pad of a phone in a market, which can lack a decimal point', () {
+      MarketMoney.lookUpWith(() => _moneyOf(MarketScope.kuwait));
+
+      expect(MarketMoney.keyboardType(outsideMarket: TextInputType.number), isNot(TextInputType.number));
+      expect(MarketMoney.keyboardType(outsideMarket: TextInputType.number).decimal, isTrue);
+      expect(MarketMoney.keyboardType(outsideMarket: TextInputType.number).signed, isNot(isTrue));
+    });
+
+    test('is what the field had before while no market is working', () {
+      expect(MarketMoney.keyboardType(outsideMarket: TextInputType.number), TextInputType.number);
+      expect(MarketMoney.keyboardType(outsideMarket: TextInputType.text), TextInputType.text);
+    });
+
+    test('is what the field had before for a stored value that names no GCC market', () async {
+      final SharedPreferences preferences = await _preferencesWith(<String, Object>{AppConstants.storefrontCountry: 'US'});
+      MarketMoney.lookUpWith(() => MarketMoney.fromPreferences(preferences));
+
+      expect(MarketMoney.keyboardType(outsideMarket: TextInputType.number), TextInputType.number);
     });
   });
 }

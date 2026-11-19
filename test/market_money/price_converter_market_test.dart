@@ -279,6 +279,39 @@ void main() {
       ]);
     });
 
+    testWidgets('Kuwait: a discount is taken off before the amount is written, by each function that takes one, and the amount is not converted',
+        (WidgetTester tester) async {
+      work(MarketScope.kuwait);
+
+      await expectChecks(tester, multiCurrencyOnTheRight, <_Check>[
+        _Check('convertPriceWithoutSymbol 200 less 10 percent',
+            (BuildContext c) => PriceConverter.convertPriceWithoutSymbol(c, 200, discount: 10, discountType: 'percent'), '180.000'),
+        _Check('convertPriceWithoutSymbol 200 less 15.5 flat',
+            (BuildContext c) => PriceConverter.convertPriceWithoutSymbol(c, 200, discount: 15.5, discountType: 'flat'), '184.500'),
+        _Check('convertPriceWithoutSymbolForWithdraw 200 less 10 percent',
+            (BuildContext c) => PriceConverter.convertPriceWithoutSymbolForWithdraw(c, 200, discount: 10, discountType: 'percent'), '180.000'),
+        _Check('convertPriceWithoutSymbolForWithdraw 200 less 15.5 flat',
+            (BuildContext c) => PriceConverter.convertPriceWithoutSymbolForWithdraw(c, 200, discount: 15.5, discountType: 'flat'), '184.500'),
+        _Check('convertPriceForWithdraw 200 less 10 percent',
+            (BuildContext c) => PriceConverter.convertPriceForWithdraw(c, 200, discount: 10, discountType: 'percent'), '180.000 KWD'),
+        _Check('convertPriceForWithdraw 200 less 15.5 flat',
+            (BuildContext c) => PriceConverter.convertPriceForWithdraw(c, 200, discount: 15.5, discountType: 'flat'), '184.500 KWD'),
+      ]);
+    });
+
+    testWidgets('Kuwait: a discount that leaves a third decimal is rounded by the functions that round and cut by the ones that cut', (WidgetTester tester) async {
+      work(MarketScope.kuwait);
+
+      await expectChecks(tester, multiCurrencyOnTheRight, <_Check>[
+        _Check('convertPriceWithoutSymbol 200 less 0.0004 flat',
+            (BuildContext c) => PriceConverter.convertPriceWithoutSymbol(c, 200, discount: 0.0004, discountType: 'flat'), '200.000'),
+        _Check('convertPriceWithoutSymbolForWithdraw 200 less 0.0004 flat',
+            (BuildContext c) => PriceConverter.convertPriceWithoutSymbolForWithdraw(c, 200, discount: 0.0004, discountType: 'flat'), '199.999'),
+        _Check('convertPriceForWithdraw 200 less 0.0004 flat',
+            (BuildContext c) => PriceConverter.convertPriceForWithdraw(c, 200, discount: 0.0004, discountType: 'flat'), '199.999 KWD'),
+      ]);
+    });
+
     testWidgets('Kuwait: the position of the mark is the one the config gives the symbol, and it is on the left in a store that puts the symbol there',
         (WidgetTester tester) async {
       work(MarketScope.kuwait);

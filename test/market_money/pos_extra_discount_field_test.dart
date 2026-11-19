@@ -43,12 +43,15 @@ Future<void> _openDialog(WidgetTester tester, {required MarketScope? market, req
 
 String _discountField(WidgetTester tester) => tester.widget<TextField>(find.byType(TextField)).controller!.text;
 
+TextInputType? _keyboard(WidgetTester tester) => tester.widget<TextField>(find.byType(TextField)).keyboardType;
+
 Future<void> _type(WidgetTester tester, String text) async {
   await tester.enterText(find.byType(TextField), text);
   await tester.pump();
 }
 
-/// K-10.3: the extra discount of a sale takes the decimals of the market while it is an amount, and keeps the formatters it had while it is a percent.
+/// K-10.3: the extra discount of a sale takes the decimals of the market, and a keyboard with a decimal point, while it is an amount. While it is a percent, or while
+/// no market is working, it keeps the formatters and the number pad it had.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -61,6 +64,24 @@ void main() {
       await _type(tester, '1.23456');
 
       expect(_discountField(tester), '1.23456');
+    });
+
+    testWidgets('with no market working keeps the number pad it always had', (WidgetTester tester) async {
+      await _openDialog(tester, market: null, asPercent: false);
+
+      expect(_keyboard(tester), TextInputType.number);
+    });
+
+    testWidgets('in Kuwait has a keyboard with a decimal point, so that 0.500 can be typed on a phone whose number pad has none', (WidgetTester tester) async {
+      await _openDialog(tester, market: MarketScope.kuwait, asPercent: false);
+
+      expect(_keyboard(tester), const TextInputType.numberWithOptions(decimal: true));
+    });
+
+    testWidgets('in Saudi Arabia has a keyboard with a decimal point', (WidgetTester tester) async {
+      await _openDialog(tester, market: MarketScope.saudiArabia, asPercent: false);
+
+      expect(_keyboard(tester), const TextInputType.numberWithOptions(decimal: true));
     });
 
     testWidgets('in Kuwait takes three decimals and refuses a fourth', (WidgetTester tester) async {
@@ -98,6 +119,19 @@ void main() {
       await _type(tester, '15');
 
       expect(_discountField(tester), '15');
+    });
+
+    testWidgets('in Kuwait keeps the number pad it always had, as a percent has no use for a decimal point of its own', (WidgetTester tester) async {
+      await _openDialog(tester, market: MarketScope.kuwait, asPercent: true);
+
+      expect(_keyboard(tester), TextInputType.number);
+    });
+
+    testWidgets('with no market working keeps the number pad and the formatter of the shared amount field', (WidgetTester tester) async {
+      await _openDialog(tester, market: null, asPercent: true);
+
+      expect(_keyboard(tester), TextInputType.number);
+      expect(tester.widget<TextField>(find.byType(TextField)).inputFormatters, everyElement(isNot(isA<MoneyInputFormatter>())));
     });
   });
 }

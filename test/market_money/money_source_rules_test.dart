@@ -45,26 +45,77 @@ Map<String, String> _formatterFunctions() {
   };
 }
 
-/// Where each field that takes money is, and the controller that names it.
-const List<({String path, String field, String controller})> _moneyFields = <({String path, String field, String controller})>[
+/// The call a field makes when what it had outside a market comes from its widget or from nothing: it asks for the formatters of the market and gives none of its
+/// own, so that outside a market it keeps what its widget picks.
+final RegExp _noFormattersOfItsOwn = RegExp(r'MarketMoney\.inputFormatters\(\s*\)');
+
+/// The call a field makes when it had the formatter of two decimals outside a market.
+final RegExp _twoDecimalsOutsideAMarket = RegExp(r'MarketMoney\.inputFormatters\(\s*outsideMarket:\s*\[\s*MoneyInputFormatter\(decimals: 2\)\s*\]\s*\)');
+
+/// The call a field makes when it had a formatter written in the field itself outside a market.
+final RegExp _ownFunctionOutsideAMarket = RegExp(r'MarketMoney\.inputFormatters\(\s*outsideMarket:\s*\[\s*TextInputFormatter\.withFunction\(');
+
+/// Where each field that takes money is, the controller that names it, and the exact call it must make for its formatters: a field that gives the call no argument has
+/// no formatters of its own outside a market, and a field that gives it `outsideMarket` keeps the ones it gives.
+final List<({String path, String field, String controller, RegExp call})> _moneyFields = <({String path, String field, String controller, RegExp call})>[
   (
     path: 'lib/features/seller_center/widgets/request_payout_sheet_widget.dart',
     field: 'the amount of a payout request',
-    controller: 'controller: _amountController'
+    controller: 'controller: _amountController',
+    call: _twoDecimalsOutsideAMarket
   ),
-  (path: 'lib/features/bulk_jobs/screens/bulk_edit_screen.dart', field: 'the value of a bulk price change', controller: 'controller: _valueController'),
-  (path: 'lib/features/pos/screens/pos_screen.dart', field: 'the cash a customer paid at the point of sale', controller: 'controller: _paidAmountController'),
+  (
+    path: 'lib/features/bulk_jobs/screens/bulk_edit_screen.dart',
+    field: 'the value of a bulk price change',
+    controller: 'controller: _valueController',
+    call: _twoDecimalsOutsideAMarket
+  ),
+  (
+    path: 'lib/features/pos/widgets/paid_amount_field_widget.dart',
+    field: 'the cash a customer paid at the point of sale',
+    controller: 'controller: controller',
+    call: _noFormattersOfItsOwn
+  ),
+  (
+    path: 'lib/features/pos/widgets/extra_discount_and_coupon_dialog_widget.dart',
+    field: 'the extra discount of a sale at the point of sale',
+    controller: 'controller: couponDiscountController.extraDiscountController',
+    call: _noFormattersOfItsOwn,
+  ),
+  (
+    path: 'lib/common/basewidgets/custom_edit_dialog_widget.dart',
+    field: 'the amount of a withdrawal',
+    controller: 'controller: _balanceController',
+    call: _ownFunctionOutsideAMarket
+  ),
+  (
+    path: 'lib/features/finance_control/screens/finance_control_screen.dart',
+    field: 'the price below which a product is never sold',
+    controller: 'controller: _minPrice',
+    call: _noFormattersOfItsOwn
+  ),
+  (
+    path: 'lib/features/delivery_man/screens/withdraw/delivery_man_collect_cash_widget.dart',
+    field: 'the cash collected from a delivery man',
+    controller: 'controller: _balanceController',
+    call: _noFormattersOfItsOwn
+  ),
+];
+
+/// The fields that had the number pad outside a market, which a phone can give no decimal point: each asks the market for its keyboard and keeps the number pad
+/// outside one.
+const List<({String path, String field, String controller})> _numberPadFields = <({String path, String field, String controller})>[
+  (
+    path: 'lib/features/pos/widgets/paid_amount_field_widget.dart',
+    field: 'the cash a customer paid at the point of sale',
+    controller: 'controller: controller'
+  ),
   (
     path: 'lib/features/pos/widgets/extra_discount_and_coupon_dialog_widget.dart',
     field: 'the extra discount of a sale at the point of sale',
     controller: 'controller: couponDiscountController.extraDiscountController',
   ),
   (path: 'lib/common/basewidgets/custom_edit_dialog_widget.dart', field: 'the amount of a withdrawal', controller: 'controller: _balanceController'),
-  (
-    path: 'lib/features/finance_control/screens/finance_control_screen.dart',
-    field: 'the price below which a product is never sold',
-    controller: 'controller: _minPrice'
-  ),
   (
     path: 'lib/features/delivery_man/screens/withdraw/delivery_man_collect_cash_widget.dart',
     field: 'the cash collected from a delivery man',
@@ -120,6 +171,17 @@ void main() {
     });
   });
 
+  group('the market the app works in', () {
+    test('is looked up in the preferences, and only while storefronts are on: the flag of the build is the default of the look-up', () {
+      final String code = _codeOf('lib/features/storefront/market_money.dart');
+
+      expect(code, contains('ValueGetter<MarketMoney?> _lookUp = fromStoredMarket;'));
+      expect(code, contains('fromStoredMarket({bool enabled = StorefrontConfig.enabled}) =>'));
+      expect(code, contains('enabled ? fromRegisteredPreferences() : null'));
+      expect(RegExp(r'StorefrontConfig\.enabled').allMatches(code), hasLength(1), reason: 'the flag is read in one place only');
+    });
+  });
+
   group('the formatter', () {
     test('has a market branch in every function that writes money, and the others are named here with the reason they have none', () {
       const Set<String> writeNoMoney = <String>{
@@ -143,11 +205,55 @@ void main() {
   });
 
   group('the fields that take money', () {
-    for (final ({String path, String field, String controller}) money in _moneyFields) {
-      test('${money.field} takes its formatters from the market', () {
-        expect(_callAround(_codeOf(money.path), money.controller), contains('MarketMoney.inputFormatters('), reason: '${money.path}: ${money.field}');
+    for (final ({String path, String field, String controller, RegExp call}) money in _moneyFields) {
+      test('${money.field} asks the market for its formatters, and keeps outside a market the ones it had', () {
+        final String call = _callAround(_codeOf(money.path), money.controller);
+
+        expect(call, contains(money.call), reason: '${money.path}: ${money.field}');
+        if (identical(money.call, _noFormattersOfItsOwn)) {
+          expect(call, isNot(contains(RegExp(r'MarketMoney\.inputFormatters\(\s*outsideMarket'))),
+              reason: '${money.path}: ${money.field} had no formatter of its own outside a market');
+        }
       });
     }
+
+    for (final ({String path, String field, String controller}) money in _numberPadFields) {
+      test('${money.field} asks the market for its keyboard, and keeps the number pad outside a market', () {
+        expect(
+          _callAround(_codeOf(money.path), money.controller),
+          contains('MarketMoney.keyboardType(outsideMarket: TextInputType.number)'),
+          reason: '${money.path}: ${money.field}',
+        );
+      });
+    }
+
+    test('the paid amount and the discount of a sale take the amount rules of the shared field outside a market only, and are not fixed to a number pad', () {
+      final RegExp amountRulesOutsideAMarket = RegExp(r'isAmount:[^,]*MarketMoney\.current\(\) == null');
+
+      expect(_callAround(_codeOf('lib/features/pos/widgets/paid_amount_field_widget.dart'), 'controller: controller'), contains(amountRulesOutsideAMarket));
+      expect(
+        _callAround(_codeOf('lib/features/pos/widgets/extra_discount_and_coupon_dialog_widget.dart'), 'controller: couponDiscountController.extraDiscountController'),
+        contains(amountRulesOutsideAMarket),
+      );
+    });
+
+    test('the value of a bulk change takes the formatters of the market for an amount of money only, and not for a percent or for a count of stock', () {
+      final String code = _codeOf('lib/features/bulk_jobs/screens/bulk_edit_screen.dart');
+
+      expect(code, contains(RegExp(r'bool get _isMoney =>\s*_isPrice &&\s*!_percentModes\.contains\(_mode\);')));
+      expect(_callAround(code, 'controller: _valueController'), contains(RegExp(r'_isMoney\s*\?\s*MarketMoney\.inputFormatters\(')));
+    });
+
+    test('the point of sale builds the cash a customer paid with the field that asks the market, and hands it what the field it replaced had', () {
+      final String code = _codeOf('lib/features/pos/screens/pos_screen.dart');
+      final String call = _callAround(code, 'controller: _paidAmountController');
+
+      expect(code, contains('PaidAmountFieldWidget('));
+      expect(code, isNot(contains('CustomTextFieldWidget(')));
+      expect(call, contains('isEnabled: cartController.paymentTypeIndex == 0'));
+      expect(call, contains('isPaidAmountLess: cartController.isPaidAmountLess'));
+      expect(call, contains('focusNode: _paidAmountNode'));
+    });
 
     test('the price and the discount of the fee simulator are money and take their formatters from the market, its quantity is not money', () {
       final String code = _codeOf('lib/features/finance_control/screens/finance_control_screen.dart');
@@ -178,6 +284,26 @@ void main() {
 
       expect(_callAround(source, 'controller: first'), contains('MarketMoney.inputFormatters('));
       expect(_callAround(source, 'controller: second'), isNot(contains('MarketMoney.inputFormatters(')));
+    });
+
+    test('the exact calls tell a call with no argument from one with the formatter of two decimals or one of its own (it guards the guard)', () {
+      const String none = 'inputFormatters: MarketMoney.inputFormatters(),';
+      const String noneOnSeveralLines = 'inputFormatters: MarketMoney.inputFormatters(\n  ),';
+      const String twoDecimals = 'inputFormatters: MarketMoney.inputFormatters(outsideMarket: [MoneyInputFormatter(decimals: 2)]),';
+      const String threeDecimals = 'inputFormatters: MarketMoney.inputFormatters(outsideMarket: [MoneyInputFormatter(decimals: 3)]),';
+      const String ownFunction = 'inputFormatters: MarketMoney.inputFormatters(outsideMarket: [\n TextInputFormatter.withFunction((a, b) => b),\n ]),';
+
+      expect(_noFormattersOfItsOwn.hasMatch(none), isTrue);
+      expect(_noFormattersOfItsOwn.hasMatch(noneOnSeveralLines), isTrue);
+      expect(_noFormattersOfItsOwn.hasMatch(twoDecimals), isFalse);
+      expect(_noFormattersOfItsOwn.hasMatch(ownFunction), isFalse);
+
+      expect(_twoDecimalsOutsideAMarket.hasMatch(twoDecimals), isTrue);
+      expect(_twoDecimalsOutsideAMarket.hasMatch(threeDecimals), isFalse);
+      expect(_twoDecimalsOutsideAMarket.hasMatch(none), isFalse);
+
+      expect(_ownFunctionOutsideAMarket.hasMatch(ownFunction), isTrue);
+      expect(_ownFunctionOutsideAMarket.hasMatch(twoDecimals), isFalse);
     });
   });
 }

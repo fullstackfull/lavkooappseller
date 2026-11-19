@@ -62,7 +62,7 @@ class CollectedCashFromDeliveryManDialogState extends State<CollectedCashFromDel
                                  ...?MarketMoney.inputFormatters(),
                                  LengthLimitingTextInputFormatter(20),
                                 ],
-                                keyboardType: TextInputType.number,
+                                keyboardType: MarketMoney.keyboardType(outsideMarket: TextInputType.number),
                                 controller: _balanceController,
                                 textAlignVertical: TextAlignVertical.center,
                                 textAlign: TextAlign.center,

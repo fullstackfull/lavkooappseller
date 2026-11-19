@@ -22,9 +22,11 @@ import 'support/money_store.dart';
 ApiResponse _answer(Map<String, dynamic> body) =>
     ApiResponse.withSuccess(Response<Map<String, dynamic>>(requestOptions: RequestOptions(path: '/products'), statusCode: 200, data: body));
 
-/// The bulk job API as far as a price change reaches it. It refuses the change, so the screen stays where it is, and keeps what the change carried.
+/// The bulk job API as far as a change of prices or of stock reaches it. It refuses the change, so the screen stays where it is, and keeps what the change
+/// carried.
 class _RecordingBulkJobService implements BulkJobServiceInterface {
   final List<({String mode, num value})> priceChanges = <({String mode, num value})>[];
+  final List<({String mode, int value})> stockChanges = <({String mode, int value})>[];
 
   @override
   Future<dynamic> getSellerProductList({
@@ -56,7 +58,10 @@ class _RecordingBulkJobService implements BulkJobServiceInterface {
   Future<dynamic> getBulkJob(int id) => throw UnimplementedError();
 
   @override
-  Future<dynamic> submitStockUpdate({required List<int> productIds, required String mode, required int value, String? note}) => throw UnimplementedError();
+  Future<dynamic> submitStockUpdate({required List<int> productIds, required String mode, required int value, String? note}) async {
+    stockChanges.add((mode: mode, value: value));
+    return ApiResponse.withError('refused');
+  }
 
   @override
   Future<dynamic> downloadFailures(int id) => throw UnimplementedError();
@@ -75,8 +80,8 @@ final Map<String, dynamic> _storeWithSeveralCurrencies = moneyStoreConfig(
   currencies: <Map<String, dynamic>>[moneyStoreCurrency(1, r'$', 'USD', 1), moneyStoreCurrency(2, 'SR', 'SAR', 3.75)],
 );
 
-/// Opens the bulk edit screen, chooses the only product and opens the change of prices.
-Future<_RecordingBulkJobService> _openPriceChange(WidgetTester tester, {required MarketScope? market}) async {
+/// Opens the bulk edit screen, chooses the only product and opens the sheet that [button] names: the change of prices or the change of stock.
+Future<_RecordingBulkJobService> _openChange(WidgetTester tester, {required MarketScope? market, required String button}) async {
   MarketMoney.lookUpWith(market == null ? null : () => MarketMoney.forScope(market));
   SharedPreferences.setMockInitialValues(<String, Object>{});
   final SharedPreferences preferences = await SharedPreferences.getInstance();
@@ -100,11 +105,17 @@ Future<_RecordingBulkJobService> _openPriceChange(WidgetTester tester, {required
 
   await tester.tap(find.text('Rose serum'));
   await tester.pump();
-  await tester.tap(find.widgetWithText(CustomButtonWidget, 'bulk_change_price'));
+  await tester.tap(find.widgetWithText(CustomButtonWidget, button));
   await tester.pumpAndSettle();
 
   return service;
 }
+
+Future<_RecordingBulkJobService> _openPriceChange(WidgetTester tester, {required MarketScope? market}) =>
+    _openChange(tester, market: market, button: 'bulk_change_price');
+
+Future<_RecordingBulkJobService> _openStockChange(WidgetTester tester, {required MarketScope? market}) =>
+    _openChange(tester, market: market, button: 'bulk_change_stock');
 
 Finder get _valueField => find.descendant(of: find.byType(BottomSheet), matching: find.byType(TextField));
 
@@ -125,7 +136,10 @@ Future<void> _apply(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// K-10.3: the value of a bulk price change takes the decimals of the market when it is an amount, keeps two when it is a percent, and is sent as typed.
+TextInputType? _keyboard(WidgetTester tester) => tester.widget<TextField>(_valueField).keyboardType;
+
+/// K-10.3: the value of a bulk price change takes the decimals of the market when it is an amount, keeps two when it is a percent, and is sent as typed. The value of
+/// a change of stock is a count: it takes no decimals, in a market or out of one.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -141,6 +155,35 @@ void main() {
       await _apply(tester);
 
       expect(service.priceChanges, <({String mode, num value})>[(mode: 'set', value: 12.34)]);
+    });
+
+    for (final String mode in <String>['increase_amount', 'decrease_amount']) {
+      testWidgets('an amount to ${mode.split('_').first} takes two decimals as well, and is sent with them', (WidgetTester tester) async {
+        final _RecordingBulkJobService service = await _openPriceChange(tester, market: null);
+        await _choose(tester, mode);
+
+        await _type(tester, '0.1256');
+        expect(_value(tester), '0.12');
+
+        await _apply(tester);
+
+        expect(service.priceChanges, <({String mode, num value})>[(mode: mode, value: 0.12)]);
+      });
+    }
+
+    testWidgets('a percent takes two decimals, as it always did, and is sent with them', (WidgetTester tester) async {
+      final _RecordingBulkJobService service = await _openPriceChange(tester, market: null);
+
+      for (final String mode in <String>['increase_percent', 'decrease_percent']) {
+        await _choose(tester, mode);
+        await _type(tester, '7.256');
+
+        expect(_value(tester), '7.25', reason: mode);
+      }
+
+      await _apply(tester);
+
+      expect(service.priceChanges, <({String mode, num value})>[(mode: 'decrease_percent', value: 7.25)]);
     });
   });
 
@@ -170,14 +213,26 @@ void main() {
       expect(service.priceChanges, <({String mode, num value})>[(mode: 'set', value: 12.345)]);
     });
 
+    testWidgets('the keyboard of a price has a decimal point', (WidgetTester tester) async {
+      await _openPriceChange(tester, market: MarketScope.kuwait);
+
+      expect(_keyboard(tester)?.decimal, isTrue);
+    });
+
     for (final String mode in <String>['increase_amount', 'decrease_amount']) {
-      testWidgets('an amount to ${mode.split('_').first} takes three decimals as well', (WidgetTester tester) async {
-        await _openPriceChange(tester, market: MarketScope.kuwait);
+      testWidgets('an amount to ${mode.split('_').first} takes three decimals as well, and is sent with them', (WidgetTester tester) async {
+        final _RecordingBulkJobService service = await _openPriceChange(tester, market: MarketScope.kuwait);
         await _choose(tester, mode);
 
         await _type(tester, '0.125');
-
         expect(_value(tester), '0.125');
+
+        await _type(tester, '0.1256');
+        expect(_value(tester), '0.125');
+
+        await _apply(tester);
+
+        expect(service.priceChanges, <({String mode, num value})>[(mode: mode, value: 0.125)]);
       });
     }
 
@@ -205,5 +260,38 @@ void main() {
 
       expect(_value(tester), '12.34');
     });
+  });
+
+  group('a change of stock', () {
+    for (final MarketScope? market in <MarketScope?>[null, MarketScope.kuwait]) {
+      final String where = market == null ? 'with no market working' : 'in Kuwait';
+
+      testWidgets('$where: takes whole units only, whichever way the stock is changed', (WidgetTester tester) async {
+        await _openStockChange(tester, market: market);
+
+        for (final String mode in <String>['set', 'increase', 'decrease']) {
+          await _choose(tester, mode);
+          await _type(tester, '12.5');
+
+          expect(_value(tester), '12', reason: mode);
+        }
+      });
+
+      testWidgets('$where: is sent as the whole number that was typed', (WidgetTester tester) async {
+        final _RecordingBulkJobService service = await _openStockChange(tester, market: market);
+        await _choose(tester, 'increase');
+
+        await _type(tester, '12.5');
+        await _apply(tester);
+
+        expect(service.stockChanges, <({String mode, int value})>[(mode: 'increase', value: 12)]);
+      });
+
+      testWidgets('$where: keeps the keyboard of a count, which has no decimal point', (WidgetTester tester) async {
+        await _openStockChange(tester, market: market);
+
+        expect(_keyboard(tester)?.decimal, isFalse);
+      });
+    }
   });
 }

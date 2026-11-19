@@ -109,12 +109,15 @@ Future<_RecordingDeliveryService> _openDialog(WidgetTester tester, {required Mar
 
 String _amountField(WidgetTester tester) => tester.widget<TextFormField>(find.byType(TextFormField)).controller!.text;
 
+TextInputType? _keyboard(WidgetTester tester) => tester.widget<TextField>(find.byType(TextField)).keyboardType;
+
 Future<void> _type(WidgetTester tester, String text) async {
   await tester.enterText(find.byType(TextFormField), text);
   await tester.pump();
 }
 
-/// K-10.1 and K-10.3: the cash a seller collects from a delivery man is typed in the decimals of the market, beside the market's currency, and sent as typed.
+/// K-10.1 and K-10.3: the cash a seller collects from a delivery man is typed in the decimals of the market, on a keyboard with a decimal point, beside the market's
+/// currency, and sent as typed.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -129,6 +132,12 @@ void main() {
       expect(find.text('SR'), findsOneWidget);
       expect(find.text('KWD'), findsNothing);
       expect(_amountField(tester), '12.3456');
+    });
+
+    testWidgets('the keyboard is the number pad, as it always was', (WidgetTester tester) async {
+      await _openDialog(tester, market: null);
+
+      expect(_keyboard(tester), TextInputType.number);
     });
   });
 
@@ -147,6 +156,12 @@ void main() {
       await _type(tester, '12.3456');
 
       expect(_amountField(tester), '12.345');
+    });
+
+    testWidgets('the keyboard has a decimal point, so that 0.500 can be typed on a phone whose number pad has none', (WidgetTester tester) async {
+      await _openDialog(tester, market: MarketScope.kuwait);
+
+      expect(_keyboard(tester), const TextInputType.numberWithOptions(decimal: true));
     });
 
     testWidgets('the field keeps its limit of 20 characters', (WidgetTester tester) async {
@@ -176,6 +191,7 @@ void main() {
 
       expect(_amountField(tester), '12.34');
       expect(find.text('SAR'), findsOneWidget);
+      expect(_keyboard(tester), const TextInputType.numberWithOptions(decimal: true));
     });
   });
 }

@@ -51,12 +51,17 @@ Future<void> _openDialog(WidgetTester tester, {required MarketScope? market}) as
 
 String _amountField(WidgetTester tester) => tester.widget<TextFormField>(find.widgetWithText(TextFormField, 'enter_withdraw_amount')).controller!.text;
 
+TextInputType? _keyboard(WidgetTester tester) => tester
+    .widget<TextField>(find.descendant(of: find.widgetWithText(TextFormField, 'enter_withdraw_amount'), matching: find.byType(TextField)))
+    .keyboardType;
+
 Future<void> _type(WidgetTester tester, String text) async {
   await tester.enterText(find.widgetWithText(TextFormField, 'enter_withdraw_amount'), text);
   await tester.pump();
 }
 
-/// K-10.2 and K-10.3: the amount of a withdrawal starts as the earnings cut to the decimals of the market, with no exchange rate, and takes no more decimals than the market has.
+/// K-10.2 and K-10.3: the amount of a withdrawal starts as the earnings cut to the decimals of the market, with no exchange rate, and takes no more decimals than the market
+/// has, on a keyboard with a decimal point. The test goes as far as the field: the dialog is never asked to withdraw, so what it sends is not run here.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -75,6 +80,12 @@ void main() {
       await _type(tester, '1.234567');
       expect(_amountField(tester), '1.23456');
     });
+
+    testWidgets('the keyboard is the number pad, as it always was', (WidgetTester tester) async {
+      await _openDialog(tester, market: null);
+
+      expect(_keyboard(tester), TextInputType.number);
+    });
   });
 
   group('in Kuwait', () {
@@ -82,6 +93,12 @@ void main() {
       await _openDialog(tester, market: MarketScope.kuwait);
 
       expect(_amountField(tester), '1234.569');
+    });
+
+    testWidgets('the keyboard has a decimal point, so that 0.500 can be typed on a phone whose number pad has none', (WidgetTester tester) async {
+      await _openDialog(tester, market: MarketScope.kuwait);
+
+      expect(_keyboard(tester), const TextInputType.numberWithOptions(decimal: true));
     });
 
     testWidgets('three decimals can be typed and a fourth is refused', (WidgetTester tester) async {
@@ -103,6 +120,7 @@ void main() {
 
       await _type(tester, '12.345');
       expect(_amountField(tester), '12.34');
+      expect(_keyboard(tester), const TextInputType.numberWithOptions(decimal: true));
     });
   });
 }
