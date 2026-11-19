@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:syriacosmeticsmanger/core/app_context.dart';
@@ -29,6 +30,10 @@ const String _enTimeout = 'Connection timed out. Please try again';
 const String _enServerError = 'Server error. Please try again later';
 const String _enUpdated = 'Updated Successfully';
 
+/// The same two messages as ar.json writes them: what a seller in any of the six markets actually reads.
+const String _arNoInternet = 'لا يوجد اتصال بالإنترنت';
+const String _arUpdated = 'تم التحديث بنجاح';
+
 /// The order list, the order screen and the change of an order's status, as the seller app runs them: the real
 /// controllers, services and repositories over the app's own Dio client, with a scripted server instead of the network.
 class _OrdersFlow {
@@ -38,8 +43,11 @@ class _OrdersFlow {
   final OrderController orders;
   final OrderDetailsController details;
 
-  static Future<_OrdersFlow> pump(WidgetTester tester, ScriptedAdapter adapter) async {
-    final DioClient client = await FlowHarness.client(adapter);
+  /// The language the seller reads the app in is one choice, not two: the locale the screens are built with is also the
+  /// language the API is asked in, which is how the app itself keeps them together.
+  static Future<_OrdersFlow> pump(WidgetTester tester, ScriptedAdapter adapter,
+      {Locale locale = FlowHarness.english}) async {
+    final DioClient client = await FlowHarness.client(adapter, language: locale.languageCode);
     final OrderController orders = OrderController(
       orderServiceInterface: OrderService(orderRepoInterface: OrderRepository(dioClient: client)),
     );
@@ -48,7 +56,7 @@ class _OrdersFlow {
           OrderDetailsService(orderDetailsRepositoryInterface: OrderDetailsRepository(dioClient: client)),
     );
 
-    await FlowHarness.pump(tester, providers: [
+    await FlowHarness.pump(tester, locale: locale, providers: [
       ChangeNotifierProvider<OrderController>.value(value: orders),
       ChangeNotifierProvider<OrderDetailsController>.value(value: details),
       ChangeNotifierProvider<CustomerController>(
@@ -491,12 +499,13 @@ void main() {
       expect(flow.details.isLoading, isFalse, reason: 'the button the seller pressed is usable again');
     });
 
-    // KNOWN DEFECT, not fixed here (this task changes tests only): the API answers some refusals of a status change with a 200 and
-    // "success": 0 beside its reason (an order already delivered, a status the fulfilment rules block), and the app takes every
-    // 200 for an update, so the seller is told "Updated Successfully" over an order that did not change. The test states what
-    // the seller should read; it is skipped until the controller reads the answer's own verdict.
-    testWidgets(
-        'that the server refuses in a 200 with success 0 is shown in the server\'s words, not as an update (SKIPPED: known defect, 200 read as success)',
+    // DEFECT K-16.4-D1, written down as the app behaves today rather than as it should. The API answers some refusals of a
+    // status change with a 200 and "success": 0 beside its reason (an order already delivered, a status the fulfilment rules
+    // block), and `setUpOrder` reads every 200 as an update, so the seller is told "Updated Successfully" over an order that
+    // did not move. That is what this test asserts, so the defect is held in place instead of being hidden behind a skip:
+    // whoever teaches the controller to read the answer's own verdict will see this fail, and the line below says what to
+    // put in its place.
+    testWidgets('that the server refuses in a 200 with success 0 is told to the seller as an update, which is a defect',
         (WidgetTester tester) async {
       final _OrdersFlow flow = await _OrdersFlow.pump(
         tester,
@@ -511,8 +520,20 @@ void main() {
 
       await flow.changeStatus(tester, status: 'pending');
 
-      expect(FlowHarness.shown(tester), <String>['Order is already delivered.']);
-    }, skip: true);
+      expect(FlowHarness.shown(tester), <String>[_enUpdated],
+          reason: 'what the seller reads today. It should be ["Order is already delivered."], the answer\'s own message');
+
+      // What keeps the seller from acting on the wrong message: the handler reads the order and the list again, and both
+      // come back with the status the server still holds, so neither screen pretends the order moved.
+      expect(
+        flow.adapter.requests.map((request) => '${request.method} ${request.path}'),
+        <String>['POST $_updatePath', 'GET $_detailsPath', 'POST $_listPath'],
+      );
+      expect(flow.details.orderDetails!.single.order!.orderStatus, 'delivered',
+          reason: 'the order screen shows the status the server holds, not the one that was asked for');
+      expect(flow.orders.orderModel!.orders!.single.orderStatus, 'delivered');
+      expect(flow.details.isLoading, isFalse);
+    });
 
     testWidgets('that the server cannot find is shown in its words', (WidgetTester tester) async {
       final _OrdersFlow flow = await _OrdersFlow.pump(
@@ -551,6 +572,36 @@ void main() {
           reason: 'the retry is the same change');
       expect(FlowHarness.shown(tester), <String>[_enUpdated]);
       expect(flow.details.orderDetails!.single.order!.orderStatus, 'confirmed');
+    });
+  });
+
+  // Every one of the six markets is read in Arabic by most of the sellers in it, and what the app says to them comes out
+  // of ar.json rather than out of the code, so a flow run only in English leaves the half that matters unproven. The
+  // harness loads the real language files for whichever locale it is given, and the API is asked in the same language.
+  group('the seller who reads the app in Arabic', () {
+    testWidgets('is told in Arabic that an order list could not be reached, and the API is asked in Arabic',
+        (WidgetTester tester) async {
+      final _OrdersFlow flow = await _OrdersFlow.pump(
+        tester,
+        ScriptedAdapter.always(ScriptedAnswer.offline()),
+        locale: FlowHarness.arabic,
+      );
+
+      await flow.loadList(tester);
+
+      expect(FlowHarness.shown(tester), <String>[_arNoInternet]);
+      FlowHarness.expectSignedIn(flow.adapter.only, language: 'ar');
+    });
+
+    testWidgets('is told in Arabic that a status change was accepted', (WidgetTester tester) async {
+      final _OrdersFlow flow =
+          await _OrdersFlow.pump(tester, _serverThatRemembersTheStatus(), locale: FlowHarness.arabic);
+
+      await flow.changeStatus(tester, status: 'confirmed');
+
+      expect(FlowHarness.shown(tester), <String>[_arUpdated]);
+      expect(flow.details.orderDetails!.single.order!.orderStatus, 'confirmed');
+      FlowHarness.expectSignedIn(flow.adapter.requests.first, language: 'ar');
     });
   });
 }

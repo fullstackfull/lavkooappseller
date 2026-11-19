@@ -250,10 +250,11 @@ void main() {
       });
     }
 
-    // KNOWN DEFECT, not fixed here (this task changes tests only): the wallet hands the toast the error handler's key as it
-    // came ("no_internet_connection"), where the payout screen and every list translate it. The test states what the
-    // seller should read; it is skipped until the wallet does that.
-    testWidgets('that fails in transport tells the seller so in words (SKIPPED: known defect, untranslated key)',
+    // DEFECT K-16.4-D2, written down as the app behaves today rather than as it should. `updateBalance` shows the error
+    // handler's key as it came, because it calls showToast with `apiResponse.error.toString()` instead of going through
+    // ApiChecker, which is where every other screen gets its words. The payout screen on the same failure shows "No
+    // internet connection", a few hundred lines below in this file, so the contrast is held by a passing test either way.
+    testWidgets('that fails in transport shows the seller the error handler\'s key, which is a defect',
         (WidgetTester tester) async {
       final _WithdrawFlow flow =
           await _WithdrawFlow.pump(tester, _walletServer(<ScriptedAnswer>[ScriptedAnswer.offline()]));
@@ -261,8 +262,11 @@ void main() {
 
       await flow.withdraw(tester);
 
-      expect(toasts, <String>[_enNoInternet]);
-    }, skip: true);
+      expect(toasts, <String>['no_internet_connection'],
+          reason: 'what the seller reads today. It should be ["$_enNoInternet"], as the payout screen shows it');
+      expect(FlowHarness.screenIsOpen(tester), isTrue);
+      expect(flow.wallet.isLoading, isFalse);
+    });
 
     testWidgets('sent again after a transport failure is the same request, and is accepted',
         (WidgetTester tester) async {
@@ -278,11 +282,12 @@ void main() {
       expect(FlowHarness.screenIsOpen(tester), isFalse);
     });
 
-    // KNOWN DEFECT, not fixed here (this task changes tests only): a request that failed leaves the values the seller typed in
-    // the controller's list, and the next request reads that list from its start, so a seller who corrects their account
-    // number after a refusal sends the number they had before. The test states what the request should carry; it is
-    // skipped until the controller sends what is typed now.
-    testWidgets('sent again with a corrected field carries the correction (SKIPPED: known defect, stale values)',
+    // DEFECT K-16.4-D3, written down as the app behaves today rather than as it should, and worse than stale values alone.
+    // `updateBalance` appends each field's text to `inputValueList` without emptying it first, and only empties it after a
+    // request the server accepted. So a refusal leaves the typed values in the list, the next attempt appends the corrected
+    // ones behind them, and the request is built by walking the two-key list against a four-value list: the seller who
+    // corrects their account number sends the number they had before, and the list grows by two with every refusal.
+    testWidgets('sent again with a corrected field carries the old value, which is a defect',
         (WidgetTester tester) async {
       final _WithdrawFlow flow = await _WithdrawFlow.pump(
         tester,
@@ -291,11 +296,15 @@ void main() {
       await flow.fillTheSheet(tester, account: '0000000000');
       await flow.withdraw(tester);
 
+      expect(flow.wallet.inputValueList, <String>['0000000000', 'Test Holder'],
+          reason: 'the refused values are left in the list, where the next request will read them first');
+
       flow.wallet.setTitle(0, '9876543210');
       await flow.withdraw(tester);
 
-      expect(flow.adapter.requests[1].fields['account_number'], '9876543210');
-    }, skip: true);
+      expect(flow.adapter.requests[1].fields['account_number'], '0000000000',
+          reason: 'what the seller sends today. It should be "9876543210", the number now in the field');
+    });
 
     testWidgets('may be edited while it is pending: a POST to the update address with the request\'s id',
         (WidgetTester tester) async {

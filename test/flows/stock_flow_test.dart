@@ -46,6 +46,10 @@ const String _updateFailedText = 'Update failed.';
 const String _belowZeroText = 'This correction would take the stock below zero.';
 const String _deltaRequiredText = 'The delta field is required.';
 
+/// What a refusal the error handler does not name a branch for reads as by the time it reaches a screen: the handler
+/// answers the ErrorResponse object itself, and the screen prints it. Defect K-16.4-D5, asserted where it shows.
+const String _errorObjectText = "Instance of 'ErrorResponse'";
+
 /// The stock screens as the seller app runs them: the stock-out list and its quantity dialog, the restock requests, and
 /// the stock ledger with its correction sheet. The real controllers, services and repositories over the app's own Dio
 /// client, with a scripted server instead of the network.
@@ -527,19 +531,25 @@ void main() {
       });
     });
 
-    // KNOWN DEFECT, not fixed here (this task changes tests only): RestockController.getRestockProductList has no branch for
-    // a failed answer, so a refusal or a transport failure is swallowed and the restock screen stays on its placeholder.
-    // The test states what the screen should do; it is skipped until the controller does it.
-    testWidgets(
-        'that fail to load are shown to the seller instead of leaving the screen empty (SKIPPED: known defect, swallowed)',
+    // DEFECT K-16.4-D4, written down as the app behaves today rather than as it should, and worse than a blank screen.
+    // `getRestockProductList` closes its `if (statusCode == 200)` without an else, and the only `_isLoading = false` it
+    // has sits inside that branch. So a refusal or a transport failure is told to nobody, and the flag the screen reads
+    // stays raised: the seller is left watching a spinner that will not stop until they leave the screen and come back.
+    // Every other read in this file reports its failure, so this test is the one that holds the exception in place.
+    testWidgets('that fail to load are told to nobody and leave the screen loading, which is a defect',
         (WidgetTester tester) async {
       final _StockFlow flow = await _StockFlow.pump(tester, ScriptedAdapter.always(permissionRefusal()));
       flow.restock.brands = <Brands>[];
 
       await FlowHarness.call(tester, () => flow.restock.getRestockProductList(1));
 
-      expect(FlowHarness.shown(tester), <String>[permissionRefusalText]);
-    }, skip: true);
+      expect(FlowHarness.shown(tester), isEmpty,
+          reason: 'what the seller is told today. It should be ["$permissionRefusalText"], the server\'s own words');
+      expect(flow.restock.isLoading, isTrue,
+          reason: 'the spinner the screen reads is never lowered, so the screen loads for ever');
+      expect(flow.restock.restockProductModel, isNull);
+      expect(flow.adapter.requests, hasLength(1));
+    });
   });
 
   group('the stock ledger', () {
@@ -683,10 +693,13 @@ void main() {
         expect(flow.inventory.isAdjusting, isFalse);
       });
 
-      // KNOWN DEFECT, not fixed here (this task changes tests only): the 422 the API documents for this refusal reaches the
-      // controller as an ErrorResponse object, so adjust() answers "Instance of 'ErrorResponse'" instead of the server's
-      // words. The test states what the controller should answer; it is skipped until it does.
-      testWidgets('that would take the stock below zero answers the server\'s words (SKIPPED: known defect, 422)',
+      // DEFECT K-16.4-D5, written down as the app behaves today rather than as it should. A failed request comes back as
+      // `ApiResponse.withError`, which leaves `response` null, so the branch of `adjust` that reads the server's words out
+      // of the body has nothing to read and the refusal is always the error the handler produced. ApiErrorHandler.getMessage
+      // names every status it knows and answers a String for each, but its `default:` branch -- where the 422 the API
+      // documents for this refusal lands -- answers the ErrorResponse object itself, and the screen is handed the name of
+      // an object. The 403 of the test above takes a named branch and reads correctly, which is why only the 422 is wrong.
+      testWidgets('that would take the stock below zero answers the name of an object, which is a defect',
           (WidgetTester tester) async {
         final _StockFlow flow =
             await _StockFlow.pump(tester, ScriptedAdapter.always(errorsRefusal('stock', _belowZeroText, status: 422)));
@@ -694,9 +707,10 @@ void main() {
         final String? refusal =
             await FlowHarness.call(tester, () => flow.inventory.adjust(productId: 7, delta: -900, reason: 'loss'));
 
-        expect(refusal, _belowZeroText);
+        expect(refusal, _errorObjectText,
+            reason: 'what the screen is handed today. It should be "$_belowZeroText", the server\'s own words');
         expect(flow.inventory.isAdjusting, isFalse);
-      }, skip: true);
+      });
 
       testWidgets('that fails in transport answers a reason, throws nothing, and can be sent again',
           (WidgetTester tester) async {
@@ -832,24 +846,45 @@ void main() {
       expect(find.text(_deltaRequiredText), findsNothing, reason: 'the words go when the seller changes the number');
     });
 
-    // KNOWN DEFECT, not fixed here (this task changes tests only): the sheet shows "Instance of 'ErrorResponse'" for the 422
-    // the API documents for this refusal. The test states what the sheet should show; it is skipped until it does.
-    testWidgets(
-        'that would take the stock below zero shows the server\'s words in the sheet (SKIPPED: known defect, 422)',
+    // DEFECT K-16.4-D5 again, this time as the seller meets it: the sheet shows whatever `adjust` answers, so the name of
+    // the object reaches the screen the seller is reading, in the place where the reason they must act on belongs.
+    // The quantity is immaterial here: the scripted server refuses whatever is sent. It is kept small because a quantity
+    // large enough to really take the stock below zero trips the overflow pinned by the test after this one.
+    testWidgets('that the server refuses with a 422 shows the name of an object in the sheet, which is a defect',
         (WidgetTester tester) async {
       await pumpSheet(tester, <ScriptedAnswer>[errorsRefusal('stock', _belowZeroText, status: 422)]);
 
-      await fill(tester, quantity: '900');
+      await fill(tester, quantity: '9');
       await tester.tap(find.text('Apply'));
       await letTheTapFinish(tester);
 
-      expect(find.text(_belowZeroText), findsOneWidget);
-    }, skip: true);
+      expect(find.text(_errorObjectText), findsOneWidget,
+          reason: 'what the sheet shows today. It should show "$_belowZeroText", the server\'s own words');
+      expect(find.byType(StockAdjustSheet), findsOneWidget, reason: 'the sheet stays open, so the entry is not lost');
+    });
 
-    // KNOWN DEFECT, not fixed here (this task changes tests only): the sheet shows the key "no_internet_connection" as it
-    // came from the error handler, where every other screen shows its translation. The test states what the sheet should
-    // show; it is skipped until it does.
-    testWidgets('that fails in transport tells the seller so in words (SKIPPED: known defect, untranslated key)',
+    // DEFECT K-16.4-D6, found by finishing the test above rather than read out of the code. The row that reads the stock
+    // the product has beside the stock it will have puts two Texts and a Spacer in a Row and allows neither Text to
+    // shrink, so the row is wider than the sheet as soon as the resulting number is more than a character or two long.
+    // At 400 logical pixels, the width of a great many phones, "Current stock Qty: 12" beside "will become -78" is
+    // already 9 pixels too wide, and a shop whose stock runs to four digits would overflow with no minus sign at all.
+    // How it should give way -- shortening, wrapping, or dropping the stock the product has -- is a question for the
+    // design of the sheet, so the overflow is taken and asserted here rather than guessed at.
+    testWidgets('overflows the row of numbers at phone width once the resulting stock is long, which is a defect',
+        (WidgetTester tester) async {
+      await pumpSheet(tester, <ScriptedAnswer>[]);
+
+      await fill(tester, quantity: '900');
+
+      expect(find.text('will become -888'), findsOneWidget, reason: 'the number the seller came to read is drawn');
+      expect(tester.takeException(), isFlutterError,
+          reason: 'and it does not fit: the row is wider than the sheet that holds it');
+    });
+
+    // DEFECT K-16.4-D2 again, in the sheet: it shows the error handler's key as it came, because `adjust` answers the key
+    // and nothing between it and the Text widget passes it through getTranslated. The stock-out dialog on the same failure
+    // shows "No internet connection", a few hundred lines above in this file, so the contrast is held either way.
+    testWidgets('that fails in transport shows the seller the error handler\'s key, which is a defect',
         (WidgetTester tester) async {
       await pumpSheet(tester, <ScriptedAnswer>[ScriptedAnswer.offline()]);
 
@@ -857,8 +892,9 @@ void main() {
       await tester.tap(find.text('Apply'));
       await letTheTapFinish(tester);
 
-      expect(find.text(_enNoInternet), findsOneWidget);
-    }, skip: true);
+      expect(find.text('no_internet_connection'), findsOneWidget,
+          reason: 'what the sheet shows today. It should show "$_enNoInternet", as the stock-out dialog shows it');
+    });
 
     testWidgets('that fails in transport leaves the sheet open and the button usable for another try',
         (WidgetTester tester) async {
