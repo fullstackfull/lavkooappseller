@@ -40,7 +40,7 @@ class CartRepository implements CartRepositoryInterface{
       print('order place===>${placeOrderBody.toJson()}');
     }
     try {
-      final response = await dioClient!.post(AppConstants.placeOrderUri, data: placeOrderBody.toJson(), options: _keyedWith(idempotencyKey));
+      final response = await dioClient!.post(AppConstants.placeOrderUri, data: placeOrderBody.toJson(), options: _headersOf(idempotencyKey: idempotencyKey));
       return ApiResponse.withSuccess(response);
     } catch (e) {
       return ApiResponse.withError(ApiErrorHandler.getMessage(e));
@@ -48,17 +48,25 @@ class CartRepository implements CartRepositoryInterface{
   }
 
   @override
-  Future<ApiResponse> placeOrderRaw(Map<String, dynamic> orderBody, {String? idempotencyKey}) async {
+  Future<ApiResponse> placeOrderRaw(Map<String, dynamic> orderBody, {String? idempotencyKey, String? storefront}) async {
     try {
-      final response = await dioClient!.post(AppConstants.placeOrderUri, data: orderBody, options: _keyedWith(idempotencyKey));
+      final response = await dioClient!.post(AppConstants.placeOrderUri, data: orderBody, options: _headersOf(idempotencyKey: idempotencyKey, storefront: storefront));
       return ApiResponse.withSuccess(response);
     } catch (e) {
       return ApiResponse.withError(ApiErrorHandler.getMessage(e));
     }
   }
 
-  /// The request options of a sale: the key travels in the header the server reads it from, or the request has no options of its own.
-  Options? _keyedWith(String? idempotencyKey) => idempotencyKey == null ? null : Options(headers: <String, dynamic>{PosIdempotencyKey.header: idempotencyKey});
+  /// The request options of a sale: the key travels in the header the server reads it from and, for a sale replayed from the outbox, so does the storefront it was taken in, which the request then keeps
+  /// whatever market the seller works in when it is sent. With neither, the request has no options of its own.
+  Options? _headersOf({String? idempotencyKey, String? storefront}) {
+    final Map<String, dynamic> headers = <String, dynamic>{
+      if (idempotencyKey != null) PosIdempotencyKey.header: idempotencyKey,
+      if (storefront != null) AppConstants.storefrontHeader: storefront,
+    };
+
+    return headers.isEmpty ? null : Options(headers: headers);
+  }
 
   @override
   Future<ApiResponse> getProductFromScan(String? productCode) async {

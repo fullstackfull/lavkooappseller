@@ -17,6 +17,7 @@ import 'package:syriacosmeticsmanger/features/auth/controllers/auth_controller.d
 import 'package:syriacosmeticsmanger/features/auth/domain/repositories/auth_repository.dart';
 import 'package:syriacosmeticsmanger/features/auth/domain/services/auth_service.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/offline_sales_controller.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/outbox_policy.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pending_pos_order.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/services/cart_service_interface.dart';
 import 'package:syriacosmeticsmanger/features/pos/widgets/failed_sales_sheet.dart';
@@ -54,10 +55,11 @@ PendingPosOrder _sale(String key, {String? seller, int attempts = 0, String? las
 String _legacyRecord(String key) => jsonEncode(_sale(key).toJson()..remove('seller_id')..remove('idempotency_key'));
 
 class _Call {
-  _Call(this.body, this.key);
+  _Call(this.body, this.key, this.storefront);
 
   final Map<String, dynamic> body;
   final String? key;
+  final String? storefront;
 
   String get sale => (body['cart'] as List<dynamic>).single as String;
 }
@@ -69,8 +71,8 @@ class _FakeCartService implements CartServiceInterface {
   Future<ApiResponse> Function(Map<String, dynamic> body, String? key) answer = (Map<String, dynamic> body, String? key) async => _placed(1);
 
   @override
-  Future<dynamic> placeOrderRaw(Map<String, dynamic> orderBody, {String? idempotencyKey}) {
-    calls.add(_Call(orderBody, idempotencyKey));
+  Future<dynamic> placeOrderRaw(Map<String, dynamic> orderBody, {String? idempotencyKey, String? storefront}) {
+    calls.add(_Call(orderBody, idempotencyKey, storefront));
 
     return answer(orderBody, idempotencyKey);
   }
@@ -128,7 +130,8 @@ abstract class _Terminal {
   List<String> get sentSales => service.calls.map((_Call call) => call.sale).toList();
 }
 
-/// One device: one disk, one server, and whoever is signed in on it, which a test says at once. Starting the app again is a new controller reading the same disk.
+/// One device: one disk, one server, and whoever is signed in on it, which a test says at once. A seller who signs in after another does it in a session of their own, as in the app: a sign-out has ended the session
+/// of the first. Starting the app again is a new controller reading the same disk.
 class _Device extends _Terminal {
   _Device(super.preferences) {
     start();
@@ -136,15 +139,26 @@ class _Device extends _Terminal {
 
   bool hasSession = false;
   String? sellerId;
+  int sessionsEnded = 0;
 
   @override
   late OfflineSalesController controller;
 
   void start() {
-    controller = OfflineSalesController(cartServiceInterface: service, sharedPreferences: preferences, hasSession: () => hasSession, signedInSellerId: () => sellerId)..loadFromStorage();
+    controller = OfflineSalesController(
+      cartServiceInterface: service,
+      sharedPreferences: preferences,
+      hasSession: () => hasSession,
+      signedInSellerId: () => sellerId,
+      sessionsEnded: () => sessionsEnded,
+      storefrontsEnabled: false,
+    )..loadFromStorage();
   }
 
   void signIn(String seller) {
+    if (sellerId != null && sellerId != seller) {
+      sessionsEnded++;
+    }
     hasSession = true;
     sellerId = seller;
   }
@@ -152,6 +166,7 @@ class _Device extends _Terminal {
   void signOut() {
     hasSession = false;
     sellerId = null;
+    sessionsEnded++;
   }
 }
 
@@ -159,9 +174,10 @@ class _Device extends _Terminal {
 /// navigator as the app does, over real preferences in memory. The session is the token in the preferences, as in the app; the seller is whoever the profile answers for, which it does after the session
 /// exists, and which a sign-out forgets.
 class _App extends _Terminal {
-  _App._(super.preferences, this.tester);
+  _App._(super.preferences, this.tester, {required this.storefrontsEnabled});
 
   final WidgetTester tester;
+  final bool storefrontsEnabled;
   final _FakeProfileService profileService = _FakeProfileService();
 
   late final ProfileController profile = ProfileController(profileServiceInterface: profileService);
@@ -175,11 +191,17 @@ class _App extends _Terminal {
   );
 
   @override
-  late final OfflineSalesController controller = OfflineSalesController(cartServiceInterface: service, sharedPreferences: preferences)..loadFromStorage();
+  late final OfflineSalesController controller = OfflineSalesController(cartServiceInterface: service, sharedPreferences: preferences, storefrontsEnabled: storefrontsEnabled)..loadFromStorage();
 
-  static Future<_App> start(WidgetTester tester, {List<String> records = const <String>[], Widget child = const SizedBox.shrink()}) async {
-    SharedPreferences.setMockInitialValues(<String, Object>{_storageKey: records});
-    final _App app = _App._(await SharedPreferences.getInstance(), tester);
+  static Future<_App> start(
+    WidgetTester tester, {
+    List<String> records = const <String>[],
+    Widget child = const SizedBox.shrink(),
+    Map<String, Object> stored = const <String, Object>{},
+    bool storefrontsEnabled = false,
+  }) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{_storageKey: records, ...stored});
+    final _App app = _App._(await SharedPreferences.getInstance(), tester, storefrontsEnabled: storefrontsEnabled);
     await tester.pumpWidget(
       MultiProvider(
         providers: <ChangeNotifierProvider<ChangeNotifier>>[
@@ -247,6 +269,30 @@ Future<void> _expectSalesOfSellerAUntouchedAndUnseen(_App app) async {
   expect(app.stored.first.lastError, 'refused by the server');
 }
 
+/// What a session that begins after the one that rang a sale up does with that sale when the sale names no seller, and so nothing on the device says whose it is: it sees nothing of it, and sends, retries, removes
+/// and clears nothing of it. The sale does not leave the disk, nothing is sent, and nothing is counted against it; a sale that had failed stays failed, with its attempts and its last error.
+Future<void> _expectSaleOfEndedSessionUntouchedAndUnseen(_App app, {required String key, int attempts = 0, String? lastError}) async {
+  final OfflineSalesController outbox = app.controller;
+  final List<PendingPosOrder> before = app.stored;
+  expect(before, hasLength(1));
+
+  expect(outbox.pending, isEmpty);
+  expect(outbox.pendingCount, 0);
+  expect(outbox.hasPending, isFalse);
+  expect(outbox.failedSales, isEmpty);
+  expect(outbox.failedCount, 0);
+  expect(await outbox.syncPending(), 0);
+  expect(await outbox.retryFailedSales(), 0);
+  await outbox.remove(before.single.id);
+  await outbox.clear();
+
+  expect(app.service.calls, isEmpty, reason: 'sent now, the server would record the money taken in the session that ended under the seller of this one');
+  expect(app.storedKeys, <String?>[key], reason: 'and it was not deleted');
+  expect(app.stored.single.sellerId, isNull, reason: 'nor was a seller given to it');
+  expect(app.stored.single.attempts, attempts, reason: 'nor was an attempt counted against it, or given back');
+  expect(app.stored.single.lastError, lastError);
+}
+
 Widget _app(OfflineSalesController controller, Widget child) => MaterialApp(
       home: Scaffold(body: ChangeNotifierProvider<OfflineSalesController>.value(value: controller, child: child)),
     );
@@ -254,10 +300,10 @@ Widget _app(OfflineSalesController controller, Widget child) => MaterialApp(
 String _amountText(BuildContext context, double amount) => 'SAR ${amount.toStringAsFixed(2)}';
 
 /// K-06.2, the seller half: the queue of sales that could not be sent is one list on the device and it outlives a sign-out, while the server records a replayed sale under the seller of the session that
-/// sends it. A sale is therefore sent only by the seller who took it, it is never counted, failed or removed by another seller, and a sign-out never deletes it. Run on the real controller, with
-/// real shared preferences in memory and a server that answers as it does. The groups before "in the app" say who is signed in through a function that changes at once, which proves the logic of the
-/// controller; the groups from "in the app" on run the real sign-out, the real profile and the readers of the outbox itself, which proves that the seller is the one of the session. The market half needs
-/// the market choice of pull request 2 and is not covered here.
+/// sends it. A sale is therefore sent only by the seller who took it, it is never counted, failed or removed by another seller, and a sign-out never deletes it. A sale that names no seller (the profile of the
+/// session that rang it up never answered) is sent only by that session. Run on the real controller, with real shared preferences in memory and a server that answers as it does. The groups before "in the app"
+/// say who is signed in, and how many sessions have ended, through functions that change at once, which proves the logic of the controller; the groups from "in the app" on run the real sign-out, the real
+/// profile and the readers of the outbox itself, which proves that the seller is the one of the session. The market half is in test/market_selector/queued_sale_market_test.dart, on the real client of the app.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -273,16 +319,16 @@ void main() {
       expect(PendingPosOrder.decode(_legacyRecord('old'))!.sellerId, isNull);
     });
 
-    test('belongs to its seller, to no other, and when it has none to whoever is signed in', () {
+    test('belongs to its seller and to no other, and a sale that names no seller belongs to none by name', () {
       final PendingPosOrder owned = _sale('a-1', seller: _sellerA);
       final PendingPosOrder legacy = _sale('old');
 
       expect(owned.belongsTo(_sellerA), isTrue);
       expect(owned.belongsTo(_sellerB), isFalse);
       expect(owned.belongsTo(null), isFalse, reason: 'when the app does not know who is signed in, it cannot say that the sale is theirs');
-      expect(legacy.belongsTo(_sellerA), isTrue);
-      expect(legacy.belongsTo(_sellerB), isTrue);
-      expect(legacy.belongsTo(null), isTrue, reason: 'so that no sale an earlier version queued is stranded');
+      expect(legacy.belongsTo(_sellerA), isFalse, reason: 'nothing on it says whose it is: which session may send it is for the outbox to say');
+      expect(legacy.belongsTo(_sellerB), isFalse);
+      expect(legacy.belongsTo(null), isFalse);
     });
   });
 
@@ -484,13 +530,38 @@ void main() {
       });
     }
 
-    test('is listed and counted for whoever is signed in', () async {
+    test('is listed and counted for the session that is signed in when the queue is read, and for no later session', () async {
       final _Device device = await _device(records: <String>[_legacyRecord('old')], signedIn: _sellerA);
 
       expect(device.controller.pendingCount, 1);
-      device.signIn(_sellerB);
-      expect(device.controller.pendingCount, 1);
       expect(device.controller.hasPending, isTrue);
+
+      device.signOut();
+      device.signIn(_sellerB);
+
+      expect(device.controller.pendingCount, 0, reason: 'nothing on the device says that B did not take it, and B is not the session that was signed in when it was read');
+      expect(device.controller.hasPending, isFalse);
+      expect(device.stored, hasLength(1), reason: 'and it is still on the disk');
+    });
+
+    test('is given the seller who is signed in when the queue is read, so that it is that seller\'s afterwards', () async {
+      final _Device device = await _device(records: <String>[_legacyRecord('old')]);
+      device.signIn(_sellerA);
+
+      device.start();
+
+      expect(device.stored.single.sellerId, _sellerA, reason: 'on the disk as well');
+      device.signOut();
+      device.signIn(_sellerB);
+      expect(device.controller.pending, isEmpty);
+      expect(await device.controller.syncPending(), 0);
+      expect(device.service.calls, isEmpty);
+
+      device.signOut();
+      device.signIn(_sellerA);
+      expect(device.controller.pending.map((PendingPosOrder sale) => sale.id), <String>['old']);
+      expect(await device.controller.syncPending(), 1);
+      expect(device.sentSales, <String>['old']);
     });
 
     test('is sent while the app does not know who is signed in, and a sale of a seller is kept until it does', () async {
@@ -526,15 +597,15 @@ void main() {
       expect(device.controller.failedCount, 1);
 
       device.signIn(_sellerB);
-      expect(device.controller.pending.map((PendingPosOrder sale) => sale.id), <String>['b-w', 'old']);
-      expect(device.controller.pendingCount, 2);
+      expect(device.controller.pending.map((PendingPosOrder sale) => sale.id), <String>['b-w'], reason: 'the sale that names no seller was read in the session of A, and B signed in after it');
+      expect(device.controller.pendingCount, 1);
       expect(device.controller.hasPending, isTrue);
       expect(device.controller.failedSales, isEmpty);
       expect(device.controller.failedCount, 0);
 
       device.sellerId = null;
-      expect(device.controller.pending.map((PendingPosOrder sale) => sale.id), <String>['old'], reason: 'when the app does not know who is signed in, the sales of a seller are out of sight');
-      expect(device.controller.pendingCount, 1);
+      expect(device.controller.pending, isEmpty, reason: 'when the app does not know who is signed in, the sales of a seller are out of sight, and the sale of the session that ended stays out of sight');
+      expect(device.controller.pendingCount, 0);
       expect(device.controller.failedCount, 0);
       expect(device.stored, hasLength(4), reason: 'and all four are on the disk');
     });
@@ -722,23 +793,26 @@ void main() {
       expect(app.storedKeys, isEmpty);
     });
 
-    testWidgets('a sale an earlier version queued is not given a seller by the answer: it stays everyone\'s', (WidgetTester tester) async {
+    testWidgets('a sale an earlier version queued is given the seller by the answer of the session that was signed in when the queue was read, and the next seller does not see it', (WidgetTester tester) async {
       final _App app = await _App.start(tester, records: <String>[_legacyRecord('old')]);
       await app.logIn('token-of-a');
       await app.queueSale('s-1');
 
       await app.profileAnswers(_idOfA);
 
-      expect(app.stored.map((PendingPosOrder sale) => sale.sellerId), <String?>[null, '$_idOfA']);
+      expect(app.stored.map((PendingPosOrder sale) => sale.sellerId), <String?>['$_idOfA', '$_idOfA'], reason: 'it was read in the session of A, whose answer names the seller: the sale is A\'s on the disk too');
 
       await app.signOut();
       await app.logIn('token-of-b');
       await app.profileAnswers(_idOfB);
 
-      expect(app.controller.pending.map((PendingPosOrder sale) => sale.id), <String>['old'], reason: 'it is still the signed-in seller\'s to send, as before, and the sale of A is not');
+      expect(app.controller.pending, isEmpty, reason: 'neither the sale of an earlier version nor the sale of A is B\'s');
+      expect(await app.controller.syncPending(), 0);
+      expect(app.service.calls, isEmpty);
+      expect(app.storedKeys, hasLength(2));
     });
 
-    testWidgets('a sale rung up before the profile has answered is given the seller of its own session only: the answer of the next session does not claim it', (WidgetTester tester) async {
+    testWidgets('a sale rung up before the profile has answered is given the seller of its own session only: the answer of the next session does not claim it, and the next session does not send it', (WidgetTester tester) async {
       final _App app = await _App.start(tester);
       await app.logIn('token-of-a');
       await app.queueSale('a-1');
@@ -747,14 +821,10 @@ void main() {
 
       await app.profileAnswers(_idOfB);
 
-      expect(app.stored.single.sellerId, isNull, reason: 'it was not rung up in B\'s session, so B\'s answer does not say whose it is: it is left as it was, and A can still send it');
-
-      await app.signOut();
-      await app.logIn('token-of-a-again');
-      await app.profileAnswers(_idOfA);
-
-      expect(await app.controller.syncPending(), 1);
-      expect(app.sentSales, <String>['a-1']);
+      expect(app.stored.single.sellerId, isNull, reason: 'it was not rung up in B\'s session, so B\'s answer does not say whose it is: it is left as it was');
+      expect(await app.controller.syncPending(), 0, reason: 'B\'s session is not the one that rang it up');
+      expect(app.service.calls, isEmpty, reason: 'sent now, the server would record the money A took under B');
+      expect(app.storedKeys, <String?>['a-1']);
     });
 
     testWidgets('an answer on its way from the session that ended does not make a seller of the next session', (WidgetTester tester) async {
@@ -857,6 +927,266 @@ void main() {
       await app.profileAnswers(_idOfA);
 
       expect(app.profile.userId, _idOfA, reason: 'the answer reached the profile, and a disposed outbox that still followed it would have been told');
+    });
+  });
+
+  group('a sale that names no seller, because the profile of the session that rang it up never answered', () {
+    testWidgets('is sent by no session but the one that rang it up: the seller who signs in next does not list, send, retry, remove or clear it, before their profile has answered or after, and it stays on the disk', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      await app.queueSale('a-1');
+      final List<String> queueBefore = app.preferences.getStringList(_storageKey)!;
+      await app.signOut();
+      await app.logIn('token-of-b');
+
+      await _expectSaleOfEndedSessionUntouchedAndUnseen(app, key: 'a-1');
+
+      await app.profileAnswers(_idOfB);
+
+      await _expectSaleOfEndedSessionUntouchedAndUnseen(app, key: 'a-1');
+      expect(app.preferences.getStringList(_storageKey), queueBefore, reason: 'the disk holds the sale as it held it before the sign-out, byte for byte');
+    });
+
+    testWidgets('is not handed to the session that is signed in when the queue is read again after its own session has ended', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      await app.queueSale('a-1');
+      await app.signOut();
+      await app.logIn('token-of-b');
+      await app.profileAnswers(_idOfB);
+
+      app.controller.loadFromStorage();
+
+      await _expectSaleOfEndedSessionUntouchedAndUnseen(app, key: 'a-1');
+    });
+
+    testWidgets('is not sent by the next session when the sign-out comes in the middle of a replay: the sales still waiting stay where they are', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      await app.queueSale('a-1');
+      await app.queueSale('a-2');
+      await app.queueSale('a-3');
+      final Completer<void> connection = Completer<void>();
+      app.service.answer = (Map<String, dynamic> body, String? key) async {
+        await connection.future;
+
+        return _placed(5);
+      };
+
+      final Future<int> replaying = app.controller.syncPending();
+      await tester.pump();
+      await app.signOut();
+      await app.logIn('token-of-b');
+      connection.complete();
+      final int synced = await replaying;
+
+      expect(synced, 1);
+      expect(app.sentSales, <String>['a-1'], reason: 'the first sale was on its way when A signed out; the others were rung up in a session that has ended');
+      expect(app.storedKeys, <String?>['a-2', 'a-3']);
+    });
+
+    testWidgets('is listed and sent once by the session that rang it up, whose profile has still not answered, and is not sent again', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      await app.queueSale('a-1');
+
+      expect(app.controller.pending.map((PendingPosOrder sale) => sale.idempotencyKey), <String?>['a-1']);
+      expect(app.controller.pendingCount, 1);
+      expect(await app.controller.syncPending(), 1);
+      expect(await app.controller.syncPending(), 0);
+
+      expect(app.sentSales, <String>['a-1']);
+      expect(app.storedKeys, isEmpty);
+    });
+
+    testWidgets('is given its seller by the answer of its own session while a replay is on its way, and the replay goes on: the sales that wait are sent under the seller they are named for now', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      await app.queueSale('a-1');
+      await app.queueSale('a-2');
+      await app.queueSale('a-3');
+      final Completer<void> connection = Completer<void>();
+      app.service.answer = (Map<String, dynamic> body, String? key) async {
+        await connection.future;
+
+        return _placed(5);
+      };
+
+      final Future<int> replaying = app.controller.syncPending();
+      await tester.pump();
+      await app.profileAnswers(_idOfA);
+
+      expect(app.stored.map((PendingPosOrder sale) => sale.sellerId), <String?>['$_idOfA', '$_idOfA', '$_idOfA'], reason: 'the answer named the seller of all three while the first was on its way');
+
+      connection.complete();
+      final int synced = await replaying;
+
+      expect(synced, 3, reason: 'the three are A\'s, in A\'s session: none waits for a retry because the answer came in the middle of the pass');
+      expect(app.sentSales, <String>['a-1', 'a-2', 'a-3']);
+      expect(app.storedKeys, isEmpty);
+    });
+
+    testWidgets('is listed as a sale that could not be sent once it has used its attempts, and the session that rang it up retries it: it is sent again under its own key and leaves the queue', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      await app.queueSale('a-1');
+      await app.queueSale('a-2');
+      app.service.answer = (Map<String, dynamic> body, String? key) async => _failed('refused by the server');
+      for (int replay = 0; replay < OutboxPolicy.maxAttempts; replay++) {
+        await app.controller.syncPending();
+      }
+
+      expect(app.controller.failedCount, 2);
+      expect(app.controller.failedSales.map((PendingPosOrder sale) => sale.idempotencyKey), <String?>['a-1', 'a-2']);
+      expect(app.stored.map((PendingPosOrder sale) => sale.sellerId), <String?>[null, null], reason: 'the profile of the session has not answered: they name no seller all the same');
+
+      app.service.calls.clear();
+      app.service.answer = (Map<String, dynamic> body, String? key) async => _placed(3);
+      final int synced = await app.controller.retryFailedSales();
+
+      expect(synced, 2);
+      expect(app.sentSales, <String>['a-1', 'a-2']);
+      expect(app.service.calls.map((_Call call) => call.key), <String?>['a-1', 'a-2'], reason: 'each under the key it was queued with');
+      expect(app.storedKeys, isEmpty);
+    });
+
+    testWidgets('is removed by the session that rang it up when it asks for that sale by its id, and the other sales stay', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      final PendingPosOrder first = await app.queueSale('a-1');
+      await app.queueSale('a-2');
+
+      await app.controller.remove(first.id);
+
+      expect(app.storedKeys, <String?>['a-2']);
+      expect(app.controller.pending.map((PendingPosOrder sale) => sale.idempotencyKey), <String?>['a-2']);
+      expect(app.service.calls, isEmpty, reason: 'it was removed, not sent');
+    });
+
+    testWidgets('that had used its attempts when its session ended is not listed as a failure, retried or removed by the session after it, and stays on the disk with its attempts and its last error', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      await app.queueSale('a-1');
+      app.service.answer = (Map<String, dynamic> body, String? key) async => _failed('refused by the server');
+      for (int replay = 0; replay < OutboxPolicy.maxAttempts; replay++) {
+        await app.controller.syncPending();
+      }
+      expect(app.controller.failedCount, 1, reason: 'a failure of the session that rang it up');
+      app.service.calls.clear();
+      await app.signOut();
+      await app.logIn('token-of-b');
+      await app.profileAnswers(_idOfB);
+
+      await _expectSaleOfEndedSessionUntouchedAndUnseen(app, key: 'a-1', attempts: OutboxPolicy.maxAttempts, lastError: 'refused by the server');
+    });
+
+    testWidgets('is not written to the disk again by the answer of a later session, which gives no sale its seller', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      await app.queueSale('a-1');
+      await app.signOut();
+      await app.logIn('token-of-b');
+      final List<String> queueWithAMark = <String>[...app.preferences.getStringList(_storageKey)!, 'a mark that a write of the queue would remove'];
+      await app.preferences.setStringList(_storageKey, queueWithAMark);
+
+      await app.profileAnswers(_idOfB);
+
+      expect(app.preferences.getStringList(_storageKey), queueWithAMark, reason: 'no sale was given a seller, so there was nothing to write');
+    });
+
+    testWidgets('is kept when its session ends, and is sent by no later session, the seller who rang it up signing in again included, because nothing on the device says whose it is', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      await app.queueSale('a-1');
+      await app.signOut();
+      await app.logIn('token-of-b');
+      await app.profileAnswers(_idOfB);
+      await app.signOut();
+      await app.logIn('token-of-a-again');
+      await app.profileAnswers(_idOfA);
+
+      await _expectSaleOfEndedSessionUntouchedAndUnseen(app, key: 'a-1');
+    });
+
+    testWidgets('is kept in the same way when the same seller signs in again at once, with no other seller between', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      await app.queueSale('a-1');
+      await app.signOut();
+      await app.logIn('token-of-a-again');
+      await app.profileAnswers(_idOfA);
+
+      await _expectSaleOfEndedSessionUntouchedAndUnseen(app, key: 'a-1');
+    });
+
+    testWidgets('a sale rung up in the session that ended after the profile of that session had answered is a different sale: it names its seller, and only that seller sends it', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      await app.queueSale('a-1');
+      await app.profileAnswers(_idOfA);
+      await app.signOut();
+      await app.logIn('token-of-b');
+      await app.profileAnswers(_idOfB);
+
+      expect(app.stored.single.sellerId, '$_idOfA', reason: 'the answer of its own session named the seller before the session ended');
+      expect(await app.controller.syncPending(), 0, reason: 'B\'s session is not A\'s');
+      expect(app.service.calls, isEmpty);
+      expect(app.storedKeys, <String?>['a-1']);
+
+      await app.signOut();
+      await app.logIn('token-of-a-again');
+      await app.profileAnswers(_idOfA);
+
+      expect(await app.controller.syncPending(), 1, reason: 'A signing in again sends it, once');
+      expect(await app.controller.syncPending(), 0);
+      expect(app.sentSales, <String>['a-1']);
+      expect(app.storedKeys, isEmpty);
+    });
+
+    testWidgets('names the market it was rung up in as well, and is still the session\'s that rang it up and nobody else\'s: the market on the entry does not make it another seller\'s', (WidgetTester tester) async {
+      final _App app = await _App.start(tester, storefrontsEnabled: true, stored: <String, Object>{AppConstants.storefrontCountry: 'KW'});
+      await app.logIn('token-of-a');
+      final PendingPosOrder first = await app.queueSale('a-1');
+      final PendingPosOrder second = await app.queueSale('a-2');
+
+      expect(<String?>[first.sellerId, second.sellerId], <String?>[null, null]);
+      expect(<String?>[first.storefront, second.storefront], <String?>['KW', 'KW']);
+      expect(app.controller.pending.map((PendingPosOrder sale) => sale.idempotencyKey), <String?>['a-1', 'a-2'], reason: 'it is listed for the session that rang it up');
+
+      await app.signOut();
+      await app.logIn('token-of-b');
+      await app.profileAnswers(_idOfB);
+
+      expect(app.controller.pending, isEmpty);
+      expect(await app.controller.syncPending(), 0);
+      expect(app.service.calls, isEmpty, reason: 'a market on an entry does not make it B\'s to send');
+      expect(app.stored.map((PendingPosOrder sale) => sale.storefront), <String?>['KW', 'KW']);
+    });
+
+    testWidgets('keeps its market when the answer of its session gives it its seller, and is sent there under that seller', (WidgetTester tester) async {
+      final _App app = await _App.start(tester, storefrontsEnabled: true, stored: <String, Object>{AppConstants.storefrontCountry: 'KW'});
+      await app.logIn('token-of-a');
+      final PendingPosOrder rungUp = await app.queueSale('a-1');
+
+      await app.profileAnswers(_idOfA);
+
+      expect(rungUp.sellerId, isNull);
+      expect(app.stored.single.sellerId, '$_idOfA');
+      expect(app.stored.single.storefront, 'KW', reason: 'the seller was given to the sale, and nothing else was taken from it');
+      expect(await app.controller.syncPending(), 1);
+      expect(app.service.calls.map((_Call call) => call.storefront), <String?>['KW']);
+    });
+
+    testWidgets('names the market it was rung up in, and the session that rang it up sends it there', (WidgetTester tester) async {
+      final _App app = await _App.start(tester, storefrontsEnabled: true, stored: <String, Object>{AppConstants.storefrontCountry: 'KW'});
+      await app.logIn('token-of-a');
+      await app.queueSale('a-1');
+
+      final int synced = await app.controller.syncPending();
+
+      expect(synced, 1);
+      expect(app.service.calls.map((_Call call) => call.storefront), <String?>['KW']);
+      expect(app.storedKeys, isEmpty);
     });
   });
 

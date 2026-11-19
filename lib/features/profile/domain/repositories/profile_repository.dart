@@ -28,7 +28,7 @@ class ProfileRepository implements ProfileRepositoryInterface{
   @override
   Future<http.StreamedResponse> updateProfile(ProfileInfoModel userInfoModel, ProfileBody seller,  File? file, String token, String password) async {
     http.MultipartRequest request = http.MultipartRequest('POST', Uri.parse('${AppConstants.baseUrl}${AppConstants.sellerAndBankUpdate}'));
-    request.headers.addAll(<String,String>{'Authorization': 'Bearer $token'});
+    request.headers.addAll(dioClient!.multipartHeaders(token: token));
     Map<String, String> fields = {};
     if(file != null) {
       request.files.add(http.MultipartFile('image', file.readAsBytes().asStream(), file.lengthSync(), filename: file.path.split('/').last));

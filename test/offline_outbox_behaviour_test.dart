@@ -50,7 +50,7 @@ class _FakeCartService implements CartServiceInterface {
   Future<ApiResponse> Function(Map<String, dynamic> body, String? key) answer = (Map<String, dynamic> body, String? key) async => _placed(1);
 
   @override
-  Future<dynamic> placeOrderRaw(Map<String, dynamic> orderBody, {String? idempotencyKey}) {
+  Future<dynamic> placeOrderRaw(Map<String, dynamic> orderBody, {String? idempotencyKey, String? storefront}) {
     calls.add(_Call(orderBody, idempotencyKey));
 
     return answer(orderBody, idempotencyKey);

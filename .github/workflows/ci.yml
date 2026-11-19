@@ -38,6 +38,13 @@ jobs:
       - name: Check translation keys
         run: dart run tool/check_translations.dart
 
+      # The market selector is shown only in a build made with this flag, so the full run below tests the build without it: the tests
+      # that name the flag follow it there, and show the selector absent. This step runs the same folder with the flag on, which is the
+      # build the selector is made for, so that what a build with storefronts does is read on its own, and even when the full run is red.
+      - name: Test the market selector, the market header and the reload of the screens with the storefront flag on (K-03)
+        if: always()
+        run: flutter test --dart-define=GCC_STOREFRONTS_ENABLED=true test/market_selector
+
       - name: Test
         run: flutter test
 
@@ -45,6 +52,20 @@ jobs:
       - name: Test the POS rules (who a sale is for, what a 200 answer means, the key of a sale, what the camera reads, what becomes of a sale that could not be sent, what the cart keeps after a refusal; K-05, K-06, K-18)
         if: always()
         run: flutter test test/pos_customer_id_test.dart test/pos_order_answer_test.dart test/pos_idempotency_key_test.dart test/product_barcode_formats_test.dart test/outbox_policy_test.dart test/offline_outbox_behaviour_test.dart test/pos_sale_outcome_test.dart
+
+      # A queued sale is replayed in the market it was taken in, not in the market the seller works in when it is sent. The entry names the market, and the replay sends it, only in a build with storefronts on:
+      # the full run above is the build without the flag, so this step reads the file by name, and the next step runs it with the flag on.
+      - name: Test that a queued sale keeps the market it was taken in, and is replayed there whatever market is chosen afterwards (K-03, K-06)
+        if: always()
+        run: flutter test test/market_selector/queued_sale_market_test.dart
+
+      - name: Test that a queued sale keeps the market it was taken in, with the storefront flag on (K-03, K-06)
+        if: always()
+        run: flutter test --dart-define=GCC_STOREFRONTS_ENABLED=true test/market_selector/queued_sale_market_test.dart
+
+      - name: Test that a queued sale is sent only by the session of the seller who took it, also when it names no seller (K-06)
+        if: always()
+        run: flutter test test/offline_outbox_owner_test.dart
 
   build-android:
     runs-on: ubuntu-latest

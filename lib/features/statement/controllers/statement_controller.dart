@@ -86,6 +86,11 @@ class StatementController with ChangeNotifier {
     notifyListeners();
   }
 
+  void clearStatement() {
+    _statement = null;
+    notifyListeners();
+  }
+
   /// Downloads the statement and returns where it was saved, or null when it
   /// could not be produced — the caller reports either outcome, because a
   /// download that silently does nothing looks the same as one that failed.

@@ -3,12 +3,16 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syriacosmeticsmanger/data/datasource/remote/dio/logging_interceptor.dart';
+import 'package:syriacosmeticsmanger/data/datasource/remote/dio/storefront_interceptor.dart';
+import 'package:syriacosmeticsmanger/features/storefront/seller_market_choice.dart';
+import 'package:syriacosmeticsmanger/features/storefront/storefront_config.dart';
 import 'package:syriacosmeticsmanger/utill/app_constants.dart';
 
 class DioClient {
   final String baseUrl;
   final LoggingInterceptor loggingInterceptor;
   final SharedPreferences sharedPreferences;
+  final SellerMarketChoice _marketChoice;
 
   Dio? dio;
   String? token;
@@ -31,7 +35,8 @@ class DioClient {
       Dio? dioC, {
         required this.loggingInterceptor,
         required this.sharedPreferences,
-      }) {
+        bool storefrontsEnabled = StorefrontConfig.enabled,
+      }) : _marketChoice = SellerMarketChoice(sharedPreferences, enabled: storefrontsEnabled) {
     token = sharedPreferences.getString(AppConstants.token);
     _language = sharedPreferences.getString(AppConstants.languageCode) ?? 'en';
     dio = dioC ?? Dio();
@@ -55,6 +60,9 @@ class DioClient {
         'Accept-Language': _language,
       };
     _instances.add(this);
+    if (_marketChoice.enabled) {
+      dio!.interceptors.add(StorefrontInterceptor(marketChoice: _marketChoice));
+    }
     // The logging interceptor stringifies every response body; that cost (and
     // the token in the log) has no place in a release build.
     if (kDebugMode) {
@@ -82,6 +90,14 @@ class DioClient {
     token = sessionToken;
     dio?.options.headers['Authorization'] = 'Bearer $sessionToken';
   }
+
+  /// The headers of a multipart upload, which goes through package:http and so
+  /// never meets this client's interceptors: the seller's token when there is
+  /// one, and the storefront every other request of this client names.
+  Map<String, String> multipartHeaders({String? token}) => <String, String>{
+        if (token != null) 'Authorization': 'Bearer $token',
+        ..._marketChoice.requestHeaders(),
+      };
 
   /// Drop the credential on sign-out, so the next request cannot be made with
   /// the session that was just abandoned.

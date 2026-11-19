@@ -37,7 +37,7 @@ class ShopRepository implements ShopRepositoryInterface{
   Future<http.StreamedResponse> updateShop(ShopModel userInfoModel,  File? file, XFile? shopBanner, XFile? secondaryBanner, XFile? offerBanner,
       {String? minimumOrderAmount, String? freeDeliveryStatus, String? freeDeliveryOverAmount,  String? taxIdentificationNumber, String? tinExpireDate, String? stockLimit, XFile? tinCertificate}) async {
     http.MultipartRequest request = http.MultipartRequest('POST', Uri.parse('${AppConstants.baseUrl}${AppConstants.shopUpdate}'));
-    request.headers.addAll(<String,String>{'Authorization': 'Bearer ${Provider.of<AuthController>(Get.context!, listen: false).getUserToken()}'});
+    request.headers.addAll(dioClient!.multipartHeaders(token: Provider.of<AuthController>(Get.context!, listen: false).getUserToken()));
     if(file != null) {
       request.files.add(http.MultipartFile('logo', file.readAsBytes().asStream(), file.lengthSync(), filename: file.path.split('/').last));
     }
