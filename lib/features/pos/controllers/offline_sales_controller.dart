@@ -10,6 +10,8 @@ import 'package:syriacosmeticsmanger/features/pos/domain/models/pending_pos_orde
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_idempotency_key.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_order_answer.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/services/cart_service_interface.dart';
+import 'package:syriacosmeticsmanger/features/storefront/seller_market_choice.dart';
+import 'package:syriacosmeticsmanger/features/storefront/storefront_config.dart';
 
 /// Outbox for POS sales made while the device was offline.
 ///
@@ -17,12 +19,15 @@ import 'package:syriacosmeticsmanger/features/pos/domain/services/cart_service_i
 /// replayed automatically as soon as the network comes back, so an outage
 /// never loses a sale and never leaves the cashier guessing.
 ///
-/// The queue is one list on the device and it outlives a sign-out, so a sale carries the seller who took it: the server records a replayed sale under the seller of the session that sends it.
-/// A seller's session lists, sends, retries and removes the sales of that seller, and the sales that have no seller; the sales of another seller stay queued until their seller signs in.
+/// The queue is one list on the device and it outlives a sign-out, so a sale carries the seller who took it and the market it was taken in: the server records a replayed sale under the seller of the session
+/// that sends it, and in the storefront that the request names. A seller's session lists, sends, retries and removes the sales of that seller; the sales of another seller stay queued until their seller signs in.
+/// A sale is replayed in the storefront it was taken in (PendingPosOrder.storefront), whatever market the seller works in when it is sent.
 ///
 /// The app learns who is signed in from the profile: the id of the seller in its answer, which a sign-out forgets. Until the answer of the next session arrives, the sales of a seller are out of sight and
 /// unsent, and a sale rung up in the meantime has no seller yet: it is given the seller of its own session when the answer comes. The answer needs a connection, so a sale rung up in a session that never
-/// gets it keeps no seller, and when that session ends it is sent under whoever signs in next, as every sale was before.
+/// gets it keeps no seller: that session lists and sends it while it lasts, and when it ends nothing on the device says whose the sale is, so no later session lists, sends, retries, removes or clears it; it stays
+/// on the device. A sale read from the disk that names no seller (an earlier version's, or one that an earlier run of the app rang up, which does not know its session) goes to the session that is signed in when
+/// the queue is read, as the one that is most likely to have rung it up.
 class OfflineSalesController extends ChangeNotifier {
   final CartServiceInterface cartServiceInterface;
   final SharedPreferences sharedPreferences;
@@ -33,9 +38,23 @@ class OfflineSalesController extends ChangeNotifier {
   /// The id of the seller who is signed in, or null while it is not known. The app reads it from the profile; a test says it.
   final String? Function()? _signedInSellerIdOverride;
 
-  OfflineSalesController({required this.cartServiceInterface, required this.sharedPreferences, bool Function()? hasSession, String? Function()? signedInSellerId})
-      : _hasSessionOverride = hasSession,
-        _signedInSellerIdOverride = signedInSellerId;
+  /// How many sessions have ended since the app started. The app reads it from the profile; a test says it.
+  final int Function()? _sessionsEndedOverride;
+
+  /// The market the seller works in, which a sale keeps when it is queued.
+  final SellerMarketChoice _marketChoice;
+
+  OfflineSalesController({
+    required this.cartServiceInterface,
+    required this.sharedPreferences,
+    bool Function()? hasSession,
+    String? Function()? signedInSellerId,
+    int Function()? sessionsEnded,
+    bool storefrontsEnabled = StorefrontConfig.enabled,
+  })  : _hasSessionOverride = hasSession,
+        _signedInSellerIdOverride = signedInSellerId,
+        _sessionsEndedOverride = sessionsEnded,
+        _marketChoice = SellerMarketChoice(sharedPreferences, enabled: storefrontsEnabled);
 
   static const String _storageKey = 'offline_pos_orders';
 
@@ -45,18 +64,17 @@ class OfflineSalesController extends ChangeNotifier {
   /// Every sale on the device, whoever took it.
   List<PendingPosOrder> _pending = <PendingPosOrder>[];
 
-  /// The sales rung up while the app did not know who was signed in, each with the session it was rung up in: the seller of that session is given to it when the app learns who it is. A sale an earlier
-  /// version queued is not among them.
+  /// The sales that name no seller, each with the session that rang it up: the seller of that session is given to it when the app learns who it is, and until then no other session may send it. The entry of a
+  /// sale whose session has ended stays, so that reading the queue again does not hand the sale to the session that is signed in now.
   final Map<String, int> _awaitingSeller = <String, int>{};
 
   /// The profile of the app, once it has been found. The controller follows it, because its answer is what tells the app who is signed in.
   ProfileController? _profile;
 
-  List<PendingPosOrder> get _ownSales {
-    final String? sellerId = _signedInSellerId();
+  List<PendingPosOrder> get _ownSales => _pending.where(_isOwnSale).toList();
 
-    return _pending.where((PendingPosOrder order) => order.belongsTo(sellerId)).toList();
-  }
+  /// Whether the session that is signed in may list, send, retry and remove the sale: it names the seller who is signed in, or it names none and the session that rang it up is the one that is signed in.
+  bool _isOwnSale(PendingPosOrder order) => order.belongsTo(_signedInSellerId()) || (order.sellerId == null && _awaitingSeller[order.id] == _sessionsEnded());
 
   /// The sales of the seller who is signed in. A sale another seller took is not listed, counted or shown as a failure here.
   List<PendingPosOrder> get pending => List.unmodifiable(_ownSales);
@@ -105,6 +123,10 @@ class OfflineSalesController extends ChangeNotifier {
   void _load() {
     final List<String> raw = sharedPreferences.getStringList(_storageKey) ?? <String>[];
     _pending = raw.map(PendingPosOrder.decode).whereType<PendingPosOrder>().toList();
+    for (final PendingPosOrder order in _pending.where((PendingPosOrder order) => order.sellerId == null)) {
+      _awaitingSeller.putIfAbsent(order.id, _sessionsEnded);
+    }
+    _giveSellerToSalesAwaitingIt();
     notifyListeners();
   }
 
@@ -128,6 +150,7 @@ class OfflineSalesController extends ChangeNotifier {
       customerName: customerName,
       idempotencyKey: idempotencyKey ?? PosIdempotencyKey.generate(),
       sellerId: sellerId,
+      storefront: _marketChoice.storefrontCode(),
     );
     if (sellerId == null) {
       _awaitingSeller[order.id] = _sessionsEnded();
@@ -138,10 +161,9 @@ class OfflineSalesController extends ChangeNotifier {
     return order;
   }
 
-  /// Removes a sale of the seller who is signed in; the id of a sale another seller took removes nothing.
+  /// Removes a sale of the session that is signed in; the id of a sale another seller took, or one that no session can name, removes nothing.
   Future<void> remove(String id) async {
-    final String? sellerId = _signedInSellerId();
-    _pending = _pending.where((PendingPosOrder order) => order.id != id || !order.belongsTo(sellerId)).toList();
+    _pending = _pending.where((PendingPosOrder order) => order.id != id || !_isOwnSale(order)).toList();
     await _persist();
     notifyListeners();
   }
@@ -197,21 +219,32 @@ class OfflineSalesController extends ChangeNotifier {
   }
 
   /// A sale rung up while the app did not know who was signed in is given the seller that the answer of its own session names. The seller is written on the sale and on the disk, so that a seller who signs
-  /// in later does not take it for theirs; the answer of a later session names another seller and gives them none.
+  /// in later does not take it for theirs; the answer of a later session names another seller and gives them none, and the sales of the sessions that ended stay as they were, still waiting.
   void _giveSellerToSalesAwaitingIt() {
+    if (_awaitingSeller.isEmpty) {
+      return;
+    }
+
     final String? sellerId = _signedInSellerId();
-    if (sellerId == null || _awaitingSeller.isEmpty) {
+    if (sellerId == null) {
       return;
     }
 
     final int session = _sessionsEnded();
     _pending = _pending.map((PendingPosOrder order) => order.sellerId == null && _awaitingSeller[order.id] == session ? order.copyWith(sellerId: sellerId) : order).toList();
-    _awaitingSeller.clear();
+    _awaitingSeller.removeWhere((String id, int sessionOfSale) => sessionOfSale == session);
     _persist();
   }
 
-  /// How many sessions had ended when this was asked, by the count of the profile; a test that says who is signed in has no profile and one session.
-  int _sessionsEnded() => _followedProfile()?.sessionsEnded ?? 0;
+  /// How many sessions had ended when this was asked, by the count of the profile; before the profile can be found there is one session.
+  int _sessionsEnded() {
+    final int Function()? override = _sessionsEndedOverride;
+    if (override != null) {
+      return override();
+    }
+
+    return _followedProfile()?.sessionsEnded ?? 0;
+  }
 
   /// Replays every queued sale that is still replayed by itself. A sale that fails stays queued with its attempt count bumped and its last error; once it has used its attempts (OutboxPolicy)
   /// it is not replayed again by the return of the connection, and it is not dropped either: it waits for the seller, so a permanently rejected sale never blocks the ones behind it and is never lost silently.
@@ -239,9 +272,9 @@ class OfflineSalesController extends ChangeNotifier {
 
     // The loop walks the sales the queue held when it began; a sale is replayed, not removed, until the whole pass is over.
     for (final PendingPosOrder order in List<PendingPosOrder>.of(_pending)) {
-      // A sale another seller took stays queued, uncounted and unsent: sent now, the server would record it under this seller. The seller is asked again for each sale, because the replay takes
-      // as long as the network does and another seller can sign in while it runs.
-      if (!order.belongsTo(_signedInSellerId())) {
+      // A sale another seller took, or one that no session can name, stays queued, uncounted and unsent: sent now, the server would record it under this seller. The seller is asked again for each sale,
+      // because the replay takes as long as the network does and another seller can sign in while it runs.
+      if (!_isOwnSale(order)) {
         continue;
       }
 
@@ -250,7 +283,7 @@ class OfflineSalesController extends ChangeNotifier {
       }
 
       try {
-        final dynamic response = await cartServiceInterface.placeOrderRaw(order.body, idempotencyKey: order.idempotencyKey);
+        final dynamic response = await cartServiceInterface.placeOrderRaw(order.body, idempotencyKey: order.idempotencyKey, storefront: order.storefront);
         final int? statusCode = response?.response?.statusCode as int?;
         if (statusCode == 200) {
           if (PosOrderAnswer.isPlaced(response?.response?.data)) {
@@ -301,10 +334,9 @@ class OfflineSalesController extends ChangeNotifier {
     return syncPending();
   }
 
-  /// Empties the queue of the seller who is signed in; the sales of another seller stay.
+  /// Empties the queue of the session that is signed in; the sales of another seller, and those that no session can name, stay.
   Future<void> clear() async {
-    final String? sellerId = _signedInSellerId();
-    _pending = _pending.where((PendingPosOrder order) => !order.belongsTo(sellerId)).toList();
+    _pending = _pending.where((PendingPosOrder order) => !_isOwnSale(order)).toList();
     await _persist();
     notifyListeners();
   }

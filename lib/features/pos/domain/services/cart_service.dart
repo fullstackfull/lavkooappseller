@@ -36,8 +36,8 @@ class CartService implements CartServiceInterface{
   }
 
   @override
-  Future placeOrderRaw(Map<String, dynamic> orderBody, {String? idempotencyKey}) {
-    return cartRepositoryInterface.placeOrderRaw(orderBody, idempotencyKey: idempotencyKey);
+  Future placeOrderRaw(Map<String, dynamic> orderBody, {String? idempotencyKey, String? storefront}) {
+    return cartRepositoryInterface.placeOrderRaw(orderBody, idempotencyKey: idempotencyKey, storefront: storefront);
   }
 
   @override

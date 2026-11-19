@@ -31,6 +31,9 @@ class SellerMarketChoice {
               StorefrontConfig.resolveHeaderValue(_storedCountryCode()),
       };
 
+  /// The storefront a request sent now names, which is also the market a sale queued now was taken in; none while storefronts are off.
+  String? storefrontCode() => requestHeaders()[AppConstants.storefrontHeader];
+
   /// Saves [scope] as the market to work in. All Markets is not a market a request can target, so it is refused.
   Future<bool> choose(MarketScope scope) {
     final String? countryCode = scope.countryCode;
