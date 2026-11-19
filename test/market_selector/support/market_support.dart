@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syriacosmeticsmanger/data/datasource/remote/dio/dio_client.dart';
 import 'package:syriacosmeticsmanger/data/datasource/remote/dio/logging_interceptor.dart';
@@ -7,6 +8,15 @@ import 'package:syriacosmeticsmanger/features/storefront/seller_market_choice.da
 import 'package:syriacosmeticsmanger/utill/app_constants.dart';
 
 import 'recording_adapter.dart';
+
+/// A store that refuses every write, as a phone with a full disk does.
+class RefusingPreferences extends Fake implements SharedPreferences {
+  @override
+  Object? get(String key) => null;
+
+  @override
+  Future<bool> setString(String key, String value) async => false;
+}
 
 Future<SharedPreferences> preferencesWith([Map<String, Object> values = const <String, Object>{}]) async {
   SharedPreferences.setMockInitialValues(values);

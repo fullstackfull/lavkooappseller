@@ -5,6 +5,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_asset_image_widget.dart' show CustomAssetImageWidget;
 import 'package:syriacosmeticsmanger/features/order/domain/models/order_model.dart';
 import 'package:syriacosmeticsmanger/features/order_details/widgets/order_list_filter_bottomsheet_widget.dart';
+import 'package:syriacosmeticsmanger/features/storefront/storefront_config.dart';
 import 'package:syriacosmeticsmanger/features/storefront/widgets/market_labeled_action.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/customer_controller.dart';
 import 'package:syriacosmeticsmanger/helper/color_helper.dart';
@@ -24,7 +25,10 @@ import 'package:syriacosmeticsmanger/core/app_context.dart';
 class OrderScreen extends StatefulWidget {
   final bool isBacButtonExist;
   final bool fromHome;
-  const OrderScreen({super.key, this.isBacButtonExist = false, this.fromHome = false});
+
+  /// Whether the market label is part of the title area: only in a build with storefronts on.
+  final bool storefrontsEnabled;
+  const OrderScreen({super.key, this.isBacButtonExist = false, this.fromHome = false, this.storefrontsEnabled = StorefrontConfig.enabled});
 
   @override
   State<OrderScreen> createState() => _OrderScreenState();
@@ -72,7 +76,7 @@ class _OrderScreenState extends State<OrderScreen> {
         isBackButtonExist: widget.isBacButtonExist,
         isAction: true, isFilter: true,
 
-        widget: MarketLabeledAction(action: Consumer<OrderController>(
+        widget: MarketLabeledAction(enabled: widget.storefrontsEnabled, action: Consumer<OrderController>(
           builder: (context, orderController, _) {
             return Stack(
               children: [

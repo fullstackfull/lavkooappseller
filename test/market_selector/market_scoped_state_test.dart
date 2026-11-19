@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -28,19 +29,39 @@ const List<String> _cartDrop = <String>[
 
 const List<String> _alwaysReloaded = <String>[
   'orders.setIndex(3)',
+  'profile.getSellerInfo',
+  'bank.setBankInfo(Bank of the market entered)',
+  'notifications.clearNotifications',
   'notifications.getNotificationList(1)',
   'analytics.setAnalyticsFilterType(0)',
   'analytics.setRevenueFilterType(0)',
+  'analytics.clearEarningStatistics',
   'analytics.getAnalyticsFilterData(overall)',
   'analytics.getDashboardRevenueData(yearEarn)',
+  'sellerCenter.clearLoadedData',
   'sellerCenter.getSellerCenterOverview',
   'sellerCenter.getActivities',
+  'actionCenter.clearInsights',
   'actionCenter.getInsights(clearSeverity: true)',
+  'products.clearStockLimitStatus',
+  'products.clearPosProducts',
   'products.getStockOutProductList(1, en, reload: true)',
   'products.getTopSellingProductList(1, en, reload: true)',
   'products.getMostPopularProductList(1, en, reload: true)',
   'products.getStockLimitStatus',
 ];
+
+/// What is dropped, and the first thing that loads it again: the drop has to come first, or a refresh that fails leaves the figures of
+/// the market left on show.
+const Map<String, String> _dropBeforeLoad = <String, String>{
+  'notifications.clearNotifications': 'notifications.getNotificationList(1)',
+  'analytics.clearEarningStatistics': 'analytics.getDashboardRevenueData(yearEarn)',
+  'sellerCenter.clearLoadedData': 'sellerCenter.getSellerCenterOverview',
+  'actionCenter.clearInsights': 'actionCenter.getInsights(clearSeverity: true)',
+  'products.clearStockLimitStatus': 'products.getStockLimitStatus',
+  'products.clearPosProducts': 'products.getPosProductList(1, [7])',
+  'statement.clearStatement': 'statement.getStatement',
+};
 
 /// The controller of the market wired as the container wires it: its switch handler is the reload of the screens.
 SellerMarketController _marketOf(FakeScreens screens) {
@@ -92,8 +113,59 @@ void main() {
         ..._alwaysReloaded,
         'products.getPosProductList(1, [7])',
         'products.getSellerProductList(42, 1, en)',
+        'statement.clearStatement',
         'statement.getStatement',
       ]));
+    });
+
+    testWidgets('drops what each screen holds before it asks for it again', (WidgetTester tester) async {
+      final FakeScreens screens = FakeScreens(
+        await preferencesWith(),
+        posListLoaded: true,
+        sellerListLoaded: true,
+        statementLoaded: true,
+      );
+      await screens.mount(tester);
+      final SellerMarketController market = _marketOf(screens);
+
+      await tester.runAsync(() => market.choose(MarketScope.kuwait));
+
+      for (final MapEntry<String, String> step in _dropBeforeLoad.entries) {
+        expect(screens.calls, contains(step.key));
+        expect(screens.calls, contains(step.value));
+        expect(screens.calls.indexOf(step.key), lessThan(screens.calls.indexOf(step.value)), reason: '${step.key} comes before ${step.value}');
+      }
+    });
+
+    testWidgets('loads the profile again, and hands the bank details it now holds to the bank', (WidgetTester tester) async {
+      final FakeScreens screens = FakeScreens(await preferencesWith());
+      await screens.mount(tester);
+      final SellerMarketController market = _marketOf(screens);
+
+      await tester.runAsync(() => market.choose(MarketScope.kuwait));
+
+      expect(screens.calls, containsAllInOrder(<String>['profile.getSellerInfo', 'bank.setBankInfo(Bank of the market entered)']));
+    });
+
+    testWidgets('is complete only when the screens have been loaded again, so a caller can wait for them', (WidgetTester tester) async {
+      final Completer<void> answered = Completer<void>();
+      final FakeScreens screens = FakeScreens(await preferencesWith(), notificationsAnswer: answered.future);
+      await screens.mount(tester);
+      final SellerMarketController market = _marketOf(screens);
+      bool complete = false;
+      late final Future<bool> choosing;
+
+      await tester.runAsync(() async {
+        choosing = market.choose(MarketScope.kuwait).whenComplete(() => complete = true);
+        await pumpEventQueue();
+      });
+      expect(complete, isFalse);
+
+      await tester.runAsync(() async {
+        answered.complete();
+        await choosing;
+      });
+      expect(complete, isTrue);
     });
 
     testWidgets('leaves alone the lists the seller has not opened: they load when they are opened', (WidgetTester tester) async {

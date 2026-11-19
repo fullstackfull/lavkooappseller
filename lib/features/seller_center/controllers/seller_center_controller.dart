@@ -176,6 +176,16 @@ class SellerCenterController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Forgets the figures the seller center has loaded (overview, activities, payouts and analytics), so that none are shown, or acted on,
+  /// until the ones asked for next arrive.
+  void clearLoadedData() {
+    _overview = null;
+    _activities = null;
+    _payouts = null;
+    _analytics = null;
+    notifyListeners();
+  }
+
   /// The API refuses payouts and submissions with a specific reason (balance,
   /// KYC, cooling period, validation). Dio throws on a 403, so there is no
   /// response to read — ApiErrorHandler has already lifted the reason out of

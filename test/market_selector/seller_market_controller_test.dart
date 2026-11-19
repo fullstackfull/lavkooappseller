@@ -11,15 +11,6 @@ import 'package:syriacosmeticsmanger/utill/app_constants.dart';
 
 import 'support/market_support.dart';
 
-/// A store that refuses every write, as a phone with a full disk does.
-class _RefusingPreferences extends Fake implements SharedPreferences {
-  @override
-  Object? get(String key) => null;
-
-  @override
-  Future<bool> setString(String key, String value) async => false;
-}
-
 /// The controller of the market holds the market the seller works in, changes it, and says so. Changing it is the one moment the
 /// screens drop what belonged to the market left, so what counts here is what happens, and in which order.
 void main() {
@@ -98,7 +89,7 @@ void main() {
     test('a market that could not be saved is not switched to', () async {
       int handled = 0;
       int told = 0;
-      final SellerMarketController controller = controllerOn(_RefusingPreferences(), onMarketSwitched: () async => handled++)
+      final SellerMarketController controller = controllerOn(RefusingPreferences(), onMarketSwitched: () async => handled++)
         ..addListener(() => told++);
 
       final bool chosen = await controller.choose(MarketScope.oman);
@@ -122,6 +113,64 @@ void main() {
       reloaded.complete();
 
       expect(await choosing, isTrue);
+    });
+  });
+
+  group('two switches in a row', () {
+    test('are handled one after the other, so that the newest market is the last whose screens are loaded', () async {
+      final SharedPreferences preferences = await preferencesWith();
+      final List<Completer<void>> handlers = <Completer<void>>[];
+      final List<String> events = <String>[];
+      final SellerMarketController controller = controllerOn(
+        preferences,
+        onMarketSwitched: () {
+          final int number = handlers.length + 1;
+          final Completer<void> handler = Completer<void>();
+          handlers.add(handler);
+          events.add('start $number');
+          return handler.future.whenComplete(() => events.add('end $number'));
+        },
+      );
+
+      final Future<bool> toKuwait = controller.choose(MarketScope.kuwait);
+      final Future<bool> toOman = controller.choose(MarketScope.oman);
+      await pumpEventQueue();
+
+      expect(controller.market, MarketScope.oman);
+      expect(preferences.getString(AppConstants.storefrontCountry), 'OM');
+      expect(events, <String>['start 1']);
+
+      handlers[0].complete();
+      await pumpEventQueue();
+      expect(events, <String>['start 1', 'end 1', 'start 2']);
+
+      handlers[1].complete();
+      expect(await Future.wait<bool>(<Future<bool>>[toKuwait, toOman]), <bool>[true, true]);
+      expect(events, <String>['start 1', 'end 1', 'start 2', 'end 2']);
+    });
+
+    test('go on after one whose screens could not be loaded, which its own caller hears of', () async {
+      final SharedPreferences preferences = await preferencesWith();
+      final Completer<void> firstReload = Completer<void>();
+      int handled = 0;
+      final SellerMarketController controller = controllerOn(
+        preferences,
+        onMarketSwitched: () {
+          handled++;
+          return handled == 1 ? firstReload.future : Future<void>.value();
+        },
+      );
+
+      final Future<bool> toKuwait = controller.choose(MarketScope.kuwait);
+      final Future<void> kuwaitFailed = expectLater(toKuwait, throwsStateError);
+      final Future<bool> toOman = controller.choose(MarketScope.oman);
+      await pumpEventQueue();
+      firstReload.completeError(StateError('the reload of the first market failed'));
+      await kuwaitFailed;
+
+      expect(await toOman, isTrue);
+      expect(handled, 2);
+      expect(controller.market, MarketScope.oman);
     });
   });
 

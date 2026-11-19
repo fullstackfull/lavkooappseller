@@ -38,6 +38,13 @@ jobs:
       - name: Check translation keys
         run: dart run tool/check_translations.dart
 
+      # The market selector is shown only in a build made with this flag, so the full run below tests the build without it: the tests
+      # that name the flag follow it there, and show the selector absent. This step runs the same folder with the flag on, which is the
+      # build the selector is made for, so that what a build with storefronts does is read on its own, and even when the full run is red.
+      - name: Test the market selector, the market header and the reload of the screens with the storefront flag on (K-03)
+        if: always()
+        run: flutter test --dart-define=GCC_STOREFRONTS_ENABLED=true test/market_selector
+
       - name: Test
         run: flutter test
 

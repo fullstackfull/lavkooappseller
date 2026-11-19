@@ -154,10 +154,10 @@ void main() {
         <String>{'content-type', 'accept', 'authorization', AppConstants.langKey, 'x-localization', 'accept-language'},
       );
     });
+  });
 
-    test('a client made as the container makes it follows the build flag, which is off', () async {
-      final SharedPreferences preferences = await preferencesWith(<String, Object>{AppConstants.storefrontCountry: 'AE'});
-      final RecordingAdapter adapter = RecordingAdapter();
+  group('a client made as the container makes it, which is with nothing said of the market', () {
+    DioClient containerClient(SharedPreferences preferences, RecordingAdapter adapter) {
       final DioClient client = DioClient(
         AppConstants.baseUrl,
         Dio(),
@@ -165,11 +165,49 @@ void main() {
         sharedPreferences: preferences,
       );
       client.dio!.httpClientAdapter = adapter;
+      return client;
+    }
+
+    test('follows the build flag: it names the market of the seller on every request when storefronts are on, and none when they are off', () async {
+      final SharedPreferences preferences = await preferencesWith(<String, Object>{AppConstants.storefrontCountry: 'AE'});
+      final RecordingAdapter adapter = RecordingAdapter();
+      final DioClient client = containerClient(preferences, adapter);
 
       await client.get(ordersPath);
+      await client.post(ordersPath, data: <String, Object>{'status': 'confirmed'});
 
-      expect(adapter.last.headers.containsKey(AppConstants.storefrontHeader.toLowerCase()), isFalse);
-      expect(client.dio!.interceptors.whereType<StorefrontInterceptor>(), isEmpty);
-    }, skip: StorefrontConfig.enabled ? 'a pin of the build without the storefront flag' : null);
+      expect(adapter.requests, hasLength(2));
+      for (final RecordedRequest request in adapter.requests) {
+        expect(request.header(AppConstants.storefrontHeader), StorefrontConfig.enabled ? 'AE' : isNull);
+      }
+      expect(client.dio!.interceptors.whereType<StorefrontInterceptor>(), hasLength(StorefrontConfig.enabled ? 1 : 0));
+    });
+
+    test('follows the build flag for the headers of an upload too', () async {
+      final SharedPreferences preferences = await preferencesWith(<String, Object>{AppConstants.storefrontCountry: 'AE'});
+      final DioClient client = containerClient(preferences, RecordingAdapter());
+
+      expect(
+        client.multipartHeaders(token: 'dummy-session-token-for-the-tests'),
+        StorefrontConfig.enabled
+            ? <String, String>{'Authorization': 'Bearer dummy-session-token-for-the-tests', AppConstants.storefrontHeader: 'AE'}
+            : <String, String>{'Authorization': 'Bearer dummy-session-token-for-the-tests'},
+      );
+    });
+
+    test('follows the market the seller moves to, in a build with storefronts on', () async {
+      final SharedPreferences preferences = await preferencesWith();
+      final RecordingAdapter adapter = RecordingAdapter();
+      final DioClient client = containerClient(preferences, adapter);
+      final SellerMarketController controller = controllerOn(preferences, enabled: StorefrontConfig.enabled);
+
+      await client.get(ordersPath);
+      await controller.choose(MarketScope.kuwait);
+      await client.get(ordersPath);
+
+      expect(adapter.requests.map((RecordedRequest request) => request.header(AppConstants.storefrontHeader)), <Object?>[
+        if (StorefrontConfig.enabled) ...<String>['SA', 'KW'] else ...<Object?>[null, null],
+      ]);
+    });
   });
 }

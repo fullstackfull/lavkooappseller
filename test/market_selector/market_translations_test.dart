@@ -12,6 +12,7 @@ const Map<String, String> _english = <String, String>{
   'market_qatar': 'Qatar',
   'market_bahrain': 'Bahrain',
   'market_oman': 'Oman',
+  'market_not_changed': 'The market was not changed. Please try again',
 };
 
 const Map<String, String> _arabic = <String, String>{
@@ -23,6 +24,7 @@ const Map<String, String> _arabic = <String, String>{
   'market_qatar': 'قطر',
   'market_bahrain': 'البحرين',
   'market_oman': 'عُمان',
+  'market_not_changed': 'لم يتم تغيير السوق. حاول مرة أخرى',
 };
 
 Map<String, dynamic> _language(String code) =>

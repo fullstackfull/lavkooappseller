@@ -31,15 +31,30 @@ void main() {
       expect(sitesWithoutHelper, isEmpty);
     });
 
-    test('the dashboard and the order list put the market label in their title area through the labelled action', () {
-      for (final String path in <String>[
-        'lib/features/home/screens/home_page_screen.dart',
-        'lib/features/order/screens/order_screen.dart',
-      ]) {
-        final String source = File(path).readAsStringSync();
+    test('the dashboard builds its title area with the widget that carries the market label, and says nothing of whether it is on', () {
+      final String dashboard = File('lib/features/home/screens/home_page_screen.dart').readAsStringSync();
 
-        expect(source, contains('MarketLabeledAction(action: '), reason: path);
-        expect(source, isNot(contains('MarketLabel(')), reason: path);
+      expect(dashboard, contains('const HomeAppBarWidget(),'));
+      expect(dashboard, isNot(contains('SliverAppBar')));
+    });
+
+    test('the title areas of the dashboard and of the order list put the market label in front of their action through the labelled action', () {
+      final String dashboardBar = File('lib/features/home/widgets/home_app_bar_widget.dart').readAsStringSync();
+      final String orderList = File('lib/features/order/screens/order_screen.dart').readAsStringSync();
+
+      expect(RegExp(r'MarketLabeledAction\(\s*enabled: storefrontsEnabled,').hasMatch(dashboardBar), isTrue);
+      expect(orderList, contains('MarketLabeledAction(enabled: widget.storefrontsEnabled, action: '));
+      for (final String source in <String>[dashboardBar, orderList]) {
+        expect(source, isNot(contains('MarketLabel(')));
+      }
+    });
+
+    test('no screen of the app says whether its market label, its tile or its client is on: all of them follow the build flag', () {
+      for (final File file in _dartFilesUnder('lib')) {
+        final String source = file.readAsStringSync();
+
+        expect(source, isNot(contains('storefrontsEnabled:')), reason: file.path);
+        expect(RegExp(r'MarketLabeledAction\(\s*enabled:\s*(true|false)\b').hasMatch(source), isFalse, reason: file.path);
       }
     });
 
@@ -54,7 +69,6 @@ void main() {
       final String entry = File('lib/main.dart').readAsStringSync();
 
       expect(entry, isNot(contains('SellerMarketController')));
-      expect(entry, isNot(contains('storefront')));
     });
   });
 }

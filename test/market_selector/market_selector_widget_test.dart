@@ -7,11 +7,6 @@ import 'package:get_it/get_it.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syriacosmeticsmanger/features/menu/screens/more_screen.dart';
-import 'package:syriacosmeticsmanger/features/order/controllers/order_controller.dart';
-import 'package:syriacosmeticsmanger/features/order/domain/services/order_service_interface.dart';
-import 'package:syriacosmeticsmanger/features/order/screens/order_screen.dart';
-import 'package:syriacosmeticsmanger/features/pos/controllers/customer_controller.dart';
-import 'package:syriacosmeticsmanger/features/pos/domain/services/cart_service_interface.dart';
 import 'package:syriacosmeticsmanger/features/profile/controllers/profile_controller.dart';
 import 'package:syriacosmeticsmanger/features/profile/domain/services/profice_service_interface.dart';
 import 'package:syriacosmeticsmanger/features/splash/controllers/splash_controller.dart';
@@ -34,10 +29,6 @@ import 'support/market_support.dart';
 class _UnusedSplashService extends Fake implements SplashServiceInterface {}
 
 class _UnusedProfileService extends Fake implements ProfileServiceInterface {}
-
-class _UnusedOrderService extends Fake implements OrderServiceInterface {}
-
-class _UnusedCartService extends Fake implements CartServiceInterface {}
 
 Map<String, dynamic> _language(Locale locale) =>
     jsonDecode(File('assets/language/${locale.languageCode}.json').readAsStringSync()) as Map<String, dynamic>;
@@ -158,6 +149,32 @@ void main() {
         expect(omanRow.contains(tester.getCenter(marks)), isTrue);
       });
 
+      testWidgets('a pick that could not be saved closes the list, says so, and changes nothing', (WidgetTester tester) async {
+        market = controllerOn(RefusingPreferences(), onMarketSwitched: () async => switches++);
+        await showTileAndLabel(tester, locale: locale);
+        await openSheet(tester);
+
+        await tester.tap(inSheet(find.text(nameOf(MarketScope.kuwait))));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(MarketPickerSheet), findsNothing);
+        expect(find.text(words['market_not_changed'] as String), findsOneWidget);
+        expect(market.market, MarketScope.saudiArabia);
+        expect(switches, 0);
+        expect(find.text(nameOf(MarketScope.saudiArabia)), findsOneWidget);
+        expect(find.text('SA · SAR'), findsOneWidget);
+      });
+
+      testWidgets('a pick that was saved says nothing of the kind', (WidgetTester tester) async {
+        await showTileAndLabel(tester, locale: locale);
+        await openSheet(tester);
+
+        await tester.tap(inSheet(find.text(nameOf(MarketScope.oman))));
+        await tester.pumpAndSettle();
+
+        expect(find.text(words['market_not_changed'] as String), findsNothing);
+      });
+
       testWidgets('picking the market already worked in closes the list and switches nothing', (WidgetTester tester) async {
         await showTileAndLabel(tester, locale: locale);
         await openSheet(tester);
@@ -220,6 +237,9 @@ void main() {
   group('the labelled action', () {
     const ValueKey<String> actionKey = ValueKey<String>('action');
 
+    setUp(() => GetIt.instance.registerSingleton<SellerMarketController>(market));
+    tearDown(GetIt.instance.reset);
+
     Future<void> showAction(WidgetTester tester, {bool? enabled, Locale locale = MarketHarness.english}) async {
       await tester.pumpWidget(await MarketHarness.app(
         tester,
@@ -246,12 +266,12 @@ void main() {
       expect(find.byType(Row), findsNothing);
     });
 
-    testWidgets('is the action alone in a build made without the storefront flag', (WidgetTester tester) async {
+    testWidgets('has the label in front of the action exactly when the build has storefronts on', (WidgetTester tester) async {
       await showAction(tester);
 
       expect(find.byKey(actionKey), findsOneWidget);
-      expect(find.byType(MarketLabel), findsNothing);
-    }, skip: StorefrontConfig.enabled);
+      expect(find.byType(MarketLabel), StorefrontConfig.enabled ? findsOneWidget : findsNothing);
+    });
 
     for (final Locale locale in <Locale>[MarketHarness.english, MarketHarness.arabic]) {
       testWidgets('puts the label before the action while storefronts are on, in ${locale.languageCode}', (WidgetTester tester) async {
@@ -261,51 +281,6 @@ void main() {
         final double action = tester.getCenter(find.byKey(actionKey)).dx;
         expect(find.text('SA · SAR'), findsOneWidget);
         expect(action > label, locale == MarketHarness.english);
-      });
-    }
-  });
-
-  group('the order list', () {
-    setUp(() {
-      GetIt.instance.registerSingleton<SharedPreferences>(preferences);
-      registerStorefrontDependencies(GetIt.instance);
-    });
-    tearDown(GetIt.instance.reset);
-
-    testWidgets('has the market label in its title area exactly when the build has storefronts on', (WidgetTester tester) async {
-      await tester.pumpWidget(await MarketHarness.app(
-        tester,
-        providers: [
-          ChangeNotifierProvider<ThemeController>(create: (_) => ThemeController(sharedPreferences: preferences)),
-          ChangeNotifierProvider<OrderController>(create: (_) => OrderController(orderServiceInterface: _UnusedOrderService())),
-          ChangeNotifierProvider<CustomerController>(create: (_) => CustomerController(cartServiceInterface: _UnusedCartService())),
-        ],
-        home: const OrderScreen(),
-      ));
-      await tester.pump();
-
-      expect(find.text(_language(MarketHarness.english)['my_order'] as String), findsOneWidget);
-      expect(find.byType(MarketLabel), StorefrontConfig.enabled ? findsOneWidget : findsNothing);
-    });
-
-    for (final Locale locale in <Locale>[MarketHarness.english, MarketHarness.arabic]) {
-      testWidgets('keeps its title area whole on the narrowest phone with large text, in ${locale.languageCode}', (WidgetTester tester) async {
-        MarketHarness.useScreen(tester, MarketHarness.narrowPhone);
-        await tester.pumpWidget(await MarketHarness.app(
-          tester,
-          locale: locale,
-          textScale: 1.3,
-          providers: [
-            ChangeNotifierProvider<ThemeController>(create: (_) => ThemeController(sharedPreferences: preferences)),
-            ChangeNotifierProvider<OrderController>(create: (_) => OrderController(orderServiceInterface: _UnusedOrderService())),
-            ChangeNotifierProvider<CustomerController>(create: (_) => CustomerController(cartServiceInterface: _UnusedCartService())),
-          ],
-          home: const OrderScreen(),
-        ));
-        await tester.pump();
-
-        expect(tester.takeException(), isNull);
-        expect(find.text(_language(locale)['my_order'] as String), findsOneWidget);
       });
     }
   });
@@ -336,11 +311,11 @@ void main() {
       expect(find.text(_language(MarketHarness.english)['shop_and_account'] as String), findsOneWidget);
     });
 
-    testWidgets('has no market tile in a build made without the storefront flag', (WidgetTester tester) async {
+    testWidgets('has the market tile exactly when the build has storefronts on', (WidgetTester tester) async {
       await showMoreScreen(tester);
 
-      expect(find.byType(MarketSelectorTile), findsNothing);
-    }, skip: StorefrontConfig.enabled);
+      expect(find.byType(MarketSelectorTile), StorefrontConfig.enabled ? findsOneWidget : findsNothing);
+    });
 
     testWidgets('shows the tile above its first section while storefronts are on, and the tile opens the markets', (WidgetTester tester) async {
       await showMoreScreen(tester, storefrontsEnabled: true);

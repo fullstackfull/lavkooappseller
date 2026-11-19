@@ -1,6 +1,6 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:syriacosmeticsmanger/common/basewidgets/custom_snackbar_widget.dart';
+import 'package:syriacosmeticsmanger/core/app_context.dart';
 import 'package:syriacosmeticsmanger/features/storefront/controllers/seller_market_controller.dart';
 import 'package:syriacosmeticsmanger/features/storefront/domain/models/market_scope.dart';
 import 'package:syriacosmeticsmanger/features/storefront/widgets/market_names.dart';
@@ -8,7 +8,8 @@ import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 import 'package:syriacosmeticsmanger/utill/dimensions.dart';
 import 'package:syriacosmeticsmanger/utill/styles.dart';
 
-/// The markets a seller can work in, the one worked in now marked. Choosing one closes the sheet and saves the choice.
+/// The markets a seller can work in, the one worked in now marked. Choosing one closes the sheet and saves the choice, and says so when
+/// the choice could not be saved.
 class MarketPickerSheet extends StatelessWidget {
   const MarketPickerSheet({super.key, required this.marketController});
 
@@ -45,10 +46,7 @@ class MarketPickerSheet extends StatelessWidget {
                     _MarketOption(
                       scope: scope,
                       selected: scope == marketController.market,
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        unawaited(marketController.choose(scope));
-                      },
+                      onTap: () => _choose(context, scope),
                     ),
                 ],
               ),
@@ -57,6 +55,14 @@ class MarketPickerSheet extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _choose(BuildContext context, MarketScope scope) async {
+    Navigator.of(context).pop();
+    final bool saved = await marketController.choose(scope);
+    if (!saved && Get.context != null) {
+      showCustomSnackBarWidget(getTranslated('market_not_changed', Get.context!), Get.context, sanckBarType: SnackBarType.error);
+    }
   }
 }
 

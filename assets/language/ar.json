@@ -219,6 +219,7 @@
   "market_qatar": "قطر",
   "market_bahrain": "البحرين",
   "market_oman": "عُمان",
+  "market_not_changed": "لم يتم تغيير السوق. حاول مرة أخرى",
   "orders": "طلبات",
   "confirmed": "مؤكد",
   "out_for_delivery": "خارج للتسليم",
