@@ -15,6 +15,7 @@ import 'package:syriacosmeticsmanger/features/shop/controllers/shop_controller.d
 import 'package:syriacosmeticsmanger/features/splash/controllers/splash_controller.dart';
 import 'package:syriacosmeticsmanger/utill/dimensions.dart';
 import 'package:syriacosmeticsmanger/utill/images.dart';
+import 'package:syriacosmeticsmanger/utill/shop_image_rules.dart';
 import 'package:syriacosmeticsmanger/utill/styles.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_app_bar_widget.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_button_widget.dart';
@@ -347,9 +348,9 @@ class ShopUpdateScreenState extends State<ShopUpdateScreen> {
                                   fontSize: Dimensions.fontSizeDefault,
                                 ),
                                 children: <InlineSpan>[
-                                  TextSpan(text: getTranslated('jpg_png_less_then_1_mb', context) ?? ''),
+                                  TextSpan(text: getTranslated(ShopImageRules.inShopUpdate(ShopImageSlot.logo).sizeLabelKey, context) ?? ''),
                                   TextSpan(
-                                    text: getTranslated('ratio_1_1', context) ?? '',
+                                    text: getTranslated(ShopImageRules.inShopUpdate(ShopImageSlot.logo).ratioLabelKey, context) ?? '',
                                     style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontWeight: FontWeight.bold,),
                                   ),
                                 ],
@@ -455,9 +456,9 @@ class ShopUpdateScreenState extends State<ShopUpdateScreen> {
                                   fontSize: Dimensions.fontSizeDefault,
                                 ),
                                 children: <InlineSpan>[
-                                  TextSpan(text: getTranslated('jpg_png_less_then_1_mb', context) ?? ''),
+                                  TextSpan(text: getTranslated(ShopImageRules.inShopUpdate(ShopImageSlot.banner).sizeLabelKey, context) ?? ''),
                                   TextSpan(
-                                    text: getTranslated('ratio_4_1', context) ?? '',
+                                    text: getTranslated(ShopImageRules.inShopUpdate(ShopImageSlot.banner).ratioLabelKey, context) ?? '',
                                     style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontWeight: FontWeight.bold,),
                                   ),
                                 ],
@@ -546,7 +547,8 @@ class ShopUpdateScreenState extends State<ShopUpdateScreen> {
 
 
 
-                      if(Provider.of<SplashController>(context, listen: false).configModel?.activeTheme == "theme_aster")
+                      if(ShopImageRules.inShopUpdate(ShopImageSlot.secondaryBanner)
+                          .isAskedOf(Provider.of<SplashController>(context, listen: false).configModel))
                           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Padding(padding: const EdgeInsets.only(left: Dimensions.paddingSizeLarge,top: Dimensions.paddingSizeDefault,
                                 right: Dimensions.paddingSizeLarge, bottom: Dimensions.paddingSizeDefault),
@@ -613,16 +615,17 @@ class ShopUpdateScreenState extends State<ShopUpdateScreen> {
                               padding: const EdgeInsets.only(top: Dimensions.paddingSizeSmall, bottom: Dimensions.paddingSizeDefault),
                               child: Row(mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text(getTranslated('image_size', context)!, style: robotoRegular.copyWith(color: Theme.of(context).textTheme.bodyLarge?.color)),
+                                  Text(getTranslated(ShopImageRules.inShopUpdate(ShopImageSlot.secondaryBanner).sizeLabelKey, context)!, style: robotoRegular.copyWith(color: Theme.of(context).textTheme.bodyLarge?.color)),
                                   const SizedBox(width: Dimensions.paddingSizeExtraSmall),
-                                  Text('(3:1)', style: robotoRegular.copyWith(color: Theme.of(context).colorScheme.error),),
+                                  Text(ShopImageRules.inShopUpdate(ShopImageSlot.secondaryBanner).ratioLabel!, style: robotoRegular.copyWith(color: Theme.of(context).colorScheme.error),),
                                 ],
                               ),
                             ),
                           ],),
 
 
-                      if(Provider.of<SplashController>(context, listen: false).configModel?.activeTheme == "theme_fashion")
+                      if(ShopImageRules.inShopUpdate(ShopImageSlot.offerBanner)
+                          .isAskedOf(Provider.of<SplashController>(context, listen: false).configModel))
                         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Padding(padding: const EdgeInsets.only(left: Dimensions.paddingSizeLarge,top: Dimensions.paddingSizeDefault,
                               right: Dimensions.paddingSizeLarge, bottom: Dimensions.paddingSizeDefault),
@@ -656,9 +659,9 @@ class ShopUpdateScreenState extends State<ShopUpdateScreen> {
 
                           Padding(padding: const EdgeInsets.only(top: Dimensions.paddingSizeSmall, bottom: Dimensions.paddingSizeDefault),
                               child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                Text(getTranslated('image_size', context)!, style: robotoRegular.copyWith(color: Theme.of(context).textTheme.bodyLarge?.color)),
+                                Text(getTranslated(ShopImageRules.inShopUpdate(ShopImageSlot.offerBanner).sizeLabelKey, context)!, style: robotoRegular.copyWith(color: Theme.of(context).textTheme.bodyLarge?.color)),
                                 const SizedBox(width: Dimensions.paddingSizeExtraSmall),
-                                Text('(7:1)', style: robotoRegular.copyWith(color: Theme.of(context).colorScheme.error),),])),
+                                Text(ShopImageRules.inShopUpdate(ShopImageSlot.offerBanner).ratioLabel!, style: robotoRegular.copyWith(color: Theme.of(context).colorScheme.error),),])),
 
                         ]),
                         ],
