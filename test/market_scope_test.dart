@@ -38,6 +38,31 @@ void main() {
       expect(currencies, hasLength(MarketScope.gccMarkets.length));
     });
 
+    group('decimals of the currency', () {
+      const Map<MarketScope, int> expectedDecimals = <MarketScope, int>{
+        MarketScope.saudiArabia: 2,
+        MarketScope.unitedArabEmirates: 2,
+        MarketScope.kuwait: 3,
+        MarketScope.qatar: 2,
+        MarketScope.bahrain: 3,
+        MarketScope.oman: 3,
+      };
+
+      for (final MapEntry<MarketScope, int> market in expectedDecimals.entries) {
+        test('${market.key.currencyCode} is written with ${market.value} decimals', () {
+          expect(market.key.decimals, market.value);
+        });
+      }
+
+      test('the pins above name every GCC market, so a seventh cannot be added without one', () {
+        expect(expectedDecimals.keys.toSet(), MarketScope.gccMarkets.toSet());
+      });
+
+      test('All Markets has no decimals, as it has no currency to write', () {
+        expect(MarketScope.allMarkets.decimals, isNull);
+      });
+    });
+
     test('fromCountryCode matches GCC codes only', () {
       expect(MarketScope.fromCountryCode('AE'), MarketScope.unitedArabEmirates);
       expect(MarketScope.fromCountryCode(' om '), MarketScope.oman);

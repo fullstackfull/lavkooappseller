@@ -11,6 +11,7 @@ import 'package:syriacosmeticsmanger/features/bulk_jobs/screens/bulk_job_receipt
 import 'package:syriacosmeticsmanger/features/bulk_jobs/widgets/bulk_job_widgets.dart';
 import 'package:syriacosmeticsmanger/features/product/domain/models/product_model.dart';
 import 'package:syriacosmeticsmanger/features/profile/controllers/profile_controller.dart';
+import 'package:syriacosmeticsmanger/features/storefront/market_money.dart';
 import 'package:syriacosmeticsmanger/helper/debounce_helper.dart';
 import 'package:syriacosmeticsmanger/localization/controllers/localization_controller.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
@@ -211,12 +212,14 @@ class _BulkOperationSheet extends StatefulWidget {
 
 class _BulkOperationSheetState extends State<_BulkOperationSheet> {
   static const List<String> _priceModes = ['set', 'increase_percent', 'decrease_percent', 'increase_amount', 'decrease_amount'];
+  static const List<String> _percentModes = ['increase_percent', 'decrease_percent'];
   static const List<String> _stockModes = ['set', 'increase', 'decrease'];
 
   final TextEditingController _valueController = TextEditingController();
   late String _mode = widget.type == 'price_update' ? _priceModes.first : _stockModes.first;
 
   bool get _isPrice => widget.type == 'price_update';
+  bool get _isMoney => _isPrice && !_percentModes.contains(_mode);
 
   @override
   void dispose() {
@@ -270,9 +273,9 @@ class _BulkOperationSheetState extends State<_BulkOperationSheet> {
           TextField(
             controller: _valueController,
             keyboardType: TextInputType.numberWithOptions(decimal: _isPrice),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(_isPrice ? RegExp(r'^\d*\.?\d{0,2}') : RegExp(r'^\d*')),
-            ],
+            inputFormatters: _isMoney
+                ? MarketMoney.inputFormatters(outsideMarket: [MoneyInputFormatter(decimals: 2)])
+                : [FilteringTextInputFormatter.allow(_isPrice ? RegExp(r'^\d*\.?\d{0,2}') : RegExp(r'^\d*'))],
             decoration: InputDecoration(
               labelText: getTranslated('value', context),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(Dimensions.radiusDefault)),

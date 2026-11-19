@@ -4,18 +4,27 @@
 /// markets are never added together. [allMarkets] is a viewing scope only: it
 /// has no country code and no currency, and never selects a storefront.
 enum MarketScope {
-  allMarkets(countryCode: null, currencyCode: null),
-  saudiArabia(countryCode: 'SA', currencyCode: 'SAR'),
-  unitedArabEmirates(countryCode: 'AE', currencyCode: 'AED'),
-  kuwait(countryCode: 'KW', currencyCode: 'KWD'),
-  qatar(countryCode: 'QA', currencyCode: 'QAR'),
-  bahrain(countryCode: 'BH', currencyCode: 'BHD'),
-  oman(countryCode: 'OM', currencyCode: 'OMR');
+  allMarkets(countryCode: null, currencyCode: null, decimals: null),
+  saudiArabia(countryCode: 'SA', currencyCode: 'SAR', decimals: 2),
+  unitedArabEmirates(countryCode: 'AE', currencyCode: 'AED', decimals: 2),
+  kuwait(countryCode: 'KW', currencyCode: 'KWD', decimals: 3),
+  qatar(countryCode: 'QA', currencyCode: 'QAR', decimals: 2),
+  bahrain(countryCode: 'BH', currencyCode: 'BHD', decimals: 3),
+  oman(countryCode: 'OM', currencyCode: 'OMR', decimals: 3);
 
-  const MarketScope({required this.countryCode, required this.currencyCode});
+  const MarketScope({
+    required this.countryCode,
+    required this.currencyCode,
+    required this.decimals,
+  });
 
   final String? countryCode;
   final String? currencyCode;
+
+  /// The digits after the decimal point that [currencyCode] is written with:
+  /// three for the dinars and the rial of Kuwait, Bahrain and Oman, two for the
+  /// others. Like the currency, it is null for All Markets.
+  final int? decimals;
 
   static const MarketScope defaultScope = MarketScope.saudiArabia;
 

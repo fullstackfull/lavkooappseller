@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:syriacosmeticsmanger/features/pos/widgets/offline_sales_banner.dart';
 import 'package:provider/provider.dart';
-import 'package:syriacosmeticsmanger/common/basewidgets/textfeild/custom_text_feild_widget.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/coupon_discount_controller.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/customer_controller.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/place_order_body.dart';
@@ -9,6 +8,7 @@ import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_customer_id.
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_order_answer.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/cart_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/widgets/extra_discount_and_coupon_dialog_widget.dart';
+import 'package:syriacosmeticsmanger/features/pos/widgets/paid_amount_field_widget.dart';
 import 'package:syriacosmeticsmanger/features/pos/widgets/pos_appbar_widget.dart';
 import 'package:syriacosmeticsmanger/features/splash/controllers/splash_controller.dart';
 import 'package:syriacosmeticsmanger/helper/price_converter.dart';
@@ -410,18 +410,11 @@ class PosScreenState extends State<PosScreen> {
 
                                               SizedBox(
                                                 height: 45, width: 150,
-                                                child: CustomTextFieldWidget(
-                                                  idDate: cartController.paymentTypeIndex != 0,
-                                                  border: true,
-                                                  hintText: getTranslated('amount', context),
+                                                child: PaidAmountFieldWidget(
                                                   controller: _paidAmountController,
                                                   focusNode: _paidAmountNode,
-                                                  textInputAction: TextInputAction.next,
-                                                  textInputType: TextInputType.number,
-                                                  borderColor: cartController.isPaidAmountLess ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary,
-                                                  //showBorder: true,
-                                                  isAmount: true,
-                                                  focusBorder: true,
+                                                  isEnabled: cartController.paymentTypeIndex == 0,
+                                                  isPaidAmountLess: cartController.isPaidAmountLess,
                                                   onChanged: (value) {
                                                     double? amount = double.tryParse(value);
 
@@ -445,7 +438,6 @@ class PosScreenState extends State<PosScreen> {
                                                       // FocusScope.of(context).unfocus();
                                                     }
                                                   },
-                                                  // isAmount: true,
                                                 ),
                                               ),
                                             ],
