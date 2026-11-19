@@ -8,22 +8,71 @@ const String _registrationFormPath = 'lib/features/auth/widgets/info_field_widge
 const String _registrationScreenPath = 'lib/features/auth/screens/registration_screen.dart';
 const String _shopFormPath = 'lib/features/shop/screens/shop_update_screen.dart';
 
-/// Each slot of a form, as the block of the form that asks for it: from the label of the slot to the label of the next.
+/// The only two files of the app that may name the one global active theme: the table that holds the image rules, and
+/// the model the config is parsed into.
+const List<String> _mayNameTheGlobalTheme = <String>[
+  'lib/utill/shop_image_rules.dart',
+  'lib/features/splash/domain/models/config_model.dart',
+];
+
+/// Each slot of a form, as the block of the form that asks for it: from the label of the slot, or the condition that
+/// offers it, to the start of the next slot.
 const Map<ShopImageSlot, List<String>> _registrationBlocks = <ShopImageSlot, List<String>>{
   ShopImageSlot.profileImage: <String>["getTranslated('store_logo'", "getTranslated('store_image'"],
   ShopImageSlot.logo: <String>["getTranslated('store_image'", "getTranslated('store_banner'"],
-  ShopImageSlot.banner: <String>["getTranslated('store_banner'", 'activeTheme != "default"'],
-  ShopImageSlot.secondaryBanner: <String>['activeTheme != "default"', ''],
+  ShopImageSlot.banner: <String>[
+    "getTranslated('store_banner'",
+    'ShopImageRules.inRegistration(ShopImageSlot.secondaryBanner)',
+  ],
+  ShopImageSlot.secondaryBanner: <String>['ShopImageRules.inRegistration(ShopImageSlot.secondaryBanner)', ''],
 };
 
 const Map<ShopImageSlot, List<String>> _shopFormBlocks = <ShopImageSlot, List<String>>{
   ShopImageSlot.logo: <String>["getTranslated('shop_logo'", "getTranslated('shop_cover'"],
-  ShopImageSlot.banner: <String>["getTranslated('shop_cover'", 'activeTheme == "theme_aster"'],
-  ShopImageSlot.secondaryBanner: <String>['activeTheme == "theme_aster"', 'activeTheme == "theme_fashion"'],
-  ShopImageSlot.offerBanner: <String>['activeTheme == "theme_fashion"', ''],
+  ShopImageSlot.banner: <String>[
+    "getTranslated('shop_cover'",
+    'if(ShopImageRules.inShopUpdate(ShopImageSlot.secondaryBanner)',
+  ],
+  ShopImageSlot.secondaryBanner: <String>[
+    'if(ShopImageRules.inShopUpdate(ShopImageSlot.secondaryBanner)',
+    'if(ShopImageRules.inShopUpdate(ShopImageSlot.offerBanner)',
+  ],
+  ShopImageSlot.offerBanner: <String>['if(ShopImageRules.inShopUpdate(ShopImageSlot.offerBanner)', ''],
 };
 
+/// A read of the one global active theme: the field of the config, the key it is parsed from, or a storefront theme
+/// named in the code. An import, export or part of a Dart file is not one, whatever the file is called.
+final RegExp _globalTheme = RegExp(r'''\bactiveTheme\b|['"]active_theme['"]|['"]theme_aster['"]|['"]theme_fashion['"]''');
+
+/// The ratio and the size texts the two seller forms stated before the rules moved into the table. The product forms
+/// state image rules of their own, which are a different axis and are not scanned here.
+final RegExp _imageRuleText = RegExp(
+    r'''['"](?:image_ratio3?|ratio_1_1|ratio_4_1|image_size|image_size_2_mb|jpg_png_less_then_1_mb|\(3:1\)|\(7:1\))['"]''');
+
 String _read(String path) => File(path).readAsStringSync();
+
+String _squeezed(String text) => text.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+/// The lines of [source] that match [pattern], as `line: text`.
+List<String> _linesMatching(String source, RegExp pattern) {
+  final List<String> lines = source.split('\n');
+  final List<String> found = <String>[];
+
+  for (int index = 0; index < lines.length; index++) {
+    final String line = lines[index].trim();
+    final bool isDirective = line.startsWith('import ') || line.startsWith('export ') || line.startsWith('part ');
+
+    if (!isDirective && pattern.hasMatch(line)) {
+      found.add('${index + 1}: $line');
+    }
+  }
+
+  return found;
+}
+
+List<String> globalThemeLinesOf(String source) => _linesMatching(source, _globalTheme);
+
+List<String> imageRuleTextLinesOf(String source) => _linesMatching(source, _imageRuleText);
 
 /// The part of [source] that asks for one slot: from [anchors] first to [anchors] last, the last being the end of the
 /// file when it is empty.
@@ -40,89 +89,195 @@ String _blockOf(String source, List<String> anchors) {
   return source.substring(start, end);
 }
 
-/// Every ratio and size a slot of either form can state, so that a block can be asked for the ones that are not its own.
-const List<String> _everyRuleText = <String>[
-  "'image_ratio'",
-  "'image_ratio3'",
-  "'ratio_1_1'",
-  "'ratio_4_1'",
-  "'image_size'",
-  "'image_size_2_mb'",
-  "'jpg_png_less_then_1_mb'",
-  "'(3:1)'",
-  "'(7:1)'",
-];
-
-/// The ratio and the size [rule] states, written as the form writes them.
-List<String> _ruleTextsOf(ShopImageRule rule) => <String>[
-      if (rule.ratioLabelKey != null) "'${rule.ratioLabelKey}'",
-      if (rule.ratioLabel != null) "'${rule.ratioLabel}'",
-      "'${rule.sizeLabelKey}'",
+/// How a form reads the ratio and the size of [slot] from the table.
+List<String> _ruleCallsOf(String form, ShopImageSlot slot, ShopImageRule rule) => <String>[
+      if (rule.ratioLabelKey != null) 'ShopImageRules.$form(ShopImageSlot.${slot.name}).ratioLabelKey',
+      if (rule.ratioLabel != null) 'ShopImageRules.$form(ShopImageSlot.${slot.name}).ratioLabel!',
+      'ShopImageRules.$form(ShopImageSlot.${slot.name}).sizeLabelKey',
     ];
 
+void _expectEachSlotReadsItsOwnRule(
+  String path,
+  String form,
+  Map<ShopImageSlot, List<String>> blocks,
+  ShopImageRule Function(ShopImageSlot) ruleOf,
+) {
+  final String source = _read(path);
+  final List<String> everyCall = <String>[
+    for (final ShopImageSlot slot in blocks.keys) ..._ruleCallsOf(form, slot, ruleOf(slot)),
+  ];
+
+  for (final MapEntry<ShopImageSlot, List<String>> block in blocks.entries) {
+    final String asked = _blockOf(source, block.value);
+    final List<String> own = _ruleCallsOf(form, block.key, ruleOf(block.key));
+
+    for (final String call in own) {
+      expect(asked, contains(call), reason: '${block.key} does not read $call');
+    }
+    for (final String call in everyCall.where((String call) => !own.contains(call))) {
+      expect(asked, isNot(contains(call)), reason: '${block.key} also reads $call');
+    }
+  }
+}
+
+/// The condition a form writes, spacing aside. The file is not the reason given, because a form is thousands of lines
+/// long and the condition is what a reader needs.
+void _expectCondition(String path, String condition) {
+  expect(_squeezed(_read(path)).contains(condition), isTrue, reason: '$path does not write: $condition');
+}
+
 void main() {
-  group('the table states what the two forms state today', () {
-    test('each slot of registration states the ratio and the size the table holds for it, and no other', () {
-      final String source = _read(_registrationFormPath);
-
-      for (final MapEntry<ShopImageSlot, List<String>> block in _registrationBlocks.entries) {
-        final String asked = _blockOf(source, block.value);
-        final List<String> own = _ruleTextsOf(ShopImageRules.inRegistration(block.key));
-
-        for (final String text in own) {
-          expect(asked, contains(text), reason: '${block.key} does not state $text');
-        }
-        for (final String text in _everyRuleText.where((String text) => !own.contains(text))) {
-          expect(asked, isNot(contains(text)), reason: '${block.key} also states $text');
-        }
-      }
+  group('the two forms read every image rule from the table', () {
+    test('each slot of registration reads the rule of its own slot and of no other', () {
+      _expectEachSlotReadsItsOwnRule(
+        _registrationFormPath,
+        'inRegistration',
+        _registrationBlocks,
+        ShopImageRules.inRegistration,
+      );
     });
 
-    test('each slot of the shop form states the ratio and the size the table holds for it, and no other', () {
-      final String source = _read(_shopFormPath);
+    test('each slot of the shop form reads the rule of its own slot and of no other', () {
+      _expectEachSlotReadsItsOwnRule(
+        _shopFormPath,
+        'inShopUpdate',
+        _shopFormBlocks,
+        ShopImageRules.inShopUpdate,
+      );
+    });
 
-      for (final MapEntry<ShopImageSlot, List<String>> block in _shopFormBlocks.entries) {
-        final String asked = _blockOf(source, block.value);
-        final List<String> own = _ruleTextsOf(ShopImageRules.inShopUpdate(block.key));
+    test('the two forms write no ratio and no size of their own any more', () {
+      for (final String path in <String>[_registrationFormPath, _registrationScreenPath, _shopFormPath]) {
+        final String source = _read(path);
 
-        for (final String text in own) {
-          expect(asked, contains(text), reason: '${block.key} does not state $text');
-        }
-        for (final String text in _everyRuleText.where((String text) => !own.contains(text))) {
-          expect(asked, isNot(contains(text)), reason: '${block.key} also states $text');
-        }
+        expect(source, contains('ShopImageRules.'), reason: '$path does not read the table at all');
+        expect(imageRuleTextLinesOf(source), isEmpty,
+            reason: '$path states an image rule of its own:\n${imageRuleTextLinesOf(source).join('\n')}');
       }
     });
   });
 
   group('the storefronts each form asks a slot on', () {
-    test('the shop form offers its two extra banners on the themes the table names', () {
-      final String source = _read(_shopFormPath);
+    test('the shop form asks the table whether to offer its two extra banners', () {
+      for (final String condition in <String>[
+        'if(ShopImageRules.inShopUpdate(ShopImageSlot.secondaryBanner) '
+            '.isAskedOf(Provider.of<SplashController>(context, listen: false).configModel))',
+        'if(ShopImageRules.inShopUpdate(ShopImageSlot.offerBanner) '
+            '.isAskedOf(Provider.of<SplashController>(context, listen: false).configModel))',
+      ]) {
+        _expectCondition(_shopFormPath, condition);
+      }
+    });
 
-      expect(
-        source,
-        contains('if(Provider.of<SplashController>(context, listen: false).configModel?.activeTheme == "theme_aster")'),
-      );
-      expect(
-        source,
-        contains(
-            'if(Provider.of<SplashController>(context, listen: false).configModel?.activeTheme == "theme_fashion")'),
+    test('registration asks the table whether to offer its secondary banner', () {
+      _expectCondition(
+        _registrationFormPath,
+        'ShopImageRules.inRegistration(ShopImageSlot.secondaryBanner) '
+            '.isAskedOf(Provider.of<SplashController>(context,listen: false).configModel!) ?',
       );
     });
 
-    test('registration offers its secondary banner on every theme but the default one', () {
-      expect(
-        _read(_registrationFormPath),
-        contains('Provider.of<SplashController>(context,listen: false).configModel!.activeTheme != "default" ?'),
+    test('registration refuses a registration without the secondary banner by the same answer', () {
+      _expectCondition(
+        _registrationScreenPath,
+        'authController.secondaryBanner == null && '
+            'ShopImageRules.inRegistration(ShopImageSlot.secondaryBanner)'
+            '.isAskedOf(Provider.of<SplashController>(context,listen: false).configModel!)',
       );
     });
+  });
 
-    test('registration refuses a registration without the secondary banner on the same themes', () {
+  group('no file of the app decides an image rule from the one global theme', () {
+    test('the table and the config model are the only files under lib that name it', () {
+      final List<String> offenders = <String>[];
+      final List<String> allowed = <String>[];
+
+      for (final FileSystemEntity entity in Directory('lib').listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) {
+          continue;
+        }
+
+        final List<String> found = globalThemeLinesOf(entity.readAsStringSync());
+        if (found.isEmpty) {
+          continue;
+        }
+        if (_mayNameTheGlobalTheme.contains(entity.path)) {
+          allowed.add(entity.path);
+          continue;
+        }
+        for (final String line in found) {
+          offenders.add('${entity.path}:$line');
+        }
+      }
+
       expect(
-        _read(_registrationScreenPath),
-        contains('authController.secondaryBanner == null && '
-            'Provider.of<SplashController>(context,listen: false).configModel!.activeTheme != "default"'),
+        offenders,
+        isEmpty,
+        reason: 'a theme served per country (GCC-07) stops meaning what one global active_theme means, so a screen that '
+            'reads it picks another market\'s image rule. Offending lines:\n${offenders.join('\n')}',
       );
+      expect(allowed..sort(), _mayNameTheGlobalTheme.toList()..sort(),
+          reason: 'the scan did not reach the two files that do name it, so it proves nothing');
+    });
+
+    test('the scan sees a theme read when one is written (it guards the guard)', () {
+      const List<String> reads = <String>[
+        'if (configModel?.activeTheme == "theme_aster")',
+        "final bool isAster = config.activeTheme == 'theme_aster';",
+        "activeTheme = json['active_theme'];",
+        'Provider.of<SplashController>(context,listen: false).configModel!.activeTheme != "default"',
+        "child: theme == 'theme_fashion' ? const OfferBanner() : const SizedBox(),",
+      ];
+
+      for (final String line in reads) {
+        expect(globalThemeLinesOf(line), hasLength(1), reason: line);
+      }
+    });
+
+    test('the scan leaves the app\'s own colour theme, and names that only look like it, alone', () {
+      const List<String> notReads = <String>[
+        "import 'package:syriacosmeticsmanger/theme/controllers/theme_controller.dart';",
+        'final controller = Provider.of<ThemeController>(context);',
+        'color: Theme.of(context).primaryColor,',
+        "static const String activeThemeless = 'x';",
+        "if (name == 'theme_asterisk') {",
+        "final String text = 'the theme of the shop';",
+      ];
+
+      for (final String line in notReads) {
+        expect(globalThemeLinesOf(line), isEmpty, reason: line);
+      }
+    });
+
+    test('the rule scan sees a ratio or a size when one is written', () {
+      const List<String> rules = <String>[
+        "Text('(3:1)', style: robotoRegular),",
+        "Text('(7:1)', style: robotoRegular),",
+        "Text(getTranslated('image_size_2_mb', context)!),",
+        "TextSpan(text: getTranslated('ratio_4_1', context) ?? ''),",
+        "TextSpan(text: getTranslated('jpg_png_less_then_1_mb', context) ?? ''),",
+        "Text(getTranslated('image_ratio3', context)!),",
+        "Text(getTranslated('image_size', context)!),",
+      ];
+
+      for (final String line in rules) {
+        expect(imageRuleTextLinesOf(line), hasLength(1), reason: line);
+      }
+    });
+
+    test('the rule scan leaves the table\'s own reads, and text that only looks like a rule, alone', () {
+      const List<String> notRules = <String>[
+        'Text(getTranslated(ShopImageRules.inRegistration(ShopImageSlot.banner).ratioLabelKey, context)!),',
+        'Text(ShopImageRules.inShopUpdate(ShopImageSlot.offerBanner).ratioLabel!),',
+        "import 'package:syriacosmeticsmanger/helper/image_size_checker.dart';",
+        "Text(getTranslated('image_size_of_the_product', context)!),",
+        "Text('3:1'),",
+        'final double ratio = 3 / 1;',
+      ];
+
+      for (final String line in notRules) {
+        expect(imageRuleTextLinesOf(line), isEmpty, reason: line);
+      }
     });
   });
 }

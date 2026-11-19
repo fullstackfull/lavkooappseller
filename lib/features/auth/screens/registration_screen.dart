@@ -14,6 +14,7 @@ import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 import 'package:syriacosmeticsmanger/features/auth/controllers/auth_controller.dart';
 import 'package:syriacosmeticsmanger/core/app_context.dart';
 import 'package:syriacosmeticsmanger/utill/dimensions.dart';
+import 'package:syriacosmeticsmanger/utill/shop_image_rules.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_snackbar_widget.dart';
 
 import '../../../utill/images.dart';
@@ -213,7 +214,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> with TickerProv
                             showCustomSnackBarWidget(getTranslated('shop_logo_is_required', context), context,  sanckBarType: SnackBarType.warning);
                             }else if(authController.shopBanner == null){
                             showCustomSnackBarWidget(getTranslated('shop_banner_is_required', context), context,  sanckBarType: SnackBarType.warning);
-                            }else if(authController.secondaryBanner == null && Provider.of<SplashController>(context,listen: false).configModel!.activeTheme != "default"){
+                            }else if(authController.secondaryBanner == null && ShopImageRules.inRegistration(ShopImageSlot.secondaryBanner).isAskedOf(Provider.of<SplashController>(context,listen: false).configModel!)){
                               showCustomSnackBarWidget(getTranslated('secondary_banner_is_required', context), context,  sanckBarType: SnackBarType.warning);
                             }else if(Provider.of<ShopController>(context, listen: false).tinCertificateFile != null && (( await Provider.of<ShopController>(context, listen: false).tinCertificateFile?.length() ?? 0) > (2 * 1024 * 1024)) ) {
                               showCustomSnackBarWidget(getTranslated('single_file_size_can_not_be_more_than', Get.context!), Get.context!,  sanckBarType: SnackBarType.warning);
