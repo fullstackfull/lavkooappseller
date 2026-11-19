@@ -47,7 +47,7 @@ Future<_Counter> _counter(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   final SharedPreferences preferences = await SharedPreferences.getInstance();
   final _FakeCartService service = _FakeCartService();
-  final OfflineSalesController outbox = OfflineSalesController(cartServiceInterface: service, sharedPreferences: preferences, hasSession: () => true);
+  final OfflineSalesController outbox = OfflineSalesController(cartServiceInterface: service, sharedPreferences: preferences, hasSession: () => true, signedInSellerId: () => 'seller-7');
   final CartController cart = CartController(cartServiceInterface: service);
   cart.collectedCashController.text = '1600';
   cart.extraDiscountController.text = '25';
@@ -123,6 +123,7 @@ void main() {
       expect(PosIdempotencyKey.isValid(counter.service.keysSent.single), isTrue);
       expect(counter.outbox.pending.single.idempotencyKey, counter.service.keysSent.single, reason: 'a replay of a sale whose answer was lost is the same sale to the server');
       expect(counter.outbox.pending.single.orderAmount, 1500);
+      expect(counter.outbox.pending.single.sellerId, 'seller-7', reason: 'the sale is queued for the seller who rang it up, and no other session may send it');
       expect(counter.cart.collectedCashController.text, isEmpty);
       expect(counter.cart.extraDiscountController.text, isEmpty);
       expect(find.text('sale_saved_offline'), findsOneWidget);
