@@ -107,9 +107,11 @@ class ShopImageRules {
     ),
   };
 
-  static ShopImageRule inRegistration(ShopImageSlot slot) => _registration[slot]!;
+  static ShopImageRule inRegistration(ShopImageSlot slot) =>
+      _registration[slot] ?? (throw ArgumentError.value(slot, 'slot', 'registration asks a seller for no such image'));
 
-  static ShopImageRule inShopUpdate(ShopImageSlot slot) => _shopUpdate[slot]!;
+  static ShopImageRule inShopUpdate(ShopImageSlot slot) =>
+      _shopUpdate[slot] ?? (throw ArgumentError.value(slot, 'slot', 'the shop form asks a seller for no such image'));
 
   static Iterable<ShopImageSlot> get registrationSlots => _registration.keys;
 

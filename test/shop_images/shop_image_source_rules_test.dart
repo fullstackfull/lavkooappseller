@@ -15,6 +15,13 @@ const List<String> _mayNameTheGlobalTheme = <String>[
   'lib/features/splash/domain/models/config_model.dart',
 ];
 
+/// Whether a registration asks a seller for the secondary banner, as both halves of that rule read it: the form that
+/// offers the uploader and the screen that refuses a registration without the image. One string, so a test cannot pin
+/// one half to an answer the other half does not read.
+const String _registrationSecondaryBannerAnswer =
+    'ShopImageRules.inRegistration(ShopImageSlot.secondaryBanner)'
+    '.isAskedOf(Provider.of<SplashController>(context,listen: false).configModel!)';
+
 /// Each slot of a form, as the block of the form that asks for it: from the label of the slot, or the condition that
 /// offers it, to the start of the next slot.
 const Map<ShopImageSlot, List<String>> _registrationBlocks = <ShopImageSlot, List<String>>{
@@ -40,6 +47,9 @@ const Map<ShopImageSlot, List<String>> _shopFormBlocks = <ShopImageSlot, List<St
   ShopImageSlot.offerBanner: <String>['if(ShopImageRules.inShopUpdate(ShopImageSlot.offerBanner)', ''],
 };
 
+/// A form of the table asked for one slot, as the app writes it: the form it asks and the slot it asks for.
+final RegExp _slotAskedOfAForm = RegExp(r'ShopImageRules\.(inRegistration|inShopUpdate)\(ShopImageSlot\.(\w+)\)');
+
 /// A read of the one global active theme: the field of the config, the key it is parsed from, or a storefront theme
 /// named in the code. An import, export or part of a Dart file is not one, whatever the file is called.
 final RegExp _globalTheme = RegExp(r'''\bactiveTheme\b|['"]active_theme['"]|['"]theme_aster['"]|['"]theme_fashion['"]''');
@@ -51,7 +61,15 @@ final RegExp _imageRuleText = RegExp(
 
 String _read(String path) => File(path).readAsStringSync();
 
-String _squeezed(String text) => text.replaceAll(RegExp(r'\s+'), ' ').trim();
+/// Every Dart file of the app.
+Iterable<File> _dartFilesUnderLib() => Directory('lib')
+    .listSync(recursive: true)
+    .whereType<File>()
+    .where((File file) => file.path.endsWith('.dart'));
+
+/// [text] with its whitespace collapsed and a line break inside a method chain closed up, so that a condition reads
+/// the same however the file wraps it.
+String _squeezed(String text) => text.replaceAll(RegExp(r'\s+'), ' ').replaceAll(' .', '.').trim();
 
 /// The lines of [source] that match [pattern], as `line: text`.
 List<String> _linesMatching(String source, RegExp pattern) {
@@ -120,10 +138,17 @@ void _expectEachSlotReadsItsOwnRule(
   }
 }
 
-/// The condition a form writes, spacing aside. The file is not the reason given, because a form is thousands of lines
-/// long and the condition is what a reader needs.
+/// Whether [source] opens an expression with [condition], spacing aside: the condition has to come first in it, after
+/// a character no expression continues over. A `!`, a `true ||` or a flag `&&` put in front of a condition flips who is
+/// asked for an image, and a check that looks for the condition anywhere in the file cannot see one.
+bool _opensAnExpressionWith(String source, String condition) =>
+    RegExp('[,;(\\[{] ?${RegExp.escape(condition)}').hasMatch(_squeezed(source));
+
+/// The condition a form writes, and writes first in its expression. The file is not the reason given, because a form is
+/// thousands of lines long and the condition is what a reader needs.
 void _expectCondition(String path, String condition) {
-  expect(_squeezed(_read(path)).contains(condition), isTrue, reason: '$path does not write: $condition');
+  expect(_opensAnExpressionWith(_read(path), condition), isTrue,
+      reason: '$path does not open an expression with: $condition');
 }
 
 void main() {
@@ -160,9 +185,9 @@ void main() {
   group('the storefronts each form asks a slot on', () {
     test('the shop form asks the table whether to offer its two extra banners', () {
       for (final String condition in <String>[
-        'if(ShopImageRules.inShopUpdate(ShopImageSlot.secondaryBanner) '
+        'if(ShopImageRules.inShopUpdate(ShopImageSlot.secondaryBanner)'
             '.isAskedOf(Provider.of<SplashController>(context, listen: false).configModel))',
-        'if(ShopImageRules.inShopUpdate(ShopImageSlot.offerBanner) '
+        'if(ShopImageRules.inShopUpdate(ShopImageSlot.offerBanner)'
             '.isAskedOf(Provider.of<SplashController>(context, listen: false).configModel))',
       ]) {
         _expectCondition(_shopFormPath, condition);
@@ -170,20 +195,59 @@ void main() {
     });
 
     test('registration asks the table whether to offer its secondary banner', () {
-      _expectCondition(
-        _registrationFormPath,
-        'ShopImageRules.inRegistration(ShopImageSlot.secondaryBanner) '
-            '.isAskedOf(Provider.of<SplashController>(context,listen: false).configModel!) ?',
-      );
+      _expectCondition(_registrationFormPath, '$_registrationSecondaryBannerAnswer ?');
     });
 
     test('registration refuses a registration without the secondary banner by the same answer', () {
       _expectCondition(
         _registrationScreenPath,
-        'authController.secondaryBanner == null && '
-            'ShopImageRules.inRegistration(ShopImageSlot.secondaryBanner)'
-            '.isAskedOf(Provider.of<SplashController>(context,listen: false).configModel!)',
+        'authController.secondaryBanner == null && $_registrationSecondaryBannerAnswer',
       );
+    });
+
+    test('the condition check sees what is put in front of a condition (it guards the guard)', () {
+      const String condition = 'ShopImageRules.inRegistration(ShopImageSlot.secondaryBanner).isAskedOf(config) ?';
+
+      expect(_opensAnExpressionWith('children: [ $condition offered : hidden ],', condition), isTrue);
+      expect(_opensAnExpressionWith('children: [ !$condition offered : hidden ],', condition), isFalse);
+      expect(_opensAnExpressionWith('children: [ true || $condition offered : hidden ],', condition), isFalse);
+      expect(_opensAnExpressionWith('children: [ showAll && $condition offered : hidden ],', condition), isFalse);
+    });
+  });
+
+  group('no file of the app asks a form for an image that form has no rule for', () {
+    test('every form and slot a file under lib names is a pair the tables hold', () {
+      final Map<String, Iterable<ShopImageSlot>> slotsOfForm = <String, Iterable<ShopImageSlot>>{
+        'inRegistration': ShopImageRules.registrationSlots,
+        'inShopUpdate': ShopImageRules.shopUpdateSlots,
+      };
+      final Set<String> pairsHeld = <String>{
+        for (final MapEntry<String, Iterable<ShopImageSlot>> form in slotsOfForm.entries)
+          for (final ShopImageSlot slot in form.value) '${form.key}(${slot.name})',
+      };
+      final Set<String> pairsAsked = <String>{};
+      final List<String> offenders = <String>[];
+
+      for (final File file in _dartFilesUnderLib()) {
+        for (final RegExpMatch asked in _slotAskedOfAForm.allMatches(file.readAsStringSync())) {
+          final String pair = '${asked.group(1)}(${asked.group(2)})';
+          pairsAsked.add(pair);
+
+          if (!pairsHeld.contains(pair)) {
+            offenders.add('${file.path}: $pair');
+          }
+        }
+      }
+
+      expect(
+        offenders,
+        isEmpty,
+        reason: 'the two tables are partial: registration asks a seller for no offer banner and the shop form for no '
+            'profile image. A form asked for a slot it has no rule for answers nothing, so the form throws where it '
+            'builds. Offending calls:\n${offenders.join('\n')}',
+      );
+      expect(pairsAsked, pairsHeld,
+          reason: 'the scan did not reach every rule the tables hold, so it proves less than it reads');
     });
   });
 
@@ -192,21 +256,17 @@ void main() {
       final List<String> offenders = <String>[];
       final List<String> allowed = <String>[];
 
-      for (final FileSystemEntity entity in Directory('lib').listSync(recursive: true)) {
-        if (entity is! File || !entity.path.endsWith('.dart')) {
-          continue;
-        }
-
-        final List<String> found = globalThemeLinesOf(entity.readAsStringSync());
+      for (final File file in _dartFilesUnderLib()) {
+        final List<String> found = globalThemeLinesOf(file.readAsStringSync());
         if (found.isEmpty) {
           continue;
         }
-        if (_mayNameTheGlobalTheme.contains(entity.path)) {
-          allowed.add(entity.path);
+        if (_mayNameTheGlobalTheme.contains(file.path)) {
+          allowed.add(file.path);
           continue;
         }
         for (final String line in found) {
-          offenders.add('${entity.path}:$line');
+          offenders.add('${file.path}:$line');
         }
       }
 

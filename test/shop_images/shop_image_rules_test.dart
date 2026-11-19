@@ -48,6 +48,21 @@ void main() {
         ShopImageSlot.offerBanner,
       ]);
     });
+
+    test('a form asked for an image it never asks for names the slot it was asked for', () {
+      expect(
+        () => ShopImageRules.inRegistration(ShopImageSlot.offerBanner),
+        throwsA(isA<ArgumentError>()
+            .having((ArgumentError refusal) => refusal.invalidValue, 'invalidValue', ShopImageSlot.offerBanner)
+            .having((ArgumentError refusal) => refusal.message, 'message', contains('registration'))),
+      );
+      expect(
+        () => ShopImageRules.inShopUpdate(ShopImageSlot.profileImage),
+        throwsA(isA<ArgumentError>()
+            .having((ArgumentError refusal) => refusal.invalidValue, 'invalidValue', ShopImageSlot.profileImage)
+            .having((ArgumentError refusal) => refusal.message, 'message', contains('shop form'))),
+      );
+    });
   });
 
   group('the ratio and the size each slot states', () {
