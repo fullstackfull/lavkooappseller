@@ -17,6 +17,7 @@ import 'package:syriacosmeticsmanger/features/auth/controllers/auth_controller.d
 import 'package:syriacosmeticsmanger/features/auth/domain/repositories/auth_repository.dart';
 import 'package:syriacosmeticsmanger/features/auth/domain/services/auth_service.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/offline_sales_controller.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/outbox_policy.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pending_pos_order.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/services/cart_service_interface.dart';
 import 'package:syriacosmeticsmanger/features/pos/widgets/failed_sales_sheet.dart';
@@ -269,8 +270,8 @@ Future<void> _expectSalesOfSellerAUntouchedAndUnseen(_App app) async {
 }
 
 /// What a session that begins after the one that rang a sale up does with that sale when the sale names no seller, and so nothing on the device says whose it is: it sees nothing of it, and sends, retries, removes
-/// and clears nothing of it. The sale does not leave the disk, nothing is sent, and nothing is counted against it.
-Future<void> _expectSaleOfEndedSessionUntouchedAndUnseen(_App app, {required String key}) async {
+/// and clears nothing of it. The sale does not leave the disk, nothing is sent, and nothing is counted against it; a sale that had failed stays failed, with its attempts and its last error.
+Future<void> _expectSaleOfEndedSessionUntouchedAndUnseen(_App app, {required String key, int attempts = 0, String? lastError}) async {
   final OfflineSalesController outbox = app.controller;
   final List<PendingPosOrder> before = app.stored;
   expect(before, hasLength(1));
@@ -288,7 +289,8 @@ Future<void> _expectSaleOfEndedSessionUntouchedAndUnseen(_App app, {required Str
   expect(app.service.calls, isEmpty, reason: 'sent now, the server would record the money taken in the session that ended under the seller of this one');
   expect(app.storedKeys, <String?>[key], reason: 'and it was not deleted');
   expect(app.stored.single.sellerId, isNull, reason: 'nor was a seller given to it');
-  expect(app.stored.single.attempts, 0, reason: 'nor was an attempt counted against it');
+  expect(app.stored.single.attempts, attempts, reason: 'nor was an attempt counted against it, or given back');
+  expect(app.stored.single.lastError, lastError);
 }
 
 Widget _app(OfflineSalesController controller, Widget child) => MaterialApp(
@@ -995,6 +997,101 @@ void main() {
 
       expect(app.sentSales, <String>['a-1']);
       expect(app.storedKeys, isEmpty);
+    });
+
+    testWidgets('is given its seller by the answer of its own session while a replay is on its way, and the replay goes on: the sales that wait are sent under the seller they are named for now', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      await app.queueSale('a-1');
+      await app.queueSale('a-2');
+      await app.queueSale('a-3');
+      final Completer<void> connection = Completer<void>();
+      app.service.answer = (Map<String, dynamic> body, String? key) async {
+        await connection.future;
+
+        return _placed(5);
+      };
+
+      final Future<int> replaying = app.controller.syncPending();
+      await tester.pump();
+      await app.profileAnswers(_idOfA);
+
+      expect(app.stored.map((PendingPosOrder sale) => sale.sellerId), <String?>['$_idOfA', '$_idOfA', '$_idOfA'], reason: 'the answer named the seller of all three while the first was on its way');
+
+      connection.complete();
+      final int synced = await replaying;
+
+      expect(synced, 3, reason: 'the three are A\'s, in A\'s session: none waits for a retry because the answer came in the middle of the pass');
+      expect(app.sentSales, <String>['a-1', 'a-2', 'a-3']);
+      expect(app.storedKeys, isEmpty);
+    });
+
+    testWidgets('is listed as a sale that could not be sent once it has used its attempts, and the session that rang it up retries it: it is sent again under its own key and leaves the queue', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      await app.queueSale('a-1');
+      await app.queueSale('a-2');
+      app.service.answer = (Map<String, dynamic> body, String? key) async => _failed('refused by the server');
+      for (int replay = 0; replay < OutboxPolicy.maxAttempts; replay++) {
+        await app.controller.syncPending();
+      }
+
+      expect(app.controller.failedCount, 2);
+      expect(app.controller.failedSales.map((PendingPosOrder sale) => sale.idempotencyKey), <String?>['a-1', 'a-2']);
+      expect(app.stored.map((PendingPosOrder sale) => sale.sellerId), <String?>[null, null], reason: 'the profile of the session has not answered: they name no seller all the same');
+
+      app.service.calls.clear();
+      app.service.answer = (Map<String, dynamic> body, String? key) async => _placed(3);
+      final int synced = await app.controller.retryFailedSales();
+
+      expect(synced, 2);
+      expect(app.sentSales, <String>['a-1', 'a-2']);
+      expect(app.service.calls.map((_Call call) => call.key), <String?>['a-1', 'a-2'], reason: 'each under the key it was queued with');
+      expect(app.storedKeys, isEmpty);
+    });
+
+    testWidgets('is removed by the session that rang it up when it asks for that sale by its id, and the other sales stay', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      final PendingPosOrder first = await app.queueSale('a-1');
+      await app.queueSale('a-2');
+
+      await app.controller.remove(first.id);
+
+      expect(app.storedKeys, <String?>['a-2']);
+      expect(app.controller.pending.map((PendingPosOrder sale) => sale.idempotencyKey), <String?>['a-2']);
+      expect(app.service.calls, isEmpty, reason: 'it was removed, not sent');
+    });
+
+    testWidgets('that had used its attempts when its session ended is not listed as a failure, retried or removed by the session after it, and stays on the disk with its attempts and its last error', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      await app.queueSale('a-1');
+      app.service.answer = (Map<String, dynamic> body, String? key) async => _failed('refused by the server');
+      for (int replay = 0; replay < OutboxPolicy.maxAttempts; replay++) {
+        await app.controller.syncPending();
+      }
+      expect(app.controller.failedCount, 1, reason: 'a failure of the session that rang it up');
+      app.service.calls.clear();
+      await app.signOut();
+      await app.logIn('token-of-b');
+      await app.profileAnswers(_idOfB);
+
+      await _expectSaleOfEndedSessionUntouchedAndUnseen(app, key: 'a-1', attempts: OutboxPolicy.maxAttempts, lastError: 'refused by the server');
+    });
+
+    testWidgets('is not written to the disk again by the answer of a later session, which gives no sale its seller', (WidgetTester tester) async {
+      final _App app = await _App.start(tester);
+      await app.logIn('token-of-a');
+      await app.queueSale('a-1');
+      await app.signOut();
+      await app.logIn('token-of-b');
+      final List<String> queueWithAMark = <String>[...app.preferences.getStringList(_storageKey)!, 'a mark that a write of the queue would remove'];
+      await app.preferences.setStringList(_storageKey, queueWithAMark);
+
+      await app.profileAnswers(_idOfB);
+
+      expect(app.preferences.getStringList(_storageKey), queueWithAMark, reason: 'no sale was given a seller, so there was nothing to write');
     });
 
     testWidgets('is kept when its session ends, and is sent by no later session, the seller who rang it up signing in again included, because nothing on the device says whose it is', (WidgetTester tester) async {

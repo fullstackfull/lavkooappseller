@@ -234,6 +234,7 @@ void main() {
       await counter.ringUp('sale-1');
 
       expect(counter.storedRecords.single.keys, unorderedEquals(<String>[..._keysWrittenBeforeTheMarket, 'storefront']));
+      expect(counter.storedRecords.single['storefront'], 'SA', reason: 'the default market, as no other was chosen');
     });
 
     test('keeps its market through a replay that failed, and goes to it when the replay that follows is sent from another market', () async {

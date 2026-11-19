@@ -231,8 +231,16 @@ class OfflineSalesController extends ChangeNotifier {
     }
 
     final int session = _sessionsEnded();
-    _pending = _pending.map((PendingPosOrder order) => order.sellerId == null && _awaitingSeller[order.id] == session ? order.copyWith(sellerId: sellerId) : order).toList();
+    final Set<String> givenItsSeller = <String>{
+      for (final PendingPosOrder order in _pending)
+        if (order.sellerId == null && _awaitingSeller[order.id] == session) order.id,
+    };
     _awaitingSeller.removeWhere((String id, int sessionOfSale) => sessionOfSale == session);
+    if (givenItsSeller.isEmpty) {
+      return;
+    }
+
+    _pending = _pending.map((PendingPosOrder order) => givenItsSeller.contains(order.id) ? order.copyWith(sellerId: sellerId) : order).toList();
     _persist();
   }
 
@@ -272,9 +280,10 @@ class OfflineSalesController extends ChangeNotifier {
 
     // The loop walks the sales the queue held when it began; a sale is replayed, not removed, until the whole pass is over.
     for (final PendingPosOrder order in List<PendingPosOrder>.of(_pending)) {
-      // A sale another seller took, or one that no session can name, stays queued, uncounted and unsent: sent now, the server would record it under this seller. The seller is asked again for each sale,
-      // because the replay takes as long as the network does and another seller can sign in while it runs.
-      if (!_isOwnSale(order)) {
+      // A sale another seller took, or one that no session can name, stays queued, uncounted and unsent: sent now, the server would record it under this seller. The sale is judged as the queue holds it
+      // when its turn comes, not as it was when the pass began: the replay takes as long as the network does, so another seller can sign in while it runs, and the profile of this session can answer,
+      // which gives the sales rung up before the answer their seller.
+      if (!_isOwnSale(_currentVersionOf(order))) {
         continue;
       }
 
@@ -321,6 +330,10 @@ class OfflineSalesController extends ChangeNotifier {
 
   /// The sale as the queue holds it now, with the failed attempt that the pass counted against it.
   PendingPosOrder _withOutcome(PendingPosOrder current, PendingPosOrder? failedAttempt) => failedAttempt == null ? current : current.copyWith(attempts: failedAttempt.attempts, lastError: failedAttempt.lastError);
+
+  /// The sale as the queue holds it now, which differs from the one a pass began with when the queue has changed since (a sale given its seller); the body, the key and the market never change. A sale that has
+  /// left the queue meanwhile is the one the pass began with.
+  PendingPosOrder _currentVersionOf(PendingPosOrder order) => _pending.firstWhere((PendingPosOrder sale) => sale.id == order.id, orElse: () => order);
 
   /// The seller asks for the sales that could not be sent to be tried again: each of this seller's is given its attempts back and the queue is replayed. The failed sales of another seller are left as they are.
   Future<int> retryFailedSales() async {
