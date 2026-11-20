@@ -38,10 +38,7 @@ Future<void> reloadMarketScopedState() async {
 
 void _dropPosCart(BuildContext context) {
   final CartController cart = Provider.of<CartController>(context, listen: false);
-  cart.removeAllCartList();
-  cart.clearCardForCancel();
-  cart.removeModifiedTax();
-  cart.resetUserCard();
+  cart.dropPosCart();
   cart.saveCardData();
 }
 

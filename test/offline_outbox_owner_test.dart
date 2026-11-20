@@ -16,6 +16,8 @@ import 'package:syriacosmeticsmanger/data/model/response/response_model.dart';
 import 'package:syriacosmeticsmanger/features/auth/controllers/auth_controller.dart';
 import 'package:syriacosmeticsmanger/features/auth/domain/repositories/auth_repository.dart';
 import 'package:syriacosmeticsmanger/features/auth/domain/services/auth_service.dart';
+import 'package:syriacosmeticsmanger/features/pos/controllers/cart_controller.dart';
+import 'package:syriacosmeticsmanger/features/pos/controllers/customer_controller.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/offline_sales_controller.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/outbox_policy.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pending_pos_order.dart';
@@ -181,6 +183,11 @@ class _App extends _Terminal {
   final _FakeProfileService profileService = _FakeProfileService();
 
   late final ProfileController profile = ProfileController(profileServiceInterface: profileService);
+
+  /// The POS of the app, kept the way `main.dart` keeps it: one for the whole app, above the screens. It takes no part in what this
+  /// file is about, and is here because the sign-out drops what the POS is holding too, not the outbox alone.
+  late final CartController cart = CartController(cartServiceInterface: service);
+  late final CustomerController customer = CustomerController(cartServiceInterface: service);
   late final AuthController auth = AuthController(
     authServiceInterface: AuthService(
       authRepoInterface: AuthRepository(
@@ -208,6 +215,8 @@ class _App extends _Terminal {
           ChangeNotifierProvider<ShopController>.value(value: ShopController(shopServiceInterface: _FakeShopService())),
           ChangeNotifierProvider<AuthController>.value(value: app.auth),
           ChangeNotifierProvider<ProfileController>.value(value: app.profile),
+          ChangeNotifierProvider<CartController>.value(value: app.cart),
+          ChangeNotifierProvider<CustomerController>.value(value: app.customer),
           ChangeNotifierProvider<OfflineSalesController>.value(value: app.controller),
         ],
         child: MaterialApp(navigatorKey: navigatorKey, home: Scaffold(body: child)),

@@ -156,11 +156,13 @@ class AuthRepository implements AuthRepositoryInterface{
     // the login screen again. A dashboard load fires about twenty requests at
     // once, so one expired token started twenty of these at a time.
     dioClient!.clearAuthToken();
-    final bool removed = await sharedPreferences!.remove(AppConstants.token);
+    final Future<bool> tokenRemoved = sharedPreferences!.remove(AppConstants.token);
+    final Future<List<bool>> sellerDataRemoved = Future.wait<bool>(
+      _keysOfTheSignedInSeller.map(sharedPreferences!.remove).toList(),
+    );
+    final bool removed = await tokenRemoved;
+    await sellerDataRemoved;
     await secureCredentialStore.clearPassword();
-    for (final String key in _keysOfTheSignedInSeller) {
-      await sharedPreferences!.remove(key);
-    }
 
     // Best effort, and last: unsubscribing is a courtesy to the push service,
     // not part of ending the session. It must never be able to outlive the

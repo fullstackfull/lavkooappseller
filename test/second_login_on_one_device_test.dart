@@ -11,6 +11,7 @@ import 'package:syriacosmeticsmanger/features/auth/controllers/auth_controller.d
 import 'package:syriacosmeticsmanger/features/auth/domain/repositories/auth_repository.dart';
 import 'package:syriacosmeticsmanger/features/auth/domain/services/auth_service.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/cart_controller.dart';
+import 'package:syriacosmeticsmanger/features/pos/controllers/customer_controller.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/offline_sales_controller.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/cart_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pending_pos_order.dart';
@@ -96,6 +97,7 @@ class _Phone {
     authServiceInterface: AuthService(authRepoInterface: AuthRepository(dioClient: client, sharedPreferences: preferences)),
   );
   late final CartController cart = CartController(cartServiceInterface: cartService);
+  late final CustomerController customer = CustomerController(cartServiceInterface: cartService);
   late final OfflineSalesController outbox = OfflineSalesController(
     cartServiceInterface: cartService,
     sharedPreferences: preferences,
@@ -112,6 +114,7 @@ class _Phone {
           ChangeNotifierProvider<AuthController>.value(value: phone.auth),
           ChangeNotifierProvider<ProfileController>.value(value: phone.profile),
           ChangeNotifierProvider<CartController>.value(value: phone.cart),
+          ChangeNotifierProvider<CustomerController>.value(value: phone.customer),
           ChangeNotifierProvider<OfflineSalesController>.value(value: phone.outbox),
         ],
         child: MaterialApp(navigatorKey: navigatorKey, home: const Scaffold(body: SizedBox.shrink())),
@@ -141,6 +144,22 @@ class _Phone {
   /// Entering the dashboard, which is where the app reads the carts the phone has on hold back into the POS.
   void openDashboard() => cart.getCartData();
 
+  /// Opening the POS, which makes a cart for the seller only when there is not one already, exactly as `PosScreen` does: the cart in
+  /// hand is held in memory for the whole life of the app, and the screen takes the one it finds.
+  void openPos() {
+    if (cart.currentCartModel == null) {
+      cart.initTempCartData(isUpdate: false);
+    }
+    cart.clearCardForCancel();
+  }
+
+  /// The seller scans a product at the counter. It goes into the cart in hand, which the phone is told nothing about until the cart is
+  /// put aside for a customer or the sale is placed.
+  void scan({required double priced}) => cart.currentCartModel!.cart!.add(CartModel(priced, 0, 1, 0, null, null, null, null, null, null));
+
+  /// The seller picks a registered customer to ring the sale up for.
+  void serveCustomer(int customerId, {required String named}) => customer.setCustomerInfo(customerId, named, '0500000000', false, 0);
+
   /// The seller puts a cart aside for a customer, as the POS does.
   void holdCartFor(String customerName, {required int customerId}) =>
       cart.addUserCart(TemporaryCartListModel(userId: customerId, customerName: customerName, cart: <CartModel>[]));
@@ -156,10 +175,18 @@ class _Phone {
   /// The market the seller who is signed in now works in.
   MarketScope get market => marketChoice.current();
 
+  /// What the POS screen shows the seller: the price of everything in the cart in hand.
+  List<double?> get cartInHand => cart.currentCartModel?.cart?.map((CartModel item) => item.price).toList() ?? <double?>[];
+
+  /// The customer the POS is ringing the sale up for.
+  String? get customerBeingServed => customer.customerSelectedName;
+
   /// The customers the POS shows a cart on hold for.
   List<String?> get cartsOnHold => cart.customerCartList.map((TemporaryCartListModel held) => held.customerName).toList();
 
-  /// The currency the app prices in, which is the shop's own while the phone holds no choice.
+  /// The currency the app prices in, which is the shop's own while the phone holds no choice. This is the read the app itself makes:
+  /// `SplashController.initConfig` asks the same store the same question on every start and falls back to the currency of the shop
+  /// when it holds nothing. The write is the other half of a currency picker that this build does not wire up, so the test makes it.
   String get currency => shopSettings.getCurrency();
 
   /// Every sale the phone still holds, whoever took it.
@@ -221,6 +248,23 @@ void main() {
       expect(phone.salesOnTheDisk.map((PendingPosOrder sale) => sale.sellerId), <String?>['$_idOfTheFirstSeller', '$_idOfTheFirstSeller']);
     });
 
+    testWidgets('takes the cart in hand with it, and not only the carts put aside for customers', (WidgetTester tester) async {
+      final _Phone phone = await _Phone.start(tester);
+      await phone.signIn(_idOfTheFirstSeller, token: 'token-of-the-first-seller');
+      phone.openPos();
+      phone.scan(priced: 31);
+      phone.scan(priced: 44);
+      phone.serveCustomer(55, named: 'Fatima');
+
+      expect(phone.cartInHand, <double?>[31, 44]);
+      expect(phone.customerBeingServed, 'Fatima');
+
+      await phone.signOut();
+
+      expect(phone.cartInHand, isEmpty, reason: 'the sale the seller was ringing up is not left on the screen to be finished by somebody else');
+      expect(phone.customerBeingServed, 'Walk-In Customer', reason: 'nor is the customer it was being rung up for');
+    });
+
     testWidgets('takes nothing else: the email the login prefills, the language and the theme of the phone stay', (WidgetTester tester) async {
       final _Phone phone = await _Phone.start(tester, stored: <String, Object>{
         AppConstants.userEmail: 'first.seller@example.com',
@@ -236,6 +280,26 @@ void main() {
       expect(phone.preferences.getString(AppConstants.languageCode), 'ar');
       expect(phone.preferences.getString(AppConstants.theme), 'dark');
       expect(phone.keysOnTheDisk, <String?>['a-1']);
+    });
+
+    testWidgets('has taken all four off the phone by the time it first waits, because no caller waits for it', (WidgetTester tester) async {
+      final _Phone phone = await _Phone.start(tester);
+      await phone.signIn(_idOfTheFirstSeller, token: 'token-of-the-first-seller');
+      await _work(phone, inMarket: MarketScope.kuwait, forCustomer: 'Noura', pricedIn: 'KWD');
+
+      await tester.runAsync(() async {
+        // As `ApiChecker` ends a session: the sign-out is started and nothing waits for it, while the login screen goes up and a
+        // seller with their credentials prefilled can be signed back in. Whatever is left to do after the first wait would then run
+        // on their session, so every removal has to be asked for before it.
+        final Future<bool> signingOut = phone.auth.clearSharedData();
+
+        expect(phone.preferences.containsKey(AppConstants.token), isFalse);
+        expect(phone.preferences.containsKey(AppConstants.storefrontCountry), isFalse, reason: 'a market removed later would be the market the next seller had just chosen');
+        expect(phone.preferences.containsKey(AppConstants.cartList), isFalse, reason: 'and a cart read back before the removal would be written to the phone again under the next session');
+        expect(phone.preferences.containsKey(AppConstants.currency), isFalse);
+
+        await signingOut;
+      });
     });
 
     testWidgets('that an unauthorized answer forces takes the same three, and keeps the sales in the same way', (WidgetTester tester) async {
@@ -266,6 +330,23 @@ void main() {
       expect(phone.market, MarketScope.defaultScope, reason: 'the second seller is in Saudi Arabia until they choose a market, not in the first seller\'s Kuwait');
       expect(phone.cartsOnHold, isEmpty, reason: 'the cart the first seller put aside is not on the second seller\'s screen');
       expect(phone.currency, isEmpty, reason: 'and the prices are the shop\'s own again, not the first seller\'s Kuwaiti dinar');
+    });
+
+    testWidgets('opens the POS on an empty cart, and so cannot place the sale the first seller was ringing up', (WidgetTester tester) async {
+      final _Phone phone = await _Phone.start(tester);
+      await phone.signIn(_idOfTheFirstSeller, token: 'token-of-the-first-seller');
+      phone.openPos();
+      phone.scan(priced: 31);
+      phone.serveCustomer(55, named: 'Fatima');
+      await phone.signOut();
+
+      await phone.signIn(_idOfTheSecondSeller, token: 'token-of-the-second-seller');
+      phone.openDashboard();
+      phone.openPos();
+
+      expect(phone.cartInHand, isEmpty, reason: 'the cart controller is made once for the app and outlives the sign-out, so the second seller would otherwise find the first seller\'s items priced on the screen');
+      expect(phone.customerBeingServed, 'Walk-In Customer');
+      expect(phone.cartsOnHold, isEmpty);
     });
 
     testWidgets('is labelled with their own market, although the one controller of the app has not been built again', (WidgetTester tester) async {
