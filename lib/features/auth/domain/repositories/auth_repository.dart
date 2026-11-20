@@ -131,6 +131,18 @@ class AuthRepository implements AuthRepositoryInterface{
     return sharedPreferences!.containsKey(AppConstants.token);
   }
 
+  /// What the device holds for whoever is signed in, and for nobody else: the market the seller works in, the till they are ringing up
+  /// and the currency they chose. A sign-out takes all three, so that the next seller to sign in on the same device starts in no
+  /// market, with an empty till and the currency of the shop rather than carrying on where the seller before them left off.
+  ///
+  /// The sales that could not be sent are deliberately not here. They are money already taken, each one owed to the seller who rang it
+  /// up, so they stay on the device under their own key and are listed and sent only in that seller's session.
+  static const List<String> _keysOfTheSignedInSeller = <String>[
+    AppConstants.storefrontCountry,
+    AppConstants.cartList,
+    AppConstants.currency,
+  ];
+
   @override
   Future<bool> clearSharedData() async {
     // Everything destructive happens first, before anything can suspend.
@@ -146,6 +158,9 @@ class AuthRepository implements AuthRepositoryInterface{
     dioClient!.clearAuthToken();
     final bool removed = await sharedPreferences!.remove(AppConstants.token);
     await secureCredentialStore.clearPassword();
+    for (final String key in _keysOfTheSignedInSeller) {
+      await sharedPreferences!.remove(key);
+    }
 
     // Best effort, and last: unsubscribing is a courtesy to the push service,
     // not part of ending the session. It must never be able to outlive the

@@ -67,6 +67,16 @@ jobs:
         if: always()
         run: flutter test test/offline_outbox_owner_test.dart
 
+      # One phone on the counter, more than one seller: a sign-out takes the market, the cart and the currency of the seller who signed out, and leaves the sales that could not be sent for them. The file
+      # asks for the market with storefronts on itself, so it says the same thing in either build; the step is run with the flag as well, because that is the build the market a sale is owed to is written in.
+      - name: Test that a second login on the same device inherits no market, cart or currency of the first, while the unsent sales stay queued for the seller who took them (K-12)
+        if: always()
+        run: flutter test test/second_login_on_one_device_test.dart
+
+      - name: Test that a second login on the same device starts clean, with the storefront flag on (K-12)
+        if: always()
+        run: flutter test --dart-define=GCC_STOREFRONTS_ENABLED=true test/second_login_on_one_device_test.dart
+
   build-android:
     runs-on: ubuntu-latest
     needs: analyze-and-test

@@ -597,13 +597,13 @@ class CartController extends ChangeNotifier{
     cartServiceInterface.addToCartList(_customerCartList);
   }
 
+  /// The carts on hold are the ones the device has stored, and none when it has stored none. A sign-out empties that store, so a cart
+  /// kept here instead would be handed to the next seller to sign in on the same device.
   void getCartData() {
-    List<TemporaryCartListModel> localCartList = cartServiceInterface.getCartList();
+    final List<TemporaryCartListModel> localCartList = cartServiceInterface.getCartList();
 
-    if(localCartList.isNotEmpty) {
-      PosCustomerId.markLegacyWalkInCarts(localCartList);
-      _customerCartList = localCartList;
-    }
+    PosCustomerId.markLegacyWalkInCarts(localCartList);
+    _customerCartList = localCartList;
   }
 
 
