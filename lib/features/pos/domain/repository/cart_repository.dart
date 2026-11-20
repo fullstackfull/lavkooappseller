@@ -1,11 +1,13 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syriacosmeticsmanger/data/datasource/remote/dio/dio_client.dart';
 import 'package:syriacosmeticsmanger/data/datasource/remote/exception/api_error_handler.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/customer_body.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/place_order_body.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_idempotency_key.dart';
 import 'package:syriacosmeticsmanger/data/model/response/base/api_response.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/temporary_cart_for_customer_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/repository/cart_repository_interface.dart';
@@ -33,12 +35,12 @@ class CartRepository implements CartRepositoryInterface{
   }
 
   @override
-  Future<ApiResponse> placeOrder(PlaceOrderBody placeOrderBody) async {
+  Future<ApiResponse> placeOrder(PlaceOrderBody placeOrderBody, {String? idempotencyKey}) async {
     if (kDebugMode) {
       print('order place===>${placeOrderBody.toJson()}');
     }
     try {
-      final response = await dioClient!.post(AppConstants.placeOrderUri, data: placeOrderBody.toJson());
+      final response = await dioClient!.post(AppConstants.placeOrderUri, data: placeOrderBody.toJson(), options: _headersOf(idempotencyKey: idempotencyKey));
       return ApiResponse.withSuccess(response);
     } catch (e) {
       return ApiResponse.withError(ApiErrorHandler.getMessage(e));
@@ -46,13 +48,24 @@ class CartRepository implements CartRepositoryInterface{
   }
 
   @override
-  Future<ApiResponse> placeOrderRaw(Map<String, dynamic> orderBody) async {
+  Future<ApiResponse> placeOrderRaw(Map<String, dynamic> orderBody, {String? idempotencyKey, String? storefront}) async {
     try {
-      final response = await dioClient!.post(AppConstants.placeOrderUri, data: orderBody);
+      final response = await dioClient!.post(AppConstants.placeOrderUri, data: orderBody, options: _headersOf(idempotencyKey: idempotencyKey, storefront: storefront));
       return ApiResponse.withSuccess(response);
     } catch (e) {
       return ApiResponse.withError(ApiErrorHandler.getMessage(e));
     }
+  }
+
+  /// The request options of a sale: the key travels in the header the server reads it from and, for a sale replayed from the outbox, so does the storefront it was taken in, which the request then keeps
+  /// whatever market the seller works in when it is sent. With neither, the request has no options of its own.
+  Options? _headersOf({String? idempotencyKey, String? storefront}) {
+    final Map<String, dynamic> headers = <String, dynamic>{
+      if (idempotencyKey != null) PosIdempotencyKey.header: idempotencyKey,
+      if (storefront != null) AppConstants.storefrontHeader: storefront,
+    };
+
+    return headers.isEmpty ? null : Options(headers: headers);
   }
 
   @override

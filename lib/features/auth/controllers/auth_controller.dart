@@ -13,6 +13,8 @@ import 'package:syriacosmeticsmanger/features/auth/domain/services/auth_service_
 import 'package:syriacosmeticsmanger/features/auth/enums/from_page.dart';
 import 'package:syriacosmeticsmanger/features/auth/screens/otp_verification_screen.dart';
 import 'package:syriacosmeticsmanger/features/auth/widgets/reset_password_widget.dart';
+import 'package:syriacosmeticsmanger/features/pos/controllers/cart_controller.dart';
+import 'package:syriacosmeticsmanger/features/profile/controllers/profile_controller.dart';
 import 'package:syriacosmeticsmanger/features/shop/controllers/shop_controller.dart';
 import 'package:syriacosmeticsmanger/features/splash/domain/models/config_model.dart';
 import 'package:syriacosmeticsmanger/helper/image_size_checker.dart';
@@ -305,6 +307,8 @@ class AuthController with ChangeNotifier {
       }
     }
     Provider.of<ShopController>(Get.context!, listen: false).clearShopModel();
+    Provider.of<ProfileController>(Get.context!, listen: false).forgetSignedInSeller();
+    Provider.of<CartController>(Get.context!, listen: false).dropPosCart();
     return await authServiceInterface.clearSharedData();
   }
 

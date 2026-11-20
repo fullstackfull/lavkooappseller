@@ -54,7 +54,7 @@ class ChatRepository implements ChatRepositoryInterface{
 
 
 
-    request.headers.addAll(<String,String>{'Authorization': 'Bearer ${Provider.of<AuthController>(Get.context!, listen: false).getUserToken()}'});
+    request.headers.addAll(dioClient!.multipartHeaders(token: Provider.of<AuthController>(Get.context!, listen: false).getUserToken()));
     for(int i=0; i<files.length;i++){
       Uint8List list = await files[i]!.readAsBytes();
       var part = http.MultipartFile('media[]', files[i]!.readAsBytes().asStream(), list.length, filename: basename(files[i]!.path));

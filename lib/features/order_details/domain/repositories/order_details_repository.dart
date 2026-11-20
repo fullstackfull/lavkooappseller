@@ -68,7 +68,7 @@ class OrderDetailsRepository implements OrderDetailsRepositoryInterface{
   @override
   Future<ApiResponse> uploadAfterSellDigitalProduct(File? filePath, String token, String orderId) async {
     http.MultipartRequest request = http.MultipartRequest('POST', Uri.parse('${AppConstants.baseUrl}${AppConstants.digitalProductUploadAfterSell}'));
-    request.headers.addAll(<String,String>{'Authorization': 'Bearer $token'});
+    request.headers.addAll(dioClient!.multipartHeaders(token: token));
     if (kDebugMode) {
       print('Here is ===>$filePath');
     }

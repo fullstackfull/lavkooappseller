@@ -211,6 +211,15 @@
   "enter_lower_amount": "Enter lower amount than your balance",
   "enter_minimum_amount of": "Enter minimum amount of",
   "more": "More",
+  "market": "Market",
+  "select_market": "Select market",
+  "market_saudi_arabia": "Saudi Arabia",
+  "market_united_arab_emirates": "United Arab Emirates",
+  "market_kuwait": "Kuwait",
+  "market_qatar": "Qatar",
+  "market_bahrain": "Bahrain",
+  "market_oman": "Oman",
+  "market_not_changed": "The market was not changed. Please try again",
   "orders": "Orders",
   "confirmed": "Confirmed",
   "out_for_delivery": "Out For Delivery",
@@ -1836,5 +1845,9 @@
   "whole_catalogue": "Whole catalogue",
   "limited_to_part_of_the_catalogue": "Limited to part of the catalogue",
   "ceiling_is": "Ceiling is",
-  "lines_you_are_currently_over": "Lines you are currently over"
+  "lines_you_are_currently_over": "Lines you are currently over",
+  "sales_not_sent": "Sales that could not be sent",
+  "sales_not_sent_explained": "These sales were rung up on this device and the server did not accept them after several tries. They stay here with the reason until you retry or remove them.",
+  "remove_sale": "Remove this sale from the device",
+  "remove_sale_confirmation": "The server never recorded this sale. If you remove it, no copy of it is left. Remove it?"
 }
