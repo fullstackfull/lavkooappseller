@@ -1,6 +1,8 @@
 import 'package:syriacosmeticsmanger/localization/controllers/localization_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:syriacosmeticsmanger/di_container.dart';
+import 'package:syriacosmeticsmanger/features/storefront/controllers/seller_market_controller.dart';
 import 'package:syriacosmeticsmanger/features/notification/controllers/notification_controller.dart';
 import 'package:syriacosmeticsmanger/features/product/domain/models/product_model.dart';
 import 'package:syriacosmeticsmanger/features/bank_info/controllers/bank_info_controller.dart';
@@ -71,6 +73,12 @@ class _HomePageScreenState extends State<HomePageScreen> {
     Provider.of<ProductController>(context,listen: false).getMostPopularProductList(1, context, LocalizationController.apiLanguageCode(context), reload: reload);
 
     Provider.of<ProductReviewController>(context, listen: false).getReviewList(context);
+
+    // The markets this token carries, re-read with the rest of Home: a grant changed on the server reaches the picker on the next
+    // load rather than on the next sign-in (K-09). A build without markets has no controller to ask.
+    if (sl.isRegistered<SellerMarketController>()) {
+      sl<SellerMarketController>().refreshGrant();
+    }
   }
 
 
