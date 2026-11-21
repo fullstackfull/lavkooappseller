@@ -68,18 +68,84 @@ class ReportChartModel {
   int get length => labels.length < values.length ? labels.length : values.length;
 }
 
+/// One currency's own figures, when the period holds more than one.
+///
+/// A seller selling in Riyadh and Dubai takes riyals and dirhams in the same
+/// period, and the server will not add them: it answers each currency's real
+/// figures and says why there is no single total. This is one of those groups,
+/// kept as a map so a new figure on the server reaches the screen without a
+/// field here — the keys are the server's own (`due`, `settled`, `cash`, …).
+class ReportCurrencyFiguresModel {
+  final String currencyCode;
+  final Map<String, double> figures;
+
+  const ReportCurrencyFiguresModel({this.currencyCode = '', this.figures = const <String, double>{}});
+
+  factory ReportCurrencyFiguresModel.fromJson(Map<String, dynamic> json) {
+    final Map<String, double> figures = <String, double>{};
+
+    json.forEach((String key, dynamic value) {
+      if (key == 'currency_code' || value == null) return;
+
+      if (value is num) {
+        figures[key] = value.toDouble();
+        return;
+      }
+
+      final double? parsed = double.tryParse('$value');
+      if (parsed != null) {
+        figures[key] = parsed;
+      }
+    });
+
+    return ReportCurrencyFiguresModel(
+      currencyCode: json['currency_code']?.toString() ?? '',
+      figures: figures,
+    );
+  }
+
+  double? operator [](String name) => figures[name];
+}
+
+/// Reads a list of per-currency groups out of an answer, empty when the server
+/// gave one combined figure and there is nothing to keep apart.
+List<ReportCurrencyFiguresModel> _currencyGroups(dynamic value) => value is List
+    ? value.map((e) => ReportCurrencyFiguresModel.fromJson(_map(e))).toList()
+    : const <ReportCurrencyFiguresModel>[];
+
 class OrderReportModel {
   final ReportPeriodModel period;
   final int ongoing;
   final int canceled;
   final int delivered;
   final int total;
-  final double due;
-  final double settled;
-  final ReportPaymentsModel payments;
+
+  /// **Nullable, and null is not zero.** Where the period holds orders in more
+  /// than one currency the server refuses the single figure — a sum of riyals
+  /// and dirhams is not money — and answers the per-currency figures with a
+  /// reason. Reading those nulls as `0` showed `0.00 / 0.00 / 0.00` to a seller
+  /// who was owed 1015 across three currencies, and a zero looks authoritative
+  /// in a way a blank does not: a seller reads it as "there is nothing owed"
+  /// and acts on it. This does **not** need a market grant to happen: the
+  /// server refuses as soon as the orders of the period carry two currency
+  /// codes, which an installation can reach with no market scopes switched on.
+  final double? due;
+  final double? settled;
+
+  /// Null for the same reason as the two above, rather than a zeroed breakdown.
+  final ReportPaymentsModel? payments;
   final ReportChartModel chart;
   final List<ReportOrderModel> orders;
   final int totalOrderCount;
+
+  /// Why there is no one figure, as a language key, or null when there is one.
+  final String? totalsRefusedBecause;
+
+  /// Each currency's own amounts and payment breakdown, and its own settled
+  /// series. Both empty while the period is in one currency, which is when the
+  /// combined figures above are the answer.
+  final List<ReportCurrencyFiguresModel> amountsByCurrency;
+  final List<ReportCurrencySeriesModel> chartByCurrency;
 
   OrderReportModel({
     ReportPeriodModel? period,
@@ -87,19 +153,21 @@ class OrderReportModel {
     this.canceled = 0,
     this.delivered = 0,
     this.total = 0,
-    this.due = 0,
-    this.settled = 0,
-    ReportPaymentsModel? payments,
+    this.due,
+    this.settled,
+    this.payments,
     ReportChartModel? chart,
     this.orders = const <ReportOrderModel>[],
     this.totalOrderCount = 0,
+    this.totalsRefusedBecause,
+    this.amountsByCurrency = const <ReportCurrencyFiguresModel>[],
+    this.chartByCurrency = const <ReportCurrencySeriesModel>[],
   })  : period = period ?? ReportPeriodModel(),
-        payments = payments ?? ReportPaymentsModel(),
         chart = chart ?? ReportChartModel();
 
   factory OrderReportModel.fromJson(Map<String, dynamic> json) {
     final Map<String, dynamic> counts = _map(json['counts']);
-    final Map<String, dynamic> amounts = _map(json['amounts']);
+    final Map<String, dynamic>? amounts = _mapOrNull(json['amounts']);
     final Map<String, dynamic> orders = _map(json['orders']);
 
     return OrderReportModel(
@@ -108,10 +176,15 @@ class OrderReportModel {
       canceled: _toInt(counts['canceled']),
       delivered: _toInt(counts['delivered']),
       total: _toInt(counts['total']),
-      due: _toDouble(amounts['due']),
-      settled: _toDouble(amounts['settled']),
-      payments: ReportPaymentsModel.fromJson(_mapOrNull(json['payments'])),
+      due: amounts == null ? null : _toDouble(amounts['due']),
+      settled: amounts == null ? null : _toDouble(amounts['settled']),
+      payments: json['payments'] == null ? null : ReportPaymentsModel.fromJson(_mapOrNull(json['payments'])),
       chart: ReportChartModel.fromJson(_mapOrNull(json['chart'])),
+      totalsRefusedBecause: json['totals_refused_because']?.toString(),
+      amountsByCurrency: _currencyGroups(json['amounts_by_currency']),
+      chartByCurrency: json['chart_by_currency'] is List
+          ? (json['chart_by_currency'] as List).map((e) => ReportCurrencySeriesModel.fromJson(_map(e))).toList()
+          : const <ReportCurrencySeriesModel>[],
       orders: orders['orders'] is List
           ? (orders['orders'] as List).map((e) => ReportOrderModel.fromJson(_map(e))).toList()
           : const <ReportOrderModel>[],
@@ -119,9 +192,29 @@ class OrderReportModel {
     );
   }
 
+  /// Whether the server refused to add two currencies. When it did there is no
+  /// `due`, `settled`, `payments` or chart series to draw, and the screen shows
+  /// the reason and each currency's own figures instead.
+  bool get totalsRefused => totalsRefusedBecause != null;
+
   /// What the seller is owed plus what has settled — the figure the panel
-  /// prints above the split.
-  double get turnover => due + settled;
+  /// prints above the split. Null when there is no one figure to add.
+  double? get turnover => totalsRefused ? null : (due ?? 0) + (settled ?? 0);
+}
+
+/// One currency's own settled series, over the labels the combined chart uses.
+class ReportCurrencySeriesModel {
+  final String currencyCode;
+  final List<double> values;
+
+  const ReportCurrencySeriesModel({this.currencyCode = '', this.values = const <double>[]});
+
+  factory ReportCurrencySeriesModel.fromJson(Map<String, dynamic> json) => ReportCurrencySeriesModel(
+        currencyCode: json['currency_code']?.toString() ?? '',
+        values: json['values'] is List
+            ? (json['values'] as List).map((e) => _toDouble(e)).toList()
+            : const <double>[],
+      );
 }
 
 /// What was paid, and by what means. `total` already has returns taken out and
@@ -206,12 +299,23 @@ class ProductReportModel {
   final int pending;
   final int rejected;
   final double soldQuantity;
-  final double soldAmount;
-  final double discountGiven;
+
+  /// Nullable for the same reason as the order report's amounts: the server
+  /// refuses `sold_amount` and `discount_given` over two currencies. The
+  /// **quantity** is never refused — a unit sold in Riyadh and a unit sold in
+  /// Dubai are two units — so it stays non-null.
+  final double? soldAmount;
+  final double? discountGiven;
   final ReportChartModel chart;
   final List<TopProductModel> topProducts;
   final List<ReportProductModel> products;
   final int totalProductCount;
+
+  /// Why there is no one figure, as a language key, or null when there is one.
+  final String? totalsRefusedBecause;
+
+  /// What each currency sold, when there is more than one.
+  final List<ReportCurrencyFiguresModel> totalsByCurrency;
 
   ProductReportModel({
     ReportPeriodModel? period,
@@ -219,12 +323,14 @@ class ProductReportModel {
     this.pending = 0,
     this.rejected = 0,
     this.soldQuantity = 0,
-    this.soldAmount = 0,
-    this.discountGiven = 0,
+    this.soldAmount,
+    this.discountGiven,
     ReportChartModel? chart,
     this.topProducts = const <TopProductModel>[],
     this.products = const <ReportProductModel>[],
     this.totalProductCount = 0,
+    this.totalsRefusedBecause,
+    this.totalsByCurrency = const <ReportCurrencyFiguresModel>[],
   })  : period = period ?? ReportPeriodModel(),
         chart = chart ?? ReportChartModel();
 
@@ -239,9 +345,11 @@ class ProductReportModel {
       pending: _toInt(counts['pending']),
       rejected: _toInt(counts['rejected']),
       soldQuantity: _toDouble(totals['sold_quantity']),
-      soldAmount: _toDouble(totals['sold_amount']),
-      discountGiven: _toDouble(totals['discount_given']),
+      soldAmount: totals['sold_amount'] == null ? null : _toDouble(totals['sold_amount']),
+      discountGiven: totals['discount_given'] == null ? null : _toDouble(totals['discount_given']),
       chart: ReportChartModel.fromJson(_mapOrNull(json['chart'])),
+      totalsRefusedBecause: json['totals_refused_because']?.toString(),
+      totalsByCurrency: _currencyGroups(json['totals_by_currency']),
       topProducts: json['top_products'] is List
           ? (json['top_products'] as List).map((e) => TopProductModel.fromJson(_map(e))).toList()
           : const <TopProductModel>[],
@@ -253,6 +361,9 @@ class ProductReportModel {
   }
 
   int get listedTotal => active + pending + rejected;
+
+  /// Whether the server refused to add two currencies' money figures.
+  bool get totalsRefused => totalsRefusedBecause != null;
 }
 
 class TopProductModel {
