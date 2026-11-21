@@ -1836,5 +1836,6 @@
   "whole_catalogue": "Whole catalogue",
   "limited_to_part_of_the_catalogue": "Limited to part of the catalogue",
   "ceiling_is": "Ceiling is",
-  "lines_you_are_currently_over": "Lines you are currently over"
+  "lines_you_are_currently_over": "Lines you are currently over",
+  "totals_of_different_currencies_are_not_added": "Totals of different currencies are not added"
 }
