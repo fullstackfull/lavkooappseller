@@ -99,24 +99,33 @@ class _StatementScreenState extends State<StatementScreen> {
               children: [
                 // The account, never the filter. Narrowing to last week must not
                 // change what can be withdrawn today.
-                Row(children: [
-                  ReportMetricWidget(
-                    title: 'withdrawable_balance',
-                    value: PriceConverter.convertPrice(context, summary.withdrawable),
-                  ),
-                  const SizedBox(width: Dimensions.paddingSizeSmall),
-                  ReportMetricWidget(
-                    title: 'pending',
-                    value: PriceConverter.convertPrice(context, summary.pending),
-                  ),
-                ]),
-                const SizedBox(height: Dimensions.paddingSizeSmall),
-                ReportCardWidget(children: [
-                  ReportRowWidget(label: 'available', value: PriceConverter.convertPrice(context, summary.available)),
-                  ReportRowWidget(label: 'reserved', value: PriceConverter.convertPrice(context, summary.reserved)),
-                  ReportRowWidget(label: 'paid', value: PriceConverter.convertPrice(context, summary.paid)),
-                  ReportRowWidget(label: 'balance', value: PriceConverter.convertPrice(context, summary.balance)),
-                ]),
+                //
+                // Two currencies and there is no one balance to show, so the
+                // reason is shown where the figure would have been and each
+                // currency is listed under it. The screen must never print the
+                // refusal as 0.00: a zero is a figure a seller acts on.
+                if (summary.totalsRefused)
+                  ..._perCurrency(context, summary)
+                else ...[
+                  Row(children: [
+                    ReportMetricWidget(
+                      title: 'withdrawable_balance',
+                      value: PriceConverter.convertPrice(context, summary.withdrawable ?? 0),
+                    ),
+                    const SizedBox(width: Dimensions.paddingSizeSmall),
+                    ReportMetricWidget(
+                      title: 'pending',
+                      value: PriceConverter.convertPrice(context, summary.pending ?? 0),
+                    ),
+                  ]),
+                  const SizedBox(height: Dimensions.paddingSizeSmall),
+                  ReportCardWidget(children: [
+                    ReportRowWidget(label: 'available', value: PriceConverter.convertPrice(context, summary.available ?? 0)),
+                    ReportRowWidget(label: 'reserved', value: PriceConverter.convertPrice(context, summary.reserved ?? 0)),
+                    ReportRowWidget(label: 'paid', value: PriceConverter.convertPrice(context, summary.paid ?? 0)),
+                    ReportRowWidget(label: 'balance', value: PriceConverter.convertPrice(context, summary.balance ?? 0)),
+                  ]),
+                ],
 
                 const SizedBox(height: Dimensions.paddingSizeDefault),
                 _filters(context, statements),
@@ -126,13 +135,20 @@ class _StatementScreenState extends State<StatementScreen> {
                 // sitting under the filter rather than beside the balances.
                 ReportCardWidget(children: [
                   ReportRowWidget(label: 'entries', value: '${summary.rangeEntries}'),
-                  ReportRowWidget(
-                      label: 'credited', value: PriceConverter.convertPrice(context, summary.rangeCredits),
-                      valueColor: Colors.green.shade700),
-                  ReportRowWidget(
-                      label: 'debited', value: PriceConverter.convertPrice(context, summary.rangeDebits),
-                      valueColor: Theme.of(context).colorScheme.error),
-                  ReportRowWidget(label: 'net', value: PriceConverter.convertPrice(context, summary.rangeNet)),
+                  if (summary.totalsRefused)
+                    ...summary.rangeByCurrency.map((group) => ReportRowWidget(
+                          label: group.currencyCode,
+                          value: _amount(group['net']),
+                        ))
+                  else ...[
+                    ReportRowWidget(
+                        label: 'credited', value: PriceConverter.convertPrice(context, summary.rangeCredits ?? 0),
+                        valueColor: Colors.green.shade700),
+                    ReportRowWidget(
+                        label: 'debited', value: PriceConverter.convertPrice(context, summary.rangeDebits ?? 0),
+                        valueColor: Theme.of(context).colorScheme.error),
+                    ReportRowWidget(label: 'net', value: PriceConverter.convertPrice(context, summary.rangeNet ?? 0)),
+                  ],
                 ]),
 
                 const SizedBox(height: Dimensions.paddingSizeLarge),
@@ -157,6 +173,44 @@ class _StatementScreenState extends State<StatementScreen> {
       ),
     );
   }
+
+  /// The balances of a seller whose ledger holds more than one currency.
+  ///
+  /// The reason first, in the seller's language, then one card per currency with
+  /// that currency's own real figures. Deliberately not a single number with a
+  /// footnote: the figure is the thing a seller reads, and there isn't one.
+  List<Widget> _perCurrency(BuildContext context, StatementSummaryModel summary) {
+    return [
+      ReportCardWidget(children: [
+        Row(children: [
+          Icon(Icons.info_outline, size: 18, color: Theme.of(context).colorScheme.error),
+          const SizedBox(width: Dimensions.paddingSizeExtraSmall),
+          Expanded(
+            child: Text(
+              getTranslated(summary.totalsRefusedBecause!, context) ?? summary.totalsRefusedBecause!,
+              style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall),
+            ),
+          ),
+        ]),
+      ]),
+      const SizedBox(height: Dimensions.paddingSizeSmall),
+      ...summary.bucketsByCurrency.map((group) => Padding(
+            padding: const EdgeInsets.only(bottom: Dimensions.paddingSizeSmall),
+            child: ReportCardWidget(children: [
+              Text(group.currencyCode, style: robotoBold.copyWith(fontSize: Dimensions.fontSizeSmall)),
+              ReportRowWidget(label: 'available', value: _amount(group['available'])),
+              ReportRowWidget(label: 'pending', value: _amount(group['pending'])),
+              ReportRowWidget(label: 'reserved', value: _amount(group['reserved'])),
+              ReportRowWidget(label: 'paid', value: _amount(group['paid'])),
+              ReportRowWidget(label: 'balance', value: _amount(group['balance'])),
+            ]),
+          )),
+    ];
+  }
+
+  /// A figure in its own currency, never converted to the display currency: the
+  /// point of the per-currency answer is that these are different kinds of money.
+  String _amount(double? figure) => figure == null ? '—' : figure.toStringAsFixed(2);
 
   Widget _filters(BuildContext context, StatementController statements) {
     final StatementModel? statement = statements.statement;

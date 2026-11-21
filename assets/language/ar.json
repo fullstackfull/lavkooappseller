@@ -1836,5 +1836,6 @@
   "whole_catalogue": "كامل الكتالوج",
   "limited_to_part_of_the_catalogue": "محدودة بجزء من الكتالوج",
   "ceiling_is": "الحدّ الأقصى",
-  "lines_you_are_currently_over": "الحدود التي تتجاوزها حاليًا"
+  "lines_you_are_currently_over": "الحدود التي تتجاوزها حاليًا",
+  "totals_of_different_currencies_are_not_added": "لا تُجمع الإجماليات بعملات مختلفة"
 }
