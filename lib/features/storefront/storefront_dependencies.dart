@@ -1,6 +1,8 @@
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:syriacosmeticsmanger/data/datasource/remote/dio/dio_client.dart';
 import 'package:syriacosmeticsmanger/features/storefront/controllers/seller_market_controller.dart';
+import 'package:syriacosmeticsmanger/features/storefront/domain/seller_principal_source.dart';
 import 'package:syriacosmeticsmanger/features/storefront/market_scoped_state.dart';
 import 'package:syriacosmeticsmanger/features/storefront/seller_market_choice.dart';
 import 'package:syriacosmeticsmanger/features/storefront/storefront_config.dart';
@@ -18,6 +20,10 @@ void registerStorefrontDependencies(GetIt locator, {bool enabled = StorefrontCon
     () => SellerMarketController(
       marketChoice: SellerMarketChoice(locator<SharedPreferences>(), enabled: enabled),
       onMarketSwitched: reloadMarketScopedState,
+      // The markets the token carries come from the server and nowhere else, so the picker offers what the seller was granted
+      // rather than every market the build knows (K-09). A container with no client has no source, and the controller then holds
+      // no grant at all, which is the app as it was before markets existed.
+      principalSource: locator.isRegistered<DioClient>() ? SellerPrincipalSource(locator<DioClient>()) : null,
     ),
   );
 }
