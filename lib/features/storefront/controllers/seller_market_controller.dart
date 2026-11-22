@@ -12,15 +12,16 @@ class SellerMarketController extends ChangeNotifier {
     required SellerMarketChoice marketChoice,
     required MarketSwitchHandler onMarketSwitched,
   })  : _marketChoice = marketChoice,
-        _onMarketSwitched = onMarketSwitched,
-        _market = marketChoice.current();
+        _onMarketSwitched = onMarketSwitched;
 
   final SellerMarketChoice _marketChoice;
   final MarketSwitchHandler _onMarketSwitched;
-  MarketScope _market;
   Future<void>? _lastHandled;
 
-  MarketScope get market => _market;
+  /// The market the seller works in, which is the choice the device holds and nothing else. There is one controller for the whole app
+  /// and it outlives a sign-out, while the choice does not: holding the market apart from the device would label the screens with the
+  /// market of the seller who signed out, and the requests of those screens name the stored choice.
+  MarketScope get market => _marketChoice.current();
 
   List<MarketScope> get markets => MarketScope.gccMarkets;
 
@@ -28,14 +29,14 @@ class SellerMarketController extends ChangeNotifier {
   /// which starts only once the handler of the switch before it has finished; choosing the market already worked in changes nothing
   /// but the saved choice. False when the market could not be saved.
   Future<bool> choose(MarketScope scope) async {
+    final MarketScope marketLeft = market;
     if (!await _marketChoice.choose(scope)) {
       return false;
     }
-    if (scope == _market) {
+    if (scope == marketLeft) {
       return true;
     }
 
-    _market = scope;
     notifyListeners();
     await _handleSwitch();
     return true;

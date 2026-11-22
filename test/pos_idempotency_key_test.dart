@@ -152,7 +152,7 @@ void main() {
     test('the outbox replays a sale under the key it was first sent with and keys a sale that has none before it is sent', () {
       final String outbox = code('lib/features/pos/controllers/offline_sales_controller.dart');
 
-      expect(outbox, contains('placeOrderRaw(order.body, idempotencyKey: order.idempotencyKey)'));
+      expect(outbox, contains('placeOrderRaw(order.body, idempotencyKey: order.idempotencyKey, storefront: order.storefront)'));
       expect(outbox, contains('order.idempotencyKey == null'));
     });
   });

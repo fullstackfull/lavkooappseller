@@ -597,13 +597,27 @@ class CartController extends ChangeNotifier{
     cartServiceInterface.addToCartList(_customerCartList);
   }
 
-  void getCartData() {
-    List<TemporaryCartListModel> localCartList = cartServiceInterface.getCartList();
+  /// Everything the POS holds for the seller at the counter: the cart in hand, the carts put aside for customers, the discount and the
+  /// tax worked out for them, and the customer being served. There is one cart controller for the whole app and it outlives both a
+  /// sign-out and a switch of market, so what it holds has to be dropped by hand; left alone, the next session opens the POS on the
+  /// sale the session before it was ringing up, priced and ready to place.
+  ///
+  /// What the device has stored is the caller's to deal with: a switch of market writes the emptied carts back with [saveCardData],
+  /// while a sign-out takes the key off the device altogether.
+  void dropPosCart() {
+    removeAllCartList();
+    clearCardForCancel();
+    removeModifiedTax();
+    resetUserCard();
+  }
 
-    if(localCartList.isNotEmpty) {
-      PosCustomerId.markLegacyWalkInCarts(localCartList);
-      _customerCartList = localCartList;
-    }
+  /// The carts on hold are the ones the device has stored, and none when it has stored none. A sign-out empties that store, so a cart
+  /// kept here instead would be handed to the next seller to sign in on the same device.
+  void getCartData() {
+    final List<TemporaryCartListModel> localCartList = cartServiceInterface.getCartList();
+
+    PosCustomerId.markLegacyWalkInCarts(localCartList);
+    _customerCartList = localCartList;
   }
 
 
