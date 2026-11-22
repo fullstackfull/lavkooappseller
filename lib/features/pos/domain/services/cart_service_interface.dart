@@ -6,9 +6,9 @@ import 'package:syriacosmeticsmanger/features/pos/domain/models/temporary_cart_f
 
 abstract class CartServiceInterface{
   Future<dynamic> getCouponDiscount(String couponCode, int? userId, double orderAmount);
-  Future<dynamic> placeOrder(PlaceOrderBody placeOrderBody);
-  Future<dynamic> placeOrderRaw(Map<String, dynamic> orderBody);
-  Future<dynamic> getProductFromScan(String? productCode);
+  Future<dynamic> placeOrder(PlaceOrderBody placeOrderBody, {String? idempotencyKey});
+  Future<dynamic> placeOrderRaw(Map<String, dynamic> orderBody, {String? idempotencyKey});
+  Future<dynamic> getProductFromScan(String? productCode, {String? country});
   Future<dynamic> getCustomerList(String type);
   Future<dynamic> customerSearch(String name);
   Future<dynamic> addNewCustomer(CustomerBody customerBody);

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:syriacosmeticsmanger/features/splash/controllers/splash_controller.dart';
+import 'package:syriacosmeticsmanger/features/storefront/market_money.dart';
 
 class PriceConverter {
   static String convertPrice(BuildContext context, double? price, {double? discount, String? discountType}) {
@@ -18,6 +19,11 @@ class PriceConverter {
     bool singleCurrency = splashProvider.configModel?.currencyModel == 'single_currency';
 
     bool inRight = Provider.of<SplashController>(context, listen: false).configModel!.currencySymbolPosition == 'right';
+
+    final market = MarketMoney.current();
+    if (market != null) {
+      return market.amountWithCurrency(price!, markOnRight: inRight);
+    }
 
     final decimal = splashProvider.configModel?.decimalPointSettings ?? 1;
 
@@ -47,6 +53,11 @@ class PriceConverter {
     bool singleCurrency = splashProvider.configModel?.currencyModel == 'single_currency';
 
     bool inRight = Provider.of<SplashController>(context, listen: false).configModel!.currencySymbolPosition == 'right';
+
+    final market = MarketMoney.current();
+    if (market != null) {
+      return market.amountWithCurrency(price!, markOnRight: inRight, truncate: true);
+    }
 
     final decimal = splashProvider.configModel?.decimalPointSettings ?? 1;
 
@@ -84,6 +95,11 @@ class PriceConverter {
       }
     }
 
+    final market = MarketMoney.current();
+    if (market != null) {
+      return market.amountText(price!);
+    }
+
     bool singleCurrency = splashProvider.configModel?.currencyModel == 'single_currency';
     final decimal = splashProvider.configModel?.decimalPointSettings ?? 1;
 
@@ -107,6 +123,11 @@ class PriceConverter {
       }
     }
 
+    final market = MarketMoney.current();
+    if (market != null) {
+      return market.amountText(price!, truncate: true);
+    }
+
     bool singleCurrency = splashProvider.configModel?.currencyModel == 'single_currency';
     final decimal = splashProvider.configModel?.decimalPointSettings ?? 1;
 
@@ -127,7 +148,7 @@ class PriceConverter {
     bool singleCurrency = splashProvider.configModel!.currencyModel == 'single_currency';
 
     // Reverse currency conversion: Convert the local price back to the base price (USD)
-    if (!singleCurrency && splashProvider.myCurrency != null && splashProvider.usdCurrency != null) {
+    if (!singleCurrency && MarketMoney.current() == null && splashProvider.myCurrency != null && splashProvider.usdCurrency != null) {
       localPrice = localPrice / splashProvider.myCurrency!.exchangeRate! * splashProvider.usdCurrency!.exchangeRate!;
     }
 
@@ -163,6 +184,10 @@ class PriceConverter {
 
   static double convertAmount(double amount, BuildContext context) {
     final splashProvider = Provider.of<SplashController>(context, listen: false);
+    final market = MarketMoney.current();
+    if (market != null) {
+      return double.parse(market.amountText(amount));
+    }
     return double.parse((amount * splashProvider.myCurrency!.exchangeRate! *
         (1/splashProvider.usdCurrency!.exchangeRate!)).toStringAsFixed(splashProvider.configModel!.decimalPointSettings!));
   }
@@ -172,6 +197,7 @@ class PriceConverter {
   }
   static String discountCalculationWithOutSymbol(BuildContext context,double price, double discount, String? discountType, {bool convertCurrency = true}) {
     final splashProvider = Provider.of<SplashController>(context, listen: false);
+    final market = MarketMoney.current();
 
     if(discountType == 'amount') {
       discount =  discount;
@@ -179,12 +205,12 @@ class PriceConverter {
       discount =  ((discount / 100) * price);
     }
 
-    if(discountType == 'percent' && convertCurrency) {
+    if(discountType == 'percent' && convertCurrency && market == null) {
       discount = ((discount * splashProvider.myCurrency!.exchangeRate! *
         (1/splashProvider.usdCurrency!.exchangeRate!)));
     }
 
-    return discount.toStringAsFixed(2);
+    return market?.amountText(discount) ?? discount.toStringAsFixed(2);
   }
 
   static String discountCalculation(BuildContext context,double price, double discount, String? discountType) {
@@ -194,13 +220,31 @@ class PriceConverter {
     }else if(discountType == 'percent') {
       discount =  ((discount / 100) * price);
     }
+    final market = MarketMoney.current();
+    if (market != null) {
+      return '${market.currencyCode} ${market.amountText(discount)}';
+    }
     return '${splashProvider.myCurrency!.symbol} ${discount.toStringAsFixed(2)}';
+  }
+
+
+  static String currencyMark(BuildContext context) {
+    final market = MarketMoney.current();
+    if (market != null) {
+      return market.currencyCode;
+    }
+    return Provider.of<SplashController>(context, listen: false).myCurrency!.symbol!;
   }
 
 
   static String getUnitCurrency (BuildContext context, double? price) {
     bool singleCurrency = Provider.of<SplashController>(context, listen: false).configModel!.currencyModel == 'single_currency';
     bool inRight = Provider.of<SplashController>(context, listen: false).configModel!.currencySymbolPosition == 'right';
+
+    final market = MarketMoney.current();
+    if (market != null) {
+      return market.amountWithCurrency(price!, markOnRight: inRight);
+    }
 
     return '${inRight ? '' : Provider.of<SplashController>(context, listen: false).myCurrency!.symbol}'
         '${(singleCurrency? price : price!)!

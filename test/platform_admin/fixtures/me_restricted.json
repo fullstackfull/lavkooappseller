@@ -1,0 +1,13 @@
+{
+  "data": {
+    "admin_id": 5,
+    "name": "Admin eAsyS",
+    "level": 1,
+    "scope": "restricted",
+    "markets": [
+      "AE",
+      "KW"
+    ],
+    "token_expires_at": "2026-11-17T14:00:00Z"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "data": [
+    {
+      "id": "389667746dde9c43",
+      "severity": "info",
+      "market": "KW",
+      "code": "orders_pending_too_long",
+      "message": "1 order in KW has been pending for more than 24 hours.",
+      "deep_link": "markets/KW",
+      "generated_at": "2026-11-17T06:00:00Z"
+    }
+  ],
+  "meta": {
+    "scope": "all",
+    "market": "all",
+    "severity": null,
+    "generated_at": "2026-11-17T06:00:00Z",
+    "page": 2,
+    "per_page": 3,
+    "total": 4,
+    "has_more": false
+  }
+}

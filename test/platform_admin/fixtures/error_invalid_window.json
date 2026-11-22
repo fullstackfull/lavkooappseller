@@ -1,0 +1,8 @@
+{
+  "errors": [
+    {
+      "code": "invalid_window",
+      "message": "The start of the window must not be after its end."
+    }
+  ]
+}

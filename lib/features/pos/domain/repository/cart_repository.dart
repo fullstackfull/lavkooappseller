@@ -1,21 +1,27 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syriacosmeticsmanger/data/datasource/remote/dio/dio_client.dart';
 import 'package:syriacosmeticsmanger/data/datasource/remote/exception/api_error_handler.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/customer_body.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/place_order_body.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_idempotency_key.dart';
 import 'package:syriacosmeticsmanger/data/model/response/base/api_response.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/product_scan_refusal_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/temporary_cart_for_customer_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/repository/cart_repository_interface.dart';
+import 'package:syriacosmeticsmanger/features/storefront/seller_market_choice.dart';
+import 'package:syriacosmeticsmanger/features/storefront/storefront_config.dart';
 import 'package:syriacosmeticsmanger/utill/app_constants.dart';
 
 
 class CartRepository implements CartRepositoryInterface{
   final DioClient? dioClient;
   final SharedPreferences? sharedPreferences;
-  CartRepository({required this.dioClient, required this.sharedPreferences});
+  final bool storefrontsEnabled;
+  CartRepository({required this.dioClient, required this.sharedPreferences, this.storefrontsEnabled = StorefrontConfig.enabled});
 
   @override
   Future<ApiResponse> getCouponDiscount(String couponCode, int? userId, double orderAmount) async {
@@ -33,12 +39,12 @@ class CartRepository implements CartRepositoryInterface{
   }
 
   @override
-  Future<ApiResponse> placeOrder(PlaceOrderBody placeOrderBody) async {
+  Future<ApiResponse> placeOrder(PlaceOrderBody placeOrderBody, {String? idempotencyKey}) async {
     if (kDebugMode) {
       print('order place===>${placeOrderBody.toJson()}');
     }
     try {
-      final response = await dioClient!.post(AppConstants.placeOrderUri, data: placeOrderBody.toJson());
+      final response = await dioClient!.post(AppConstants.placeOrderUri, data: placeOrderBody.toJson(), options: _keyedWith(idempotencyKey));
       return ApiResponse.withSuccess(response);
     } catch (e) {
       return ApiResponse.withError(ApiErrorHandler.getMessage(e));
@@ -46,23 +52,37 @@ class CartRepository implements CartRepositoryInterface{
   }
 
   @override
-  Future<ApiResponse> placeOrderRaw(Map<String, dynamic> orderBody) async {
+  Future<ApiResponse> placeOrderRaw(Map<String, dynamic> orderBody, {String? idempotencyKey}) async {
     try {
-      final response = await dioClient!.post(AppConstants.placeOrderUri, data: orderBody);
+      final response = await dioClient!.post(AppConstants.placeOrderUri, data: orderBody, options: _keyedWith(idempotencyKey));
       return ApiResponse.withSuccess(response);
     } catch (e) {
       return ApiResponse.withError(ApiErrorHandler.getMessage(e));
     }
   }
 
+  /// The request options of a sale: the key travels in the header the server reads it from, or the request has no options of its own.
+  Options? _keyedWith(String? idempotencyKey) => idempotencyKey == null ? null : Options(headers: <String, dynamic>{PosIdempotencyKey.header: idempotencyKey});
+
   @override
-  Future<ApiResponse> getProductFromScan(String? productCode) async {
+  Future<ApiResponse> getProductFromScan(String? productCode, {String? country}) async {
     try {
-      final response = await dioClient!.get('${AppConstants.getProductFromProductCode}?code=$productCode');
+      final String? scanCountry = country ?? _marketCountryCode();
+      final String countryQuery = scanCountry == null ? '' : '&country=$scanCountry';
+      final response = await dioClient!.get('${AppConstants.getProductFromProductCode}?code=$productCode$countryQuery');
       return ApiResponse.withSuccess(response);
     } catch (e) {
-      return ApiResponse.withError(ApiErrorHandler.getMessage(e));
+      return ApiResponse.withError(ProductScanRefusal.fromException(e) ?? ApiErrorHandler.getMessage(e));
     }
+  }
+
+  /// The market the seller works in, or null while storefronts are off: a request then carries no country at all.
+  String? _marketCountryCode() {
+    final SharedPreferences? preferences = sharedPreferences;
+    if (preferences == null) {
+      return null;
+    }
+    return SellerMarketChoice(preferences, enabled: storefrontsEnabled).current().countryCode;
   }
 
   @override

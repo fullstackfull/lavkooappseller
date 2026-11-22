@@ -5,6 +5,7 @@ import 'package:syriacosmeticsmanger/features/pos/controllers/coupon_discount_co
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/cart_controller.dart';
 import 'package:syriacosmeticsmanger/core/app_context.dart';
+import 'package:syriacosmeticsmanger/features/storefront/market_money.dart';
 import 'package:syriacosmeticsmanger/utill/dimensions.dart';
 import 'package:syriacosmeticsmanger/utill/styles.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_button_widget.dart';
@@ -21,6 +22,8 @@ class ExtraDiscountAndCouponDialogWidget extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimensions.paddingSizeSmall)),
       child: Consumer<CouponDiscountController>(
         builder: (context, couponDiscountController, _) {
+          final bool isAmountDiscount = couponDiscountController.discountTypeIndex == 0;
+
           return Container(padding: const EdgeInsets.all(Dimensions.paddingSizeSmall),
             child: Column(mainAxisSize: MainAxisSize.min,
               crossAxisAlignment:CrossAxisAlignment.start,children: [
@@ -69,10 +72,11 @@ class ExtraDiscountAndCouponDialogWidget extends StatelessWidget {
                 customTextField: CustomTextFieldWidget(
                   hintText: getTranslated('discount_hint', context),
                   controller: couponDiscountController.extraDiscountController,
-                  textInputType: TextInputType.number,
+                  textInputType: MarketMoney.keyboardType(outsideMarket: TextInputType.number),
                   border: true,
                   maxSize: couponDiscountController.discountTypeIndex == 1? 2 : null,
-                  isAmount: true,
+                  isAmount: !isAmountDiscount || MarketMoney.current() == null,
+                  inputFormatters: isAmountDiscount ? MarketMoney.inputFormatters() : null,
                 ),
                 title: couponDiscountController.discountTypeIndex == 1?
                 getTranslated('discount_percentage', context):

@@ -1,0 +1,62 @@
+{
+  "data": {
+    "scope": "all",
+    "generated_at": "2026-11-17T06:00:00Z",
+    "markets": [
+      {
+        "code": "SA",
+        "path": "sa",
+        "currency": "SAR",
+        "active": true,
+        "storefront_enabled": true,
+        "legal_ready": true,
+        "legal_entity": "Lavkoo Trading Co."
+      },
+      {
+        "code": "AE",
+        "path": "ae",
+        "currency": "AED",
+        "active": true,
+        "storefront_enabled": true,
+        "legal_ready": true,
+        "legal_entity": "Lavkoo Trading Co."
+      },
+      {
+        "code": "KW",
+        "path": "kw",
+        "currency": "KWD",
+        "active": true,
+        "storefront_enabled": true,
+        "legal_ready": false,
+        "legal_entity": "Lavkoo Trading Co."
+      },
+      {
+        "code": "QA",
+        "path": "qa",
+        "currency": "QAR",
+        "active": false,
+        "storefront_enabled": true,
+        "legal_ready": false,
+        "legal_entity": "Lavkoo Trading Co."
+      },
+      {
+        "code": "BH",
+        "path": "bh",
+        "currency": "BHD",
+        "active": false,
+        "storefront_enabled": true,
+        "legal_ready": false,
+        "legal_entity": "Lavkoo Trading Co."
+      },
+      {
+        "code": "OM",
+        "path": "om",
+        "currency": "OMR",
+        "active": false,
+        "storefront_enabled": true,
+        "legal_ready": false,
+        "legal_entity": "Lavkoo Trading Co."
+      }
+    ]
+  }
+}

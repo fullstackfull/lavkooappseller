@@ -31,18 +31,18 @@ class CartService implements CartServiceInterface{
   }
 
   @override
-  Future getProductFromScan(String? productCode) {
-    return cartRepositoryInterface.getProductFromScan(productCode);
+  Future getProductFromScan(String? productCode, {String? country}) {
+    return cartRepositoryInterface.getProductFromScan(productCode, country: country);
   }
 
   @override
-  Future placeOrderRaw(Map<String, dynamic> orderBody) {
-    return cartRepositoryInterface.placeOrderRaw(orderBody);
+  Future placeOrderRaw(Map<String, dynamic> orderBody, {String? idempotencyKey}) {
+    return cartRepositoryInterface.placeOrderRaw(orderBody, idempotencyKey: idempotencyKey);
   }
 
   @override
-  Future placeOrder(PlaceOrderBody placeOrderBody) {
-    return cartRepositoryInterface.placeOrder(placeOrderBody);
+  Future placeOrder(PlaceOrderBody placeOrderBody, {String? idempotencyKey}) {
+    return cartRepositoryInterface.placeOrder(placeOrderBody, idempotencyKey: idempotencyKey);
   }
 
   @override

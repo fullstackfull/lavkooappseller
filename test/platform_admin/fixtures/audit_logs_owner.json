@@ -1,0 +1,392 @@
+{
+  "data": [
+    {
+      "id": 32,
+      "admin_id": 7,
+      "action": "grant.revoked",
+      "market": null,
+      "token_id": null,
+      "ip": null,
+      "user_agent": null,
+      "context": {
+        "source": "console",
+        "tokens_revoked": 0,
+        "already_revoked": false
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 31,
+      "admin_id": 7,
+      "action": "tokens.revoked",
+      "market": null,
+      "token_id": null,
+      "ip": null,
+      "user_agent": null,
+      "context": {
+        "source": "console",
+        "tokens_revoked": 0
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 30,
+      "admin_id": 7,
+      "action": "grant.created",
+      "market": null,
+      "token_id": null,
+      "ip": null,
+      "user_agent": null,
+      "context": {
+        "source": "console",
+        "before": null,
+        "after": {
+          "level": 1,
+          "countries": [
+            "AE",
+            "KW"
+          ]
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 29,
+      "admin_id": 4,
+      "action": "session.revoke",
+      "market": null,
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 404,
+        "params": {
+          "id": "999999"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 28,
+      "admin_id": 4,
+      "action": "alerts.view",
+      "market": null,
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 422,
+        "params": {
+          "severity": "urgent"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 27,
+      "admin_id": 4,
+      "action": "overview.view",
+      "market": null,
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 422,
+        "params": {
+          "from": "2026-11-12",
+          "to": "2026-11-10"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 26,
+      "admin_id": 4,
+      "action": "overview.view",
+      "market": null,
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 422,
+        "params": {
+          "market": "ZZ"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 25,
+      "admin_id": 5,
+      "action": "overview.view",
+      "market": "SA",
+      "token_id": 3,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 403,
+        "params": {
+          "market": "SA"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 24,
+      "admin_id": 4,
+      "action": "sessions.list",
+      "market": null,
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 23,
+      "admin_id": 5,
+      "action": "alerts.view",
+      "market": null,
+      "token_id": 3,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 22,
+      "admin_id": 4,
+      "action": "alerts.view",
+      "market": "QA",
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200,
+        "params": {
+          "market": "QA"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 21,
+      "admin_id": 4,
+      "action": "alerts.view",
+      "market": null,
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200,
+        "params": {
+          "page": "2",
+          "per_page": "3"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 20,
+      "admin_id": 4,
+      "action": "alerts.view",
+      "market": null,
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200,
+        "params": {
+          "page": "1",
+          "per_page": "3"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 19,
+      "admin_id": 4,
+      "action": "alerts.view",
+      "market": null,
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200,
+        "params": {
+          "severity": "critical"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 18,
+      "admin_id": 4,
+      "action": "alerts.view",
+      "market": null,
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 17,
+      "admin_id": 4,
+      "action": "overview.view",
+      "market": "SA",
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200,
+        "params": {
+          "market": "SA"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 16,
+      "admin_id": 6,
+      "action": "overview.view",
+      "market": null,
+      "token_id": 4,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 15,
+      "admin_id": 5,
+      "action": "overview.view",
+      "market": "AE",
+      "token_id": 3,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200,
+        "params": {
+          "market": "AE"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 14,
+      "admin_id": 5,
+      "action": "overview.view",
+      "market": null,
+      "token_id": 3,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 13,
+      "admin_id": 4,
+      "action": "overview.view",
+      "market": null,
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200,
+        "params": {
+          "from": "2026-08-01"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 12,
+      "admin_id": 4,
+      "action": "overview.view",
+      "market": null,
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200,
+        "params": {
+          "market": "all",
+          "from": "2026-11-11"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 11,
+      "admin_id": 4,
+      "action": "overview.view",
+      "market": "KW",
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200,
+        "params": {
+          "market": "KW"
+        }
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 10,
+      "admin_id": 4,
+      "action": "overview.view",
+      "market": null,
+      "token_id": 1,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 9,
+      "admin_id": 6,
+      "action": "markets.view",
+      "market": null,
+      "token_id": 4,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": 8,
+      "admin_id": 5,
+      "action": "markets.view",
+      "market": null,
+      "token_id": 3,
+      "ip": "127.0.0.1",
+      "user_agent": "Symfony",
+      "context": {
+        "status": 200
+      },
+      "created_at": "2026-11-17T06:00:00Z"
+    }
+  ],
+  "meta": {
+    "scope": "all",
+    "page": 1,
+    "per_page": 25,
+    "has_more": true
+  }
+}

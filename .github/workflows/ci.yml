@@ -3,8 +3,8 @@ name: CI
 on:
   push:
     branches: [main, 'claude/**']
+  # Every pull request, whatever its base: a pull request stacked on another has its own run, which a filter on the base `main` never gave it.
   pull_request:
-    branches: [main]
 
 jobs:
   analyze-and-test:
@@ -38,8 +38,64 @@ jobs:
       - name: Check translation keys
         run: dart run tool/check_translations.dart
 
+      # Each feature's tests run by name before the full run: the whole run below is red on main for one known test (test/app_version_gate_test.dart), and a step after a failed
+      # step does not run unless it says `if: always()`, so a named step is the only way the result of one feature can be read on its own.
+      - name: Test the market scope, the market choice, the sign-in header and the version helper (K-01, K-02, K-10, K-12, K-14)
+        if: always()
+        run: flutter test test/dio_storefront_header_test.dart test/market_scope_test.dart test/seller_market_choice_test.dart test/dio_auth_header_test.dart test/version_helper_test.dart
+
+      - name: Test the point-of-sale scan of country-scoped codes (K-05, K-13)
+        if: always()
+        run: flutter test test/pos_scan
+
+      - name: Test the order edit refusal and the approved review average (K-07)
+        if: always()
+        run: flutter test test/order_edit_submit_contract_test.dart test/order_edit_submit_flow_test.dart test/product_review_average_test.dart
+
+      # The platform admin shell is compiled in only when this flag is set, so the
+      # full run below skips the tests that need it on. This step is their proof
+      # that a build with the flag on registers and shows what it should. It comes
+      # first so that a failure elsewhere in the full run cannot hide it.
+      - name: Test the platform admin shell with its flag on
+        if: always()
+        run: flutter test --dart-define=GCC_PLATFORM_ADMIN_ENABLED=true test/platform_admin
+
+      - name: Test that the seller app makes no theme call (F-03, K-18)
+        if: always()
+        run: flutter test test/no_theme_call_test.dart
+
+      - name: Test the push route and the rating rule (K-07, K-11)
+        if: always()
+        run: flutter test test/notification_route_test.dart test/approved_rating_screens_test.dart test/product_card_rating_test.dart
+
+      - name: Test the market selector and the reload of the screens (K-03)
+        if: always()
+        run: flutter test test/market_selector
+
+      # The market selector is shown only in a build made with this flag, so the full run below tests the build without it: the tests
+      # that name the flag follow it there, and show the selector absent. This step runs the same folder with the flag on, which is the
+      # build the selector is made for, so that what a build with storefronts does is read on its own, and even when the full run is red.
+      - name: Test the market selector, the market header and the reload of the screens with the storefront flag on (K-03)
+        if: always()
+        run: flutter test --dart-define=GCC_STOREFRONTS_ENABLED=true test/market_selector
+
+      # The market's own money is written only in a build made with the flag and a stored market; the full run tests the build without the flag, in which these tests
+      # follow the flag. This step runs the same folder with the flag on, so that what a build with storefronts writes is read on its own.
+      - name: Test the market's own money, its decimals and the amounts typed (K-10)
+        if: always()
+        run: flutter test test/market_money test/market_scope_test.dart
+
+      - name: Test the market's own money with the storefront flag on (K-10)
+        if: always()
+        run: flutter test --dart-define=GCC_STOREFRONTS_ENABLED=true test/market_money test/market_scope_test.dart
+
       - name: Test
         run: flutter test
+
+      # The work in flight is read by name after the full run, and even when the full run is red (test/app_version_gate_test.dart is on main).
+      - name: Test the POS rules (who a sale is for, what a 200 answer means, the key of a sale, what the camera reads, what becomes of a sale that could not be sent, what the cart keeps after a refusal, whose sale a queued sale is; K-05, K-06, K-18)
+        if: always()
+        run: flutter test test/pos_customer_id_test.dart test/pos_order_answer_test.dart test/pos_idempotency_key_test.dart test/product_barcode_formats_test.dart test/outbox_policy_test.dart test/offline_outbox_behaviour_test.dart test/pos_sale_outcome_test.dart test/offline_outbox_owner_test.dart
 
   build-android:
     runs-on: ubuntu-latest

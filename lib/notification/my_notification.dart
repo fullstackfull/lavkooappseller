@@ -20,6 +20,7 @@ import 'package:syriacosmeticsmanger/features/splash/controllers/splash_controll
 import 'package:syriacosmeticsmanger/features/splash/domain/models/config_model.dart';
 import 'package:syriacosmeticsmanger/features/wallet/screens/wallet_screen.dart';
 import 'package:syriacosmeticsmanger/notification/models/notification_body.dart';
+import 'package:syriacosmeticsmanger/notification/notification_route.dart';
 import 'package:syriacosmeticsmanger/utill/app_constants.dart';
 import 'package:syriacosmeticsmanger/features/chat/screens/inbox_screen.dart';
 import 'package:syriacosmeticsmanger/features/notification/screens/notification_screen.dart';
@@ -38,22 +39,8 @@ class MyNotification {
 
 
       try{
-        NotificationBody payload;
         if(data.payload != null && data.payload!.isNotEmpty) {
-          payload = NotificationBody.fromJson(jsonDecode(data.payload!));
-          if(payload.type == 'chatting'){
-            Get.navigator!.push(MaterialPageRoute(builder: (context) => InboxScreen(fromNotification: true, initIndex: payload.messageKey ==  'message_from_delivery_man' ? 1 : 0)));
-          } else if(payload.type == 'Theme'){
-            Get.navigator!.push(MaterialPageRoute(builder: (context) => const NotificationScreen( )));
-          } else if(payload.orderId != null && payload.type != 'refund'){
-            Get.navigator!.push(MaterialPageRoute(builder: (context) => OrderDetailsScreen(orderId: payload.orderId, fromNotification: true)));
-          } else if(payload.type  == 'wallet_withdraw'){
-            Get.navigator!.push(MaterialPageRoute(builder: (context) => const WalletScreen(fromNotification: true)));
-          } else if(payload.type == 'product_request_approved_message'){
-            Get.navigator!.push(MaterialPageRoute(builder: (context) => const ProductListMenuScreen(fromNotification: true)));
-          }else if(payload.type == 'refund'){
-            Get.navigator!.push(MaterialPageRoute(builder: (context) => RefundDetailsScreen(fromNotification: true, refundModel: RefundModel(id: payload.refundId), orderDetailsId: payload.orderDetailsId)));
-          }
+          _open(NotificationBody.fromJson(jsonDecode(data.payload!)));
         }
       } catch (e) {
         if (kDebugMode) {
@@ -153,38 +140,9 @@ class MyNotification {
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message)  async {
       if (kDebugMode) {
-        debugPrint("onOpenApp: ${message.notification!.title}/${message.toMap()}/${message.notification!.titleLocKey}");
+        debugPrint("onOpenApp: ${message.notification?.title}/${message.toMap()}/${message.notification?.titleLocKey}");
       }
-      NotificationBody? payload;
-      if(message.data.isNotEmpty) {
-        payload = NotificationBody.fromJson(message.data);
-      }
-      if(message.notification!.title!.contains('chatting')) {
-        Get.navigator!.push(MaterialPageRoute(builder: (context) => InboxScreen(fromNotification: true, initIndex: payload?.messageKey ==  'message_from_delivery_man' ? 1 : 0)));
-
-      } else if(message.notification!.title!.contains('Theme')){
-        Get.navigator!.push(MaterialPageRoute(builder: (context) => const NotificationScreen( )));
-      } else if (message.notification!.title!.contains('Order') && payload != null && payload.orderId != null && payload.type != 'refund') {
-        Get.navigator!.push(
-          MaterialPageRoute(builder: (context) => OrderDetailsScreen(orderId: int.parse(payload!.orderId.toString()), fromNotification: true)));
-      } else if(payload?.type == 'wallet_withdraw'){
-        Get.navigator!.push(MaterialPageRoute(builder: (context) => const WalletScreen(fromNotification: true)));
-      } else if(payload?.type == 'product_request_approved_message'){
-        Get.navigator!.push(MaterialPageRoute(builder: (context) => const ProductListMenuScreen(fromNotification: true)));
-      }else if(payload?.type == 'refund'){
-        Get.navigator!.push(MaterialPageRoute(builder: (context) => RefundDetailsScreen(fromNotification: true, refundModel: RefundModel(id: payload?.refundId), orderDetailsId: payload?.orderDetailsId)));
-      }
-      try{
-        if(message.notification!.titleLocKey != null && message.notification!.titleLocKey!.isNotEmpty) {
-          Get.navigator!.push(
-              MaterialPageRoute(builder: (context) => OrderDetailsScreen(orderId: int.parse(message.notification!.titleLocKey!), fromNotification: true,)));
-        }
-      }catch (e) {
-        if (kDebugMode) {
-          print(e);
-        }
-      }
-
+      _open(message.data.isNotEmpty ? NotificationBody.fromJson(message.data) : null, legacyOrderKey: message.notification?.titleLocKey);
 
       if(message.data['type'] == 'maintenance_mode') {
         final SplashController splashProvider = Provider.of<SplashController>(Get.context!,listen: false);
@@ -212,6 +170,29 @@ class MyNotification {
       }
 
     });
+  }
+
+  /// Opens the screen a notification is about (NotificationRoute): from the data it carries, in whatever language its title is written.
+  static void _open(NotificationBody? payload, {String? legacyOrderKey}) {
+    final NavigatorState? navigator = Get.navigator;
+    if (navigator == null) {
+      return;
+    }
+
+    final bool signedIn = Provider.of<AuthController>(navigator.context, listen: false).isLoggedIn();
+    final Widget? screen = switch (NotificationRoute.targetOf(payload, signedIn: signedIn, legacyOrderKey: legacyOrderKey)) {
+      NotificationTarget.chat => InboxScreen(fromNotification: true, initIndex: payload?.messageKey == 'message_from_delivery_man' ? 1 : 0),
+      NotificationTarget.themeNotifications => const NotificationScreen(),
+      NotificationTarget.order => OrderDetailsScreen(orderId: NotificationRoute.orderIdOf(payload, legacyOrderKey: legacyOrderKey), fromNotification: true),
+      NotificationTarget.wallet => const WalletScreen(fromNotification: true),
+      NotificationTarget.productRequests => const ProductListMenuScreen(fromNotification: true),
+      NotificationTarget.refund => RefundDetailsScreen(fromNotification: true, refundModel: RefundModel(id: payload?.refundId), orderDetailsId: payload?.orderDetailsId),
+      NotificationTarget.none => null,
+    };
+
+    if (screen != null) {
+      navigator.push(MaterialPageRoute(builder: (BuildContext context) => screen));
+    }
   }
 
   static Future<void> showNotification(

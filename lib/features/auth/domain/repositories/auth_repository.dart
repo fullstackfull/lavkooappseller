@@ -194,6 +194,7 @@ class AuthRepository implements AuthRepositoryInterface{
   @override
   Future<ApiResponse> registration(XFile? profileImage, XFile? shopLogo, XFile? shopBanner, XFile? secondaryBanner, RegisterModel registerModel, XFile? tinCertificate) async {
     http.MultipartRequest request = http.MultipartRequest('POST', Uri.parse('${AppConstants.baseUrl}${AppConstants.registration}'));
+    request.headers.addAll(dioClient!.multipartHeaders());
     if(profileImage != null) {
       Uint8List list = await profileImage.readAsBytes();
       var part = http.MultipartFile('image', profileImage.readAsBytes().asStream(), list.length, filename: basename(profileImage.path));

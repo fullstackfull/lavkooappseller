@@ -1,0 +1,41 @@
+{
+  "data": [
+    {
+      "id": "a4882d780c5c00a1",
+      "severity": "critical",
+      "market": "KW",
+      "code": "legal_not_ready",
+      "message": "The KW storefront is active but its legal documents are not approved, so it cannot take orders.",
+      "deep_link": "markets/KW",
+      "generated_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": "3361a4f39417561e",
+      "severity": "warning",
+      "market": "KW",
+      "code": "stock_zero",
+      "message": "2 live products in KW are out of stock.",
+      "deep_link": "markets/KW",
+      "generated_at": "2026-11-17T06:00:00Z"
+    },
+    {
+      "id": "ec9a46872bbdb300",
+      "severity": "info",
+      "market": "SA",
+      "code": "orders_pending_too_long",
+      "message": "1 order in SA has been pending for more than 24 hours.",
+      "deep_link": "markets/SA",
+      "generated_at": "2026-11-17T06:00:00Z"
+    }
+  ],
+  "meta": {
+    "scope": "all",
+    "market": "all",
+    "severity": null,
+    "generated_at": "2026-11-17T06:00:00Z",
+    "page": 1,
+    "per_page": 3,
+    "total": 4,
+    "has_more": true
+  }
+}

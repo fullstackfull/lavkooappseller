@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_app_bar_widget.dart';
 import 'package:syriacosmeticsmanger/features/finance_control/controllers/finance_control_controller.dart';
 import 'package:syriacosmeticsmanger/features/finance_control/domain/models/finance_control_models.dart';
+import 'package:syriacosmeticsmanger/features/storefront/market_money.dart';
 import 'package:syriacosmeticsmanger/helper/date_converter.dart';
 import 'package:syriacosmeticsmanger/helper/price_converter.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
@@ -137,6 +138,7 @@ class _FinanceControlScreenState extends State<FinanceControlScreen>
         TextField(
           controller: _minPrice,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: MarketMoney.inputFormatters(),
           decoration: InputDecoration(labelText: getTranslated('never_sell_below_this_price', context)),
         ),
         SwitchListTile(
@@ -341,11 +343,11 @@ class _FinanceControlScreenState extends State<FinanceControlScreen>
             style: robotoRegular.copyWith(
                 fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).hintColor)),
         const SizedBox(height: Dimensions.paddingSizeDefault),
-        _numberField(context, _price, 'price_you_are_considering'),
+        _numberField(context, _price, 'price_you_are_considering', isMoney: true),
         const SizedBox(height: Dimensions.paddingSizeSmall),
         _numberField(context, _quantity, 'quantity'),
         const SizedBox(height: Dimensions.paddingSizeSmall),
-        _numberField(context, _discount, 'your_discount_optional'),
+        _numberField(context, _discount, 'your_discount_optional', isMoney: true),
         const SizedBox(height: Dimensions.paddingSizeDefault),
         SizedBox(
           height: 48,
@@ -465,11 +467,11 @@ class _FinanceControlScreenState extends State<FinanceControlScreen>
     );
   }
 
-  Widget _numberField(BuildContext context, TextEditingController controller, String label) =>
+  Widget _numberField(BuildContext context, TextEditingController controller, String label, {bool isMoney = false}) =>
       TextField(
         controller: controller,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+        inputFormatters: (isMoney ? MarketMoney.inputFormatters() : null) ?? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
         style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall),
         decoration: InputDecoration(
           labelText: getTranslated(label, context) ?? label,
