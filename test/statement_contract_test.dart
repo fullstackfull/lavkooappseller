@@ -84,7 +84,12 @@ void main() {
 
       expect(statement.entries, isEmpty);
       expect(statement.entryTypes, isEmpty);
-      expect(statement.summary.withdrawable, 0);
+      // Null, not zero. An absent figure and a balance of nothing are different
+      // facts, and the screen draws them differently: one is "we cannot tell
+      // you one number", the other is "there is nothing to withdraw". This
+      // assertion read `0` and went red when the summary became nullable, which
+      // is the test doing its job — the expectation is what had to change.
+      expect(statement.summary.withdrawable, isNull);
     });
   });
 }

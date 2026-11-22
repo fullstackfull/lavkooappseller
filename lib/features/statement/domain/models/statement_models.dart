@@ -64,38 +64,91 @@ class StatementEntryModel {
       value == null ? null : (value is num ? value.toDouble() : double.tryParse(value.toString()));
 }
 
+/// One currency's own figures, when the account holds more than one.
+///
+/// A seller selling in Riyadh and Dubai has riyals and dirhams in one ledger,
+/// and the server will not add them: it answers each currency's real figures
+/// and says why there is no single total. This is one of those groups.
+class StatementCurrencyFiguresModel {
+  final String currencyCode;
+  final Map<String, double> figures;
+
+  const StatementCurrencyFiguresModel({this.currencyCode = '', this.figures = const <String, double>{}});
+
+  factory StatementCurrencyFiguresModel.fromJson(Map<String, dynamic> json) {
+    final Map<String, double> figures = <String, double>{};
+
+    json.forEach((String key, dynamic value) {
+      if (key == 'currency_code') return;
+      final double? figure = StatementEntryModel._double(value);
+      if (figure != null) figures[key] = figure;
+    });
+
+    return StatementCurrencyFiguresModel(
+      currencyCode: json['currency_code']?.toString() ?? '',
+      figures: figures,
+    );
+  }
+
+  double? operator [](String name) => figures[name];
+}
+
 /// What the filtered range adds up to, and what the account holds.
 ///
 /// The two are deliberately different scopes: the range follows the filter, the
 /// buckets never do. "Available, of last week's entries" is not a number anyone
 /// wants to read.
+///
+/// **Every combined figure is nullable, and null is not zero.** Where the ledger
+/// holds two currencies the server refuses the single total — a sum of riyals and
+/// dirhams is not money — and answers the per-currency figures with a reason.
+/// Reading those nulls as `0` put "withdrawable 0.00" on the screen of a seller
+/// who had money in two currencies, with nothing to say why, and a zero looks
+/// authoritative in a way a blank does not. The types carry the distinction now
+/// so a reader has to decide what to draw.
 class StatementSummaryModel {
   final String? currency;
   final int rangeEntries;
-  final double rangeCredits;
-  final double rangeDebits;
-  final double rangeNet;
+  final double? rangeCredits;
+  final double? rangeDebits;
+  final double? rangeNet;
 
-  final double pending;
-  final double available;
-  final double reserved;
-  final double paid;
-  final double balance;
-  final double withdrawable;
+  final double? pending;
+  final double? available;
+  final double? reserved;
+  final double? paid;
+  final double? balance;
+  final double? withdrawable;
+
+  /// Why there is no one figure, as a language key, or null when there is one.
+  final String? totalsRefusedBecause;
+
+  /// The range in each currency it holds, and the account's buckets in each.
+  /// Both empty while there is one currency, which is when the combined figures
+  /// above are the answer.
+  final List<StatementCurrencyFiguresModel> rangeByCurrency;
+  final List<StatementCurrencyFiguresModel> bucketsByCurrency;
 
   const StatementSummaryModel({
     this.currency,
     this.rangeEntries = 0,
-    this.rangeCredits = 0,
-    this.rangeDebits = 0,
-    this.rangeNet = 0,
-    this.pending = 0,
-    this.available = 0,
-    this.reserved = 0,
-    this.paid = 0,
-    this.balance = 0,
-    this.withdrawable = 0,
+    this.rangeCredits,
+    this.rangeDebits,
+    this.rangeNet,
+    this.pending,
+    this.available,
+    this.reserved,
+    this.paid,
+    this.balance,
+    this.withdrawable,
+    this.totalsRefusedBecause,
+    this.rangeByCurrency = const <StatementCurrencyFiguresModel>[],
+    this.bucketsByCurrency = const <StatementCurrencyFiguresModel>[],
   });
+
+  /// Whether the server declined to produce one figure, so the per-currency
+  /// groups are what there is to show.
+  bool get totalsRefused => totalsRefusedBecause != null;
 
   factory StatementSummaryModel.fromJson(Map<String, dynamic> json) {
     final Map<String, dynamic> range =
@@ -106,17 +159,27 @@ class StatementSummaryModel {
     return StatementSummaryModel(
       currency: json['currency']?.toString(),
       rangeEntries: StatementEntryModel._int(range['entries']) ?? 0,
-      rangeCredits: StatementEntryModel._double(range['credits']) ?? 0,
-      rangeDebits: StatementEntryModel._double(range['debits']) ?? 0,
-      rangeNet: StatementEntryModel._double(range['net']) ?? 0,
-      pending: StatementEntryModel._double(buckets['pending']) ?? 0,
-      available: StatementEntryModel._double(buckets['available']) ?? 0,
-      reserved: StatementEntryModel._double(buckets['reserved']) ?? 0,
-      paid: StatementEntryModel._double(buckets['paid']) ?? 0,
-      balance: StatementEntryModel._double(buckets['balance']) ?? 0,
-      withdrawable: StatementEntryModel._double(json['withdrawable']) ?? 0,
+      rangeCredits: StatementEntryModel._double(range['credits']),
+      rangeDebits: StatementEntryModel._double(range['debits']),
+      rangeNet: StatementEntryModel._double(range['net']),
+      pending: StatementEntryModel._double(buckets['pending']),
+      available: StatementEntryModel._double(buckets['available']),
+      reserved: StatementEntryModel._double(buckets['reserved']),
+      paid: StatementEntryModel._double(buckets['paid']),
+      balance: StatementEntryModel._double(buckets['balance']),
+      withdrawable: StatementEntryModel._double(json['withdrawable']),
+      totalsRefusedBecause: json['totals_refused_because']?.toString(),
+      rangeByCurrency: _figures(json['range_by_currency']),
+      bucketsByCurrency: _figures(json['buckets_by_currency']),
     );
   }
+
+  static List<StatementCurrencyFiguresModel> _figures(dynamic value) => value is List
+      ? value
+          .whereType<Map>()
+          .map((row) => StatementCurrencyFiguresModel.fromJson(Map<String, dynamic>.from(row)))
+          .toList()
+      : const <StatementCurrencyFiguresModel>[];
 }
 
 class StatementModel {
