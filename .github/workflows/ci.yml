@@ -38,6 +38,13 @@ jobs:
       - name: Check translation keys
         run: dart run tool/check_translations.dart
 
+      # Read first, because it is what keeps the rest of this job in the shape the
+      # criterion asks for: every named feature step ahead of the whole run, the
+      # whole run last, and nothing in the job skippable by a red step above it.
+      - name: Test that every named feature step runs before the whole run, and that none of them can hide it (K-15)
+        if: always()
+        run: flutter test test/ci_step_order_test.dart
+
       # Each feature's tests run by name before the full run: the whole run below is red on main for one known test (test/app_version_gate_test.dart), and a step after a failed
       # step does not run unless it says `if: always()`, so a named step is the only way the result of one feature can be read on its own.
       - name: Test the market scope, the market choice, the sign-in header and the version helper (K-01, K-02, K-10, K-12, K-14)
@@ -171,7 +178,13 @@ jobs:
         if: ${{ !cancelled() }}
         run: flutter test test/flows/reviews_flow_test.dart
 
+      # The whole run is last, so that every named step above reports before it,
+      # and it carries `always()` for the same reason those steps do: without a
+      # guard its default is `success()`, so one red named step would skip it and
+      # the suite's own figures — the only evidence of how many tests fail and
+      # which — would be missing from the run. A failure here still fails the job.
       - name: Test
+        if: always()
         run: flutter test
 
   build-android:
