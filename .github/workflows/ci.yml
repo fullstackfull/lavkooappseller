@@ -108,7 +108,7 @@ jobs:
         if: always()
         run: flutter test test/shop_images
 
-      - name: Test the statement's two scopes, and the trace from a line to the payout that took it out and the order that earned it (K-09)
+      - name: Test the statement's two scopes, the trace from a line to the payout that took it out and the order that earned it, and that a total which would add two currencies is refused rather than read as a zero balance (K-09, K-10)
         if: always()
         run: flutter test test/statement_contract_test.dart
 
