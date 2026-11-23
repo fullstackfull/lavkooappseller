@@ -94,16 +94,33 @@ jobs:
         if: always()
         run: flutter test test/api_checker_unauthorized_test.dart
 
-      - name: Test
-        run: flutter test
+      # Four files of this branch had no step of their own, and were read only in the whole run below, which is red for the
+      # version gate. Each step is named for what its file proves and no more: the refusal of a total that would add two
+      # currencies is proved for the report, and not for the statement, whose own refusal has no test on this branch.
+      - name: Test the image rules the two seller forms read from the table (K-17)
+        if: always()
+        run: flutter test test/shop_images
 
-      # The work in flight is read by name after the full run, and even when the full run is red (test/app_version_gate_test.dart is on main).
+      - name: Test the statement's two scopes, and the trace from a line to the payout that took it out and the order that earned it (K-09)
+        if: always()
+        run: flutter test test/statement_contract_test.dart
+
+      - name: Test the report, and that a total which would add two currencies is refused rather than added (K-09, K-10)
+        if: always()
+        run: flutter test test/report_contract_test.dart
+
+      # Whose sale a queued sale is, and which market it is owed to, are read by their own steps below; this file is the entry itself.
+      - name: Test that the entry a sale that could not be sent is written as survives the disk, and a corrupt entry does not throw (K-06)
+        if: always()
+        run: flutter test test/pending_pos_order_test.dart
+
+      # The work in flight is read by name before the full run, and even when the full run is red (test/app_version_gate_test.dart is on main).
       - name: Test the POS rules (who a sale is for, what a 200 answer means, the key of a sale, what the camera reads, what becomes of a sale that could not be sent, what the cart keeps after a refusal, whose sale a queued sale is; K-05, K-06, K-18)
         if: always()
         run: flutter test test/pos_customer_id_test.dart test/pos_order_answer_test.dart test/pos_idempotency_key_test.dart test/product_barcode_formats_test.dart test/outbox_policy_test.dart test/offline_outbox_behaviour_test.dart test/pos_sale_outcome_test.dart test/offline_outbox_owner_test.dart
 
       # A queued sale is replayed in the market it was taken in, not in the market the seller works in when it is sent. The entry names the market, and the replay sends it, only in a build with storefronts on:
-      # the full run above is the build without the flag, so this step reads the file by name, and the next step runs it with the flag on.
+      # the full run below is the build without the flag, so this step reads the file by name, and the next step runs it with the flag on.
       - name: Test that a queued sale keeps the market it was taken in, and is replayed there whatever market is chosen afterwards (K-03, K-06)
         if: always()
         run: flutter test test/market_selector/queued_sale_market_test.dart
@@ -126,7 +143,7 @@ jobs:
         if: always()
         run: flutter test --dart-define=GCC_STOREFRONTS_ENABLED=true test/second_login_on_one_device_test.dart
 
-      # The seller flows are read by name after the full run, and even when the full run is red (test/app_version_gate_test.dart is
+      # The seller flows are read by name before the full run, and even when the full run is red (test/app_version_gate_test.dart is
       # red on main by an owner decision): a step after a failed step does not run unless it says so, so a named step is the only
       # way what one flow proves can be read on its own. `!cancelled()` rather than `always()`, which would go on running these
       # six after someone pressed cancel. Neither carries continue-on-error, so a flow that fails still fails the job.
@@ -153,6 +170,9 @@ jobs:
       - name: Test the review list, the filter, the status switch and the reply, in the request and in the handling of the answer (K-16.4)
         if: ${{ !cancelled() }}
         run: flutter test test/flows/reviews_flow_test.dart
+
+      - name: Test
+        run: flutter test
 
   build-android:
     runs-on: ubuntu-latest
