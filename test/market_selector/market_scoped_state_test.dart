@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/cart_controller.dart';
 import 'package:syriacosmeticsmanger/features/pos/controllers/customer_controller.dart';
+import 'package:syriacosmeticsmanger/features/pos/controllers/offline_sales_controller.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/cart_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/pending_pos_order.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/temporary_cart_for_customer_model.dart';
@@ -62,6 +65,18 @@ const Map<String, String> _dropBeforeLoad = <String, String>{
   'products.clearPosProducts': 'products.getPosProductList(1, [7])',
   'statement.clearStatement': 'statement.getStatement',
 };
+
+/// A server that answers a replayed sale with an order number, so that the outbox counts it as placed, and records what it was sent.
+class _SalesServer extends RecordingAdapter {
+  @override
+  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+    await super.fetch(options, requestStream, cancelFuture);
+
+    return ResponseBody.fromString('{"order_id": 7}', 200, headers: <String, List<String>>{
+      Headers.contentTypeHeader: <String>[Headers.jsonContentType],
+    });
+  }
+}
 
 /// The controller of the market wired as the container wires it: its switch handler is the reload of the screens.
 SellerMarketController _marketOf(FakeScreens screens) {
@@ -250,6 +265,74 @@ void main() {
       expect(cart.currentCartModel!.cart, isEmpty);
       expect(preferences.getStringList(AppConstants.cartList), isEmpty);
       expect(preferences.getStringList('offline_pos_orders'), <String>[queuedSale]);
+    });
+  });
+
+  group('one switch of market, with the real cart and the real queue of sales made offline', () {
+    testWidgets('drops the cart in hand, the carts on hold and the cart on the device, and leaves the sale queued in Saudi Arabia owed to Saudi Arabia, which is where it is replayed from Kuwait',
+        (WidgetTester tester) async {
+      final SharedPreferences preferences = await preferencesWith(<String, Object>{
+        AppConstants.cartList: <String>[
+          jsonEncode(TemporaryCartListModel(cart: <CartModel>[], userId: 7, userIndex: 1, customerName: 'Held customer', phoneNumber: '').toJson()),
+        ],
+      });
+      final _SalesServer server = _SalesServer();
+      final CartService cartService = CartService(
+        cartRepositoryInterface: CartRepository(dioClient: clientOn(preferences, server, storefrontsEnabled: true), sharedPreferences: preferences),
+      );
+      final CartController cart = CartController(cartServiceInterface: cartService);
+      // The queue as the container builds it in a storefront build, over the same device store the cart and the market choice use.
+      final OfflineSalesController outbox = OfflineSalesController(
+        cartServiceInterface: cartService,
+        sharedPreferences: preferences,
+        hasSession: () => true,
+        signedInSellerId: () => '7',
+        storefrontsEnabled: true,
+      )..loadFromStorage();
+      final FakeScreens screens = FakeScreens(
+        preferences,
+        cart: cart,
+        customer: CustomerController(cartServiceInterface: cartService),
+        outbox: outbox,
+      );
+      await screens.mount(tester);
+      // The market the sale is taken in, and the counter as the seller leaves it: a sale rung up offline, a cart in hand and a cart
+      // put aside for a customer.
+      final SellerMarketController market = _marketOf(screens);
+      await tester.runAsync(() => market.choose(MarketScope.saudiArabia));
+      cart.getCartData();
+      cart.initTempCartData(isUpdate: false);
+      cart.currentCartModel!.cart!.add(CartModel(10, 0, 2, 0, null, null, null, null, null, null));
+      final PendingPosOrder queued = (await tester.runAsync(() => outbox.enqueue(
+            orderBody: <String, dynamic>{'user_id': 0, 'cart': <String>['sale-1']},
+            orderAmount: 25,
+            customerName: 'Layla',
+            idempotencyKey: 'sale-1',
+          )))!;
+      expect(queued.storefront, 'SA');
+      expect(cart.customerCartList, hasLength(1));
+      expect(cart.currentCartModel!.cart, hasLength(1));
+
+      await tester.runAsync(() => market.choose(MarketScope.kuwait));
+
+      expect(cart.currentCartModel!.cart, isEmpty, reason: 'the sale being rung up in Saudi Arabia is not carried into Kuwait');
+      expect(cart.customerCartList, isEmpty, reason: 'nor are the carts put aside there');
+      expect(preferences.getStringList(AppConstants.cartList), isEmpty, reason: 'nor the cart the device held');
+      expect(_loaded(screens), unorderedEquals(_alwaysReloaded), reason: 'and the one switch reloaded the lists, the notifications and the dashboard');
+      expect(outbox.pending.single.storefront, 'SA', reason: 'the money taken in Saudi Arabia is still owed to Saudi Arabia');
+      expect(
+        (jsonDecode(preferences.getStringList('offline_pos_orders')!.single) as Map<String, dynamic>)['storefront'],
+        'SA',
+        reason: 'on the device as well, which is the only record of it',
+      );
+
+      expect(await tester.runAsync(() => outbox.syncPending()), 1);
+
+      final List<Object?> marketsSent = server.requests
+          .where((RecordedRequest request) => request.uri.path.endsWith(AppConstants.placeOrderUri))
+          .map((RecordedRequest request) => request.header(AppConstants.storefrontHeader))
+          .toList();
+      expect(marketsSent, <Object?>['SA'], reason: 'the seller works in Kuwait by now, and the sale still goes to Saudi Arabia');
     });
   });
 }

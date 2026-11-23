@@ -304,6 +304,7 @@ class FakeScreens {
     ActionCenterController? actionCenter,
     ProductController? products,
     StatementController? statements,
+    OfflineSalesController? outbox,
     int selectedOrderTab = 3,
     bool posListLoaded = false,
     bool sellerListLoaded = false,
@@ -319,6 +320,7 @@ class FakeScreens {
     this.actionCenter = actionCenter ?? _RecordingActionCenter(calls);
     this.products = products ?? _RecordingProducts(calls, posListLoaded: posListLoaded, sellerListLoaded: sellerListLoaded);
     this.statements = statements ?? _RecordingStatements(calls, loaded: statementLoaded);
+    this.outbox = outbox ?? _WatchedOutbox(calls, preferences);
   }
 
   final SharedPreferences preferences;
@@ -336,6 +338,10 @@ class FakeScreens {
   late final ProductController products;
   late final StatementController statements;
 
+  /// The queue of sales made offline. One for the whole harness, so that a test can read what the queue holds after a switch; a
+  /// switch of market must leave it exactly as it was.
+  late final OfflineSalesController outbox;
+
   List<SingleChildWidget> get providers => <SingleChildWidget>[
         ChangeNotifierProvider<CartController>.value(value: cart),
         ChangeNotifierProvider<CustomerController>.value(value: customer),
@@ -348,7 +354,7 @@ class FakeScreens {
         ChangeNotifierProvider<ProfileController>.value(value: _RecordingProfile(calls)),
         ChangeNotifierProvider<BankInfoController>.value(value: _RecordingBank(calls)),
         ChangeNotifierProvider<StatementController>.value(value: statements),
-        ChangeNotifierProvider<OfflineSalesController>.value(value: _WatchedOutbox(calls, preferences)),
+        ChangeNotifierProvider<OfflineSalesController>.value(value: outbox),
       ];
 
   /// Mounts the app as `main.dart` does for the code that reaches the controllers through the navigator: the providers above the
