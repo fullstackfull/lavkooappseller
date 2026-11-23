@@ -178,6 +178,22 @@ jobs:
         if: ${{ !cancelled() }}
         run: flutter test test/flows/reviews_flow_test.dart
 
+      # The contract files that had no step of their own. Which of them count as
+      # GCC work is a judgement — control tower and security are GCC-20 surface,
+      # the rest carry the seller features the GCC work reads — so they are all
+      # named here rather than sorted, and every test file on the branch except
+      # the reserved version gate now reports under a name of its own.
+      - name: Test the remaining seller contracts the GCC work reads (action centre, automation, brand claim, bulk job, control tower, finance control, inventory, order breakdown, pricing policy, report export, returns, security, seller centre)
+        if: always()
+        run: |
+          flutter test test/action_center_contract_test.dart test/automation_contract_test.dart \
+            test/brand_claim_contract_test.dart test/bulk_job_contract_test.dart \
+            test/control_tower_contract_test.dart test/finance_control_contract_test.dart \
+            test/inventory_contract_test.dart test/order_breakdown_contract_test.dart \
+            test/pricing_policy_contract_test.dart test/report_export_helper_test.dart \
+            test/return_contract_test.dart test/security_contract_test.dart \
+            test/seller_center_contract_test.dart
+
       # The whole run is last, so that every named step above reports before it,
       # and it carries `always()` for the same reason those steps do: without a
       # guard its default is `success()`, so one red named step would skip it and
