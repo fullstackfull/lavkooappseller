@@ -7,6 +7,9 @@ import 'package:syriacosmeticsmanger/features/pos/controllers/customer_controlle
 import 'package:syriacosmeticsmanger/features/pos/domain/models/customer_body.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/invoice_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/place_order_body.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_customer_id.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_idempotency_key.dart';
+import 'package:syriacosmeticsmanger/features/pos/domain/models/pos_order_answer.dart';
 import 'package:syriacosmeticsmanger/data/model/response/base/api_response.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/models/cart_model.dart';
 import 'package:syriacosmeticsmanger/features/pos/domain/services/cart_service_interface.dart';
@@ -390,22 +393,26 @@ class CartController extends ChangeNotifier{
     _isLoading = true;
     notifyListeners();
 
-    ApiResponse response = await cartServiceInterface.placeOrder(placeOrderBody);
+    // One key for this sale: the request carries it, and when the answer is lost the outbox replays the sale under the same one, so the server records it once.
+    final String idempotencyKey = PosIdempotencyKey.generate();
+    ApiResponse response = await cartServiceInterface.placeOrder(placeOrderBody, idempotencyKey: idempotencyKey);
 
     // The request never reached the server (no connectivity, timeout, DNS).
     // Park the sale in the offline outbox instead of dereferencing a null
     // response, which used to throw in the middle of checkout.
     if(response.response == null) {
       _isLoading = false;
-      if (context.mounted) await _handleOfflineOrder(context, placeOrderBody);
+      if (context.mounted) await _handleOfflineOrder(context, placeOrderBody, idempotencyKey);
       notifyListeners();
       return response;
     }
 
-    if(response.response?.statusCode == 200 && response.response?.data['checkProductTypeForWalkingCustomer'] == true) {
-      showCustomSnackBarWidget(response.response?.data['message'], Get.context!, isToaster: true, isError: false, sanckBarType: SnackBarType.error);
+    // The server refuses a sale with a 200 that names no order: nothing was recorded, so the cart stays as it is and the cashier is told why.
+    final bool placed = PosOrderAnswer.isPlacedAnswer(statusCode: response.response?.statusCode, data: response.response?.data);
+    if(response.response?.statusCode == 200 && !placed) {
+      showCustomSnackBarWidget(PosOrderAnswer.refusalMessage(response.response?.data) ?? getTranslated('something_went_wrong', Get.context!), Get.context!, isToaster: true, isError: false, sanckBarType: SnackBarType.error);
       _isLoading = false;
-    } else if(response.response?.statusCode == 200) {
+    } else if(placed) {
       _isLoading = false;
       _couponCodeAmount = 0;
       _productDiscount = 0;
@@ -443,13 +450,14 @@ class CartController extends ChangeNotifier{
 
   /// Saves a sale that could not be sent and tells the cashier it is safe to
   /// carry on: the outbox replays it automatically when connectivity returns.
-  Future<void> _handleOfflineOrder(BuildContext context, PlaceOrderBody placeOrderBody) async {
+  Future<void> _handleOfflineOrder(BuildContext context, PlaceOrderBody placeOrderBody, String idempotencyKey) async {
     try {
       final OfflineSalesController offlineSales = Provider.of<OfflineSalesController>(context, listen: false);
       await offlineSales.enqueue(
         orderBody: placeOrderBody.toJson(),
         orderAmount: placeOrderBody.orderAmount ?? 0,
         customerName: searchCustomerController.text,
+        idempotencyKey: idempotencyKey,
       );
 
       if (!context.mounted) return;
@@ -499,9 +507,9 @@ class CartController extends ChangeNotifier{
     if(userCart.userIndex != null && userCart.userIndex != 0 && isUserExists(userCart.userId!)) {
       updateHoldUser(userCart);
     } else if (userCart.userId == 0) {
-      int randomNumber = Random().nextInt(10000);
-      userCart.userId = randomNumber;
-      userCart.customerName = '${userCart.customerName}-$randomNumber';
+      int heldWalkInId = PosCustomerId.newHeldWalkInId(Random());
+      userCart.userId = heldWalkInId;
+      userCart.customerName = PosCustomerId.heldWalkInName(userCart.customerName, heldWalkInId);
       addUserCart(userCart);
     } else {
       addUserCart(userCart);
@@ -533,7 +541,7 @@ class CartController extends ChangeNotifier{
     saveCardData();
 
 
-    Provider.of<CustomerController>(Get.context!, listen: false).setCustomerInfo( (tempCart.customerName?.contains('walk.ing') ?? false) ? 0 : tempCart.userId, tempCart.customerName, tempCart.phoneNumber, true, 0);
+    Provider.of<CustomerController>(Get.context!, listen: false).setCustomerInfo(PosCustomerId.forServer(tempCart.userId), tempCart.customerName, tempCart.phoneNumber, true, 0);
     _currentCartModel = tempCart;
 
     notifyListeners();
@@ -589,12 +597,27 @@ class CartController extends ChangeNotifier{
     cartServiceInterface.addToCartList(_customerCartList);
   }
 
-  void getCartData() {
-    List<TemporaryCartListModel> localCartList = cartServiceInterface.getCartList();
+  /// Everything the POS holds for the seller at the counter: the cart in hand, the carts put aside for customers, the discount and the
+  /// tax worked out for them, and the customer being served. There is one cart controller for the whole app and it outlives both a
+  /// sign-out and a switch of market, so what it holds has to be dropped by hand; left alone, the next session opens the POS on the
+  /// sale the session before it was ringing up, priced and ready to place.
+  ///
+  /// What the device has stored is the caller's to deal with: a switch of market writes the emptied carts back with [saveCardData],
+  /// while a sign-out takes the key off the device altogether.
+  void dropPosCart() {
+    removeAllCartList();
+    clearCardForCancel();
+    removeModifiedTax();
+    resetUserCard();
+  }
 
-    if(localCartList.isNotEmpty) {
-      _customerCartList = cartServiceInterface.getCartList();
-    }
+  /// The carts on hold are the ones the device has stored, and none when it has stored none. A sign-out empties that store, so a cart
+  /// kept here instead would be handed to the next seller to sign in on the same device.
+  void getCartData() {
+    final List<TemporaryCartListModel> localCartList = cartServiceInterface.getCartList();
+
+    PosCustomerId.markLegacyWalkInCarts(localCartList);
+    _customerCartList = localCartList;
   }
 
 

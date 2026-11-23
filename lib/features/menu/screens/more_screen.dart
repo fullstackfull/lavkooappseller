@@ -36,6 +36,8 @@ import 'package:syriacosmeticsmanger/features/shop/screens/shop_screen.dart';
 import 'package:syriacosmeticsmanger/features/splash/controllers/splash_controller.dart';
 import 'package:syriacosmeticsmanger/features/splash/domain/models/business_pages_model.dart';
 import 'package:syriacosmeticsmanger/features/splash/domain/models/config_model.dart';
+import 'package:syriacosmeticsmanger/features/storefront/storefront_config.dart';
+import 'package:syriacosmeticsmanger/features/storefront/widgets/market_selector_tile.dart';
 import 'package:syriacosmeticsmanger/features/vat_management/screens/vat_management_screen.dart';
 import 'package:syriacosmeticsmanger/features/wallet/screens/wallet_screen.dart';
 import 'package:syriacosmeticsmanger/helper/version_helper.dart';
@@ -50,7 +52,10 @@ class MoreScreen extends StatelessWidget {
   /// Switches the dashboard to another tab (POS and product entries live
   /// there now, so those tiles select a tab instead of pushing a route).
   final Function(int pageIndex)? onSelectTab;
-  const MoreScreen({super.key, this.onSelectTab});
+
+  /// Whether the market tile is part of the screen: only in a build with storefronts on.
+  final bool storefrontsEnabled;
+  const MoreScreen({super.key, this.onSelectTab, this.storefrontsEnabled = StorefrontConfig.enabled});
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +72,9 @@ class MoreScreen extends StatelessWidget {
                   Dimensions.paddingSizeDefault, Dimensions.floatingNavClearance,
                 ),
                 children: [
+                  if(storefrontsEnabled)
+                    const MarketSelectorTile(),
+
                   _MenuSection(title: 'shop_and_account', items: [
                     CustomBottomSheetWidget(image: '${profileProvider.userInfoModel?.imageFullUrl?.path}',
                       isProfile: true, title: getTranslated('profile', context),

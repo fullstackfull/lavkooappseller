@@ -131,6 +131,18 @@ class AuthRepository implements AuthRepositoryInterface{
     return sharedPreferences!.containsKey(AppConstants.token);
   }
 
+  /// What the device holds for whoever is signed in, and for nobody else: the market the seller works in, the till they are ringing up
+  /// and the currency they chose. A sign-out takes all three, so that the next seller to sign in on the same device starts in no
+  /// market, with an empty till and the currency of the shop rather than carrying on where the seller before them left off.
+  ///
+  /// The sales that could not be sent are deliberately not here. They are money already taken, each one owed to the seller who rang it
+  /// up, so they stay on the device under their own key and are listed and sent only in that seller's session.
+  static const List<String> _keysOfTheSignedInSeller = <String>[
+    AppConstants.storefrontCountry,
+    AppConstants.cartList,
+    AppConstants.currency,
+  ];
+
   @override
   Future<bool> clearSharedData() async {
     // Everything destructive happens first, before anything can suspend.
@@ -144,7 +156,12 @@ class AuthRepository implements AuthRepositoryInterface{
     // the login screen again. A dashboard load fires about twenty requests at
     // once, so one expired token started twenty of these at a time.
     dioClient!.clearAuthToken();
-    final bool removed = await sharedPreferences!.remove(AppConstants.token);
+    final Future<bool> tokenRemoved = sharedPreferences!.remove(AppConstants.token);
+    final Future<List<bool>> sellerDataRemoved = Future.wait<bool>(
+      _keysOfTheSignedInSeller.map(sharedPreferences!.remove).toList(),
+    );
+    final bool removed = await tokenRemoved;
+    await sellerDataRemoved;
     await secureCredentialStore.clearPassword();
 
     // Best effort, and last: unsubscribing is a courtesy to the push service,
@@ -194,6 +211,7 @@ class AuthRepository implements AuthRepositoryInterface{
   @override
   Future<ApiResponse> registration(XFile? profileImage, XFile? shopLogo, XFile? shopBanner, XFile? secondaryBanner, RegisterModel registerModel, XFile? tinCertificate) async {
     http.MultipartRequest request = http.MultipartRequest('POST', Uri.parse('${AppConstants.baseUrl}${AppConstants.registration}'));
+    request.headers.addAll(dioClient!.multipartHeaders());
     if(profileImage != null) {
       Uint8List list = await profileImage.readAsBytes();
       var part = http.MultipartFile('image', profileImage.readAsBytes().asStream(), list.length, filename: basename(profileImage.path));

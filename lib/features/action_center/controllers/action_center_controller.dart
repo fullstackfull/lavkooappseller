@@ -51,6 +51,11 @@ class ActionCenterController with ChangeNotifier {
     notifyListeners();
   }
 
+  void clearInsights() {
+    _actionCenter = null;
+    notifyListeners();
+  }
+
   /// Hides one insight.
   ///
   /// The row is removed here as soon as the server accepts it rather than after

@@ -146,15 +146,7 @@ class EditProductCartBottomSheetWidgetState extends State<EditProductCartBottomS
 
                   double priceWithQuantity = priceWithDiscount * productProvider.quantity!;
 
-                  double total = 0, avg = 0;
-                  for (var review in widget.product!.reviews!) {
-                    total += review.rating!;
-                  }
-                  avg = total /widget.product!.reviews!.length;
-
-
-                  String ratting = widget.product!.reviews != null && widget.product!.reviews!.isNotEmpty?
-                  avg.toString() : "0";
+                  String ratting = ProductHelper.getApprovedReviewAverage(widget.product!.reviews).toString();
 
                   if(widget.product != null && widget.product!.colorImagesFullUrl != null && widget.product!.colorImagesFullUrl!.isNotEmpty){
                     for(int i=0; i< widget.product!.colorImagesFullUrl!.length; i++){

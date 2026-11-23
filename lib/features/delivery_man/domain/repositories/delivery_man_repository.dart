@@ -178,7 +178,7 @@ class DeliveryManRepository implements DeliveryManRepositoryInterface{
         '${AppConstants.baseUrl}${AppConstants.addDeliveryMan}'
     )
     );
-    request.headers.addAll(<String,String>{'Authorization': 'Bearer $token'});
+    request.headers.addAll(dioClient!.multipartHeaders(token: token));
     if(profileImage != null) {
       Uint8List list = await profileImage.readAsBytes();
       var part = http.MultipartFile('image', profileImage.readAsBytes().asStream(), list.length, filename: basename(profileImage.path));

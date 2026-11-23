@@ -16,6 +16,7 @@ import 'package:syriacosmeticsmanger/features/auth/controllers/auth_controller.d
 import 'package:syriacosmeticsmanger/features/splash/controllers/splash_controller.dart';
 import 'package:syriacosmeticsmanger/utill/dimensions.dart';
 import 'package:syriacosmeticsmanger/utill/images.dart';
+import 'package:syriacosmeticsmanger/utill/shop_image_rules.dart';
 import 'package:syriacosmeticsmanger/utill/styles.dart';
 import 'package:syriacosmeticsmanger/features/auth/widgets/code_picker_widget.dart';
 import 'package:syriacosmeticsmanger/features/more/screens/html_view_screen.dart';
@@ -344,9 +345,9 @@ class _InfoFieldVIewWidgetState extends State<InfoFieldVIewWidget> {
 
                                 Text(getTranslated('store_logo', context)!, style: robotoMedium.copyWith(fontSize: Dimensions.fontSizeLarge,  color: Theme.of(context).textTheme.bodyLarge?.color)),
                                 const SizedBox(height: Dimensions.paddingSizeExtraSmall),
-                                Text(getTranslated('image_ratio', context)!, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault, color: Theme.of(context).hintColor)),
+                                Text(getTranslated(ShopImageRules.inRegistration(ShopImageSlot.profileImage).ratioLabelKey, context)!, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault, color: Theme.of(context).hintColor)),
                                 const SizedBox(height: Dimensions.paddingSizeExtraSmall),
-                                Text(getTranslated('image_size_2_mb', context)!, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault,  color: Theme.of(context).hintColor)),
+                                Text(getTranslated(ShopImageRules.inRegistration(ShopImageSlot.profileImage).sizeLabelKey, context)!, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault,  color: Theme.of(context).hintColor)),
                                 const SizedBox(height: Dimensions.paddingSizeDefault),
                               ],
                             ),
@@ -452,9 +453,9 @@ class _InfoFieldVIewWidgetState extends State<InfoFieldVIewWidget> {
 
                               Text(getTranslated('store_image', context)!, style: robotoMedium.copyWith(fontSize: Dimensions.fontSizeLarge, color: Theme.of(context).textTheme.bodyLarge?.color)),
                               const SizedBox(height: Dimensions.paddingSizeExtraSmall),
-                              Text(getTranslated('image_ratio', context)!, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault, color: Theme.of(context).hintColor)),
+                              Text(getTranslated(ShopImageRules.inRegistration(ShopImageSlot.logo).ratioLabelKey, context)!, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault, color: Theme.of(context).hintColor)),
                               const SizedBox(height: Dimensions.paddingSizeExtraSmall),
-                              Text(getTranslated('image_size_2_mb', context)!, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault,  color: Theme.of(context).hintColor)),
+                              Text(getTranslated(ShopImageRules.inRegistration(ShopImageSlot.logo).sizeLabelKey, context)!, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault,  color: Theme.of(context).hintColor)),
                               const SizedBox(height: Dimensions.paddingSizeDefault),
                             ],
                           ),
@@ -515,9 +516,9 @@ class _InfoFieldVIewWidgetState extends State<InfoFieldVIewWidget> {
 
                               Text(getTranslated('store_banner', context)!, style: robotoMedium.copyWith(fontSize: Dimensions.fontSizeLarge, color: Theme.of(context).textTheme.bodyLarge?.color)),
                               const SizedBox(height: Dimensions.paddingSizeExtraSmall),
-                              Text(getTranslated('image_ratio3', context)!, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault, color: Theme.of(context).hintColor)),
+                              Text(getTranslated(ShopImageRules.inRegistration(ShopImageSlot.banner).ratioLabelKey, context)!, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault, color: Theme.of(context).hintColor)),
                               const SizedBox(height: Dimensions.paddingSizeExtraSmall),
-                              Text(getTranslated('image_size_2_mb', context)!, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault,  color: Theme.of(context).hintColor)),
+                              Text(getTranslated(ShopImageRules.inRegistration(ShopImageSlot.banner).sizeLabelKey, context)!, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault,  color: Theme.of(context).hintColor)),
                               const SizedBox(height: Dimensions.paddingSizeDefault),
                             ],
                           ),
@@ -525,7 +526,8 @@ class _InfoFieldVIewWidgetState extends State<InfoFieldVIewWidget> {
                       ),
 
 
-                      Provider.of<SplashController>(context,listen: false).configModel!.activeTheme != "default" ?
+                      ShopImageRules.inRegistration(ShopImageSlot.secondaryBanner)
+                          .isAskedOf(Provider.of<SplashController>(context,listen: false).configModel!) ?
                       Padding(
                         padding: const EdgeInsets.all(Dimensions.paddingSizeSmall),
                         child: Container(
@@ -576,9 +578,9 @@ class _InfoFieldVIewWidgetState extends State<InfoFieldVIewWidget> {
 
                               Text(getTranslated('secondary_banner', context)!, style: robotoMedium.copyWith(fontSize: Dimensions.fontSizeLarge, color: Theme.of(context).textTheme.bodyLarge?.color)),
                               const SizedBox(height: Dimensions.paddingSizeExtraSmall),
-                              Text(getTranslated('image_ratio3', context)!, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault, color: Theme.of(context).hintColor)),
+                              Text(getTranslated(ShopImageRules.inRegistration(ShopImageSlot.secondaryBanner).ratioLabelKey, context)!, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault, color: Theme.of(context).hintColor)),
                               const SizedBox(height: Dimensions.paddingSizeExtraSmall),
-                              Text(getTranslated('image_size_2_mb', context)!, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault,  color: Theme.of(context).hintColor)),
+                              Text(getTranslated(ShopImageRules.inRegistration(ShopImageSlot.secondaryBanner).sizeLabelKey, context)!, style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeDefault,  color: Theme.of(context).hintColor)),
                               const SizedBox(height: Dimensions.paddingSizeDefault),
                             ],
                           ),

@@ -1,0 +1,177 @@
+{
+  "alerts_owner": {
+    "status": 200
+  },
+  "alerts_owner_critical": {
+    "status": 200
+  },
+  "alerts_owner_page_1_of_2": {
+    "status": 200
+  },
+  "alerts_owner_page_2_of_2": {
+    "status": 200
+  },
+  "alerts_owner_qa_none": {
+    "status": 200
+  },
+  "alerts_restricted": {
+    "status": 200
+  },
+  "audit_logs_mfa_actions": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "audit_logs_owner": {
+    "status": 200
+  },
+  "audit_logs_owner_page_1_of_n": {
+    "status": 200
+  },
+  "audit_logs_restricted": {
+    "status": 200
+  },
+  "error_api_switched_off": {
+    "status": 404
+  },
+  "error_api_switched_off_login": {
+    "status": 404
+  },
+  "error_capability_not_allowed": {
+    "status": 403,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "error_capability_not_allowed_markets": {
+    "status": 403,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "error_invalid_market": {
+    "status": 422
+  },
+  "error_invalid_severity": {
+    "status": 422
+  },
+  "error_invalid_window": {
+    "status": 422
+  },
+  "error_login_throttled": {
+    "status": 429,
+    "retry_after": "60"
+  },
+  "error_market_not_allowed": {
+    "status": 403
+  },
+  "error_not_ready": {
+    "status": 503
+  },
+  "error_session_not_found": {
+    "status": 404
+  },
+  "error_unauthenticated": {
+    "status": 401
+  },
+  "login_failed_wrong_password": {
+    "status": 401
+  },
+  "login_mfa_required": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "login_restricted": {
+    "status": 200
+  },
+  "login_success": {
+    "status": 200
+  },
+  "logout": {
+    "status": 200
+  },
+  "markets_none": {
+    "status": 200
+  },
+  "markets_owner": {
+    "status": 200
+  },
+  "markets_restricted": {
+    "status": 200
+  },
+  "me_no_markets": {
+    "status": 200
+  },
+  "me_owner": {
+    "status": 200
+  },
+  "me_restricted": {
+    "status": 200
+  },
+  "me_restricted_capabilities": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "me_with_capabilities": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "mfa_failed": {
+    "status": 401,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "mfa_success_recovery_code": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "mfa_success_recovery_code_none_left": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "mfa_success_totp": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "mfa_throttled": {
+    "status": 429,
+    "retry_after": "840",
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "overview_no_markets": {
+    "status": 200
+  },
+  "overview_owner_all": {
+    "status": 200
+  },
+  "overview_owner_kw": {
+    "status": 200
+  },
+  "overview_owner_unknown_status": {
+    "status": 200
+  },
+  "overview_owner_window_7": {
+    "status": 200
+  },
+  "overview_owner_window_clamped": {
+    "status": 200
+  },
+  "overview_restricted_ae": {
+    "status": 200
+  },
+  "overview_restricted_all": {
+    "status": 200
+  },
+  "session_revoked": {
+    "status": 200
+  },
+  "sessions_end_others": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "sessions_end_others_none": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  },
+  "sessions_owner": {
+    "status": 200
+  },
+  "sessions_with_mfa_method": {
+    "status": 200,
+    "source": "hand-written from GCC-20-PLATFORM-ADMIN-API.md, delivery 2"
+  }
+}

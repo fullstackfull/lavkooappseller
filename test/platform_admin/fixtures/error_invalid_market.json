@@ -1,0 +1,17 @@
+{
+  "errors": [
+    {
+      "code": "invalid_market",
+      "message": "The market must be all or the code of a market.",
+      "valid": [
+        "all",
+        "SA",
+        "AE",
+        "KW",
+        "QA",
+        "BH",
+        "OM"
+      ]
+    }
+  ]
+}

@@ -31,7 +31,7 @@ void main() {
       expect(report.total, 1);
       expect(report.delivered, 1);
       expect(report.settled, 200);
-      expect(report.payments.cash, 200);
+      expect(report.payments!.cash, 200);
       expect(report.orders, hasLength(1));
       expect(report.orders.first.id, 900001);
       expect(report.orders.first.productDiscount, 10);
@@ -63,9 +63,86 @@ void main() {
 
       expect(report.total, 0);
       expect(report.orders, isEmpty);
-      expect(report.payments.hasAny, isFalse);
+      // Null, not an all-zero breakdown. "No payments section" and "paid
+      // nothing" are different facts and the screen draws them differently.
+      expect(report.payments, isNull);
       expect(report.chart.hasBars, isFalse);
       expect(report.period.dateType, 'this_year');
+      expect(report.totalsRefused, isFalse, reason: 'an empty payload refused nothing');
+    });
+
+    // The answer a seller gets when the period holds orders in more than one
+    // currency. Captured verbatim from `GET seller-center/reports/orders` on a
+    // database with riyal, dirham and dinar orders in the window — and with
+    // market scopes switched off and no grant table at all, because the server
+    // refuses the single figure on the currencies an installation has and not
+    // on a switch.
+    const String refusedOrders = '''
+    {"period":{"date_type":"this_month","date_types":["today"],"from":"2026-11-01","to":"2026-11-30","bucket":"day"},
+     "counts":{"ongoing":5,"canceled":0,"delivered":0,"total":5},
+     "amounts":null,
+     "payments":null,
+     "chart":{"labels":["1 Nov","2 Nov"],"values":null},
+     "amounts_by_currency":[
+        {"currency_code":"AED","due":202,"settled":0,"cash":0,"wallet":0,"digital":0,"offline":0,"returned":0,"total":0},
+        {"currency_code":"KWD","due":203,"settled":0,"cash":0,"wallet":0,"digital":0,"offline":0,"returned":0,"total":0},
+        {"currency_code":"SAR","due":610,"settled":0,"cash":0,"wallet":0,"digital":0,"offline":0,"returned":0,"total":0}],
+     "chart_by_currency":[{"currency_code":"SAR","values":[0,610]},{"currency_code":"AED","values":[0,202]}],
+     "totals_refused_because":"totals_of_different_currencies_are_not_added",
+     "orders":{"total_size":0,"limit":10,"offset":1,"orders":[]}}''';
+
+    test('a refused total is null and never zero', () {
+      final OrderReportModel report = OrderReportModel.fromJson(jsonDecode(refusedOrders));
+
+      // The whole point. `due: 0` reads on screen as "you are owed nothing" to
+      // a seller owed 1015 across three currencies, and a seller acts on a
+      // zero. Null is the model saying there is no one figure.
+      expect(report.due, isNull);
+      expect(report.settled, isNull);
+      expect(report.payments, isNull);
+      expect(report.turnover, isNull);
+      expect(report.totalsRefused, isTrue);
+      expect(report.totalsRefusedBecause, 'totals_of_different_currencies_are_not_added');
+      expect(report.chart.hasBars, isFalse, reason: 'a null series is not a flat line');
+      expect(report.total, 5, reason: 'the counts survive: a count is not money');
+    });
+
+    test('each currency keeps its own real figures', () {
+      final OrderReportModel report = OrderReportModel.fromJson(jsonDecode(refusedOrders));
+
+      expect(report.amountsByCurrency.map((g) => g.currencyCode).toList(), ['AED', 'KWD', 'SAR']);
+      expect(report.amountsByCurrency[2]['due'], 610);
+      expect(report.amountsByCurrency[0]['due'], 202);
+      expect(report.amountsByCurrency[1]['due'], 203);
+      // The three real figures do add to 1015, which is exactly why no one of
+      // them may be shown as it.
+      expect(report.amountsByCurrency.fold<double>(0, (a, g) => a + (g['due'] ?? 0)), 1015);
+    });
+
+    test('a refused chart is one series per currency over shared labels', () {
+      final OrderReportModel report = OrderReportModel.fromJson(jsonDecode(refusedOrders));
+
+      expect(report.chartByCurrency, hasLength(2));
+      expect(report.chartByCurrency.first.currencyCode, 'SAR');
+      expect(report.chartByCurrency.first.values, [0, 610]);
+      expect(report.chart.labels, ['1 Nov', '2 Nov']);
+    });
+
+    test('the product report refuses its money and keeps its quantity', () {
+      final ProductReportModel report = ProductReportModel.fromJson(jsonDecode(
+        '{"counts":{"active":2,"pending":0,"rejected":0},'
+        '"totals":{"sold_quantity":2,"sold_amount":null,"discount_given":null},'
+        '"totals_by_currency":['
+        '{"currency_code":"AED","sold_quantity":1,"sold_amount":200,"discount_given":3},'
+        '{"currency_code":"SAR","sold_quantity":1,"sold_amount":1000,"discount_given":7}],'
+        '"totals_refused_because":"totals_of_different_currencies_are_not_added"}'));
+
+      expect(report.soldAmount, isNull, reason: '1000 riyals and 200 dirhams are not 1200');
+      expect(report.discountGiven, isNull, reason: 'nor are 7 and 3 ten');
+      expect(report.soldQuantity, 2, reason: 'but two units sold are two units sold');
+      expect(report.totalsRefused, isTrue);
+      expect(report.totalsByCurrency[1]['sold_amount'], 1000);
+      expect(report.totalsByCurrency[0]['sold_amount'], 200);
     });
   });
 

@@ -240,6 +240,13 @@ class ProductController extends ChangeNotifier {
   }
 
 
+  void clearPosProducts() {
+    _posProductModel = null;
+    _posProductList = [];
+    _cartQuantity = [];
+    notifyListeners();
+  }
+
   void isFilterReset(bool isReset){
     _isFilterApplied = isReset;
     notifyListeners();
@@ -546,6 +553,11 @@ class ProductController extends ChangeNotifier {
     }else {
       ApiChecker.checkApi(response);
     }
+    notifyListeners();
+  }
+
+  void clearStockLimitStatus() {
+    _stockLimitStatus = null;
     notifyListeners();
   }
 

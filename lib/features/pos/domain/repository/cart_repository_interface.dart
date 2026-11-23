@@ -6,10 +6,10 @@ import 'package:syriacosmeticsmanger/interface/repository_interface.dart';
 
 abstract class CartRepositoryInterface implements RepositoryInterface{
   Future<ApiResponse> getCouponDiscount(String couponCode, int? userId, double orderAmount);
-  Future<ApiResponse> placeOrder(PlaceOrderBody placeOrderBody);
-  /// Replays an order body captured earlier (offline sales outbox).
-  Future<ApiResponse> placeOrderRaw(Map<String, dynamic> orderBody);
-  Future<ApiResponse> getProductFromScan(String? productCode);
+  Future<ApiResponse> placeOrder(PlaceOrderBody placeOrderBody, {String? idempotencyKey});
+  /// Replays an order body captured earlier (offline sales outbox), under the key the sale was first sent with and, when it names one, in the storefront it was taken in.
+  Future<ApiResponse> placeOrderRaw(Map<String, dynamic> orderBody, {String? idempotencyKey, String? storefront});
+  Future<ApiResponse> getProductFromScan(String? productCode, {String? country});
   Future<ApiResponse> getCustomerList(String type);
   Future<ApiResponse> customerSearch(String name);
   Future<ApiResponse> addNewCustomer(CustomerBody customerBody);

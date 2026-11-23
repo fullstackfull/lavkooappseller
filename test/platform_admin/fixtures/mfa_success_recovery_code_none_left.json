@@ -1,0 +1,27 @@
+{
+  "data": {
+    "token": "lkpa_TESTTOKEN0123456789TESTTOKEN0123456789TESTTOKEN0123456789TESTTOK",
+    "token_type": "Bearer",
+    "expires_at": "2026-11-17T18:00:00Z",
+    "me": {
+      "admin_id": 4,
+      "name": "Admin 0GFmZ",
+      "level": 1,
+      "scope": "all",
+      "markets": [
+        "SA",
+        "AE",
+        "KW",
+        "QA",
+        "BH",
+        "OM"
+      ],
+      "token_expires_at": "2026-11-17T18:00:00Z"
+    },
+    "mfa": {
+      "state": "verified",
+      "method": "recovery_code",
+      "recovery_codes_left": 0
+    }
+  }
+}

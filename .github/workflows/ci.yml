@@ -3,8 +3,8 @@ name: CI
 on:
   push:
     branches: [main, 'claude/**']
+  # Every pull request, whatever its base: a pull request stacked on another has its own run, which a filter on the base `main` never gave it.
   pull_request:
-    branches: [main]
 
 jobs:
   analyze-and-test:
@@ -38,7 +38,169 @@ jobs:
       - name: Check translation keys
         run: dart run tool/check_translations.dart
 
+      # Read first, because it is what keeps the rest of this job in the shape the
+      # criterion asks for: every named feature step ahead of the whole run, the
+      # whole run last, and nothing in the job skippable by a red step above it.
+      - name: Test that every named feature step runs before the whole run, and that none of them can hide it (K-15)
+        if: always()
+        run: flutter test test/ci_step_order_test.dart
+
+      # Each feature's tests run by name before the full run: the whole run below is red on main for one known test (test/app_version_gate_test.dart), and a step after a failed
+      # step does not run unless it says `if: always()`, so a named step is the only way the result of one feature can be read on its own.
+      - name: Test the market scope, the market choice, the sign-in header and the version helper (K-01, K-02, K-10, K-12, K-14)
+        if: always()
+        run: flutter test test/dio_storefront_header_test.dart test/market_scope_test.dart test/seller_market_choice_test.dart test/dio_auth_header_test.dart test/version_helper_test.dart
+
+      - name: Test the point-of-sale scan of country-scoped codes (K-05, K-13)
+        if: always()
+        run: flutter test test/pos_scan
+
+      - name: Test the order edit refusal and the approved review average (K-07)
+        if: always()
+        run: flutter test test/order_edit_submit_contract_test.dart test/order_edit_submit_flow_test.dart test/product_review_average_test.dart
+
+      # The platform admin shell is compiled in only when this flag is set, so the
+      # full run below skips the tests that need it on. This step is their proof
+      # that a build with the flag on registers and shows what it should. It comes
+      # first so that a failure elsewhere in the full run cannot hide it.
+      - name: Test the platform admin shell with its flag on
+        if: always()
+        run: flutter test --dart-define=GCC_PLATFORM_ADMIN_ENABLED=true test/platform_admin
+
+      - name: Test that the seller app makes no theme call (F-03, K-18)
+        if: always()
+        run: flutter test test/no_theme_call_test.dart
+
+      - name: Test the push route and the rating rule (K-07, K-11)
+        if: always()
+        run: flutter test test/notification_route_test.dart test/approved_rating_screens_test.dart test/product_card_rating_test.dart
+
+      - name: Test the market selector and the reload of the screens (K-03)
+        if: always()
+        run: flutter test test/market_selector
+
+      # The market selector is shown only in a build made with this flag, so the full run below tests the build without it: the tests
+      # that name the flag follow it there, and show the selector absent. This step runs the same folder with the flag on, which is the
+      # build the selector is made for, so that what a build with storefronts does is read on its own, and even when the full run is red.
+      - name: Test the market selector, the market header and the reload of the screens with the storefront flag on (K-03)
+        if: always()
+        run: flutter test --dart-define=GCC_STOREFRONTS_ENABLED=true test/market_selector
+
+      # The market's own money is written only in a build made with the flag and a stored market; the full run tests the build without the flag, in which these tests
+      # follow the flag. This step runs the same folder with the flag on, so that what a build with storefronts writes is read on its own.
+      - name: Test the market's own money, its decimals and the amounts typed (K-10)
+        if: always()
+        run: flutter test test/market_money test/market_scope_test.dart
+
+      - name: Test the market's own money with the storefront flag on (K-10)
+        if: always()
+        run: flutter test --dart-define=GCC_STOREFRONTS_ENABLED=true test/market_money test/market_scope_test.dart
+
+      # A named step, so that the result of this test can be read on its own: the whole run below is red on main for one known test (the version gate).
+      - name: Test that a burst of 401s signs the seller out once (K-12)
+        if: always()
+        run: flutter test test/api_checker_unauthorized_test.dart
+
+      # Four files of this branch had no step of their own, and were read only in the whole run below, which is red for the
+      # version gate. Each step is named for what its file proves and no more: the refusal of a total that would add two
+      # currencies is proved for the report, and not for the statement, whose own refusal has no test on this branch.
+      - name: Test the image rules the two seller forms read from the table (K-17)
+        if: always()
+        run: flutter test test/shop_images
+
+      - name: Test the statement's two scopes, the trace from a line to the payout that took it out and the order that earned it, and that a total which would add two currencies is refused rather than read as a zero balance (K-09, K-10)
+        if: always()
+        run: flutter test test/statement_contract_test.dart
+
+      - name: Test the report, and that a total which would add two currencies is refused rather than added (K-09, K-10)
+        if: always()
+        run: flutter test test/report_contract_test.dart
+
+      # Whose sale a queued sale is, and which market it is owed to, are read by their own steps below; this file is the entry itself.
+      - name: Test that the entry a sale that could not be sent is written as survives the disk, and a corrupt entry does not throw (K-06)
+        if: always()
+        run: flutter test test/pending_pos_order_test.dart
+
+      # The work in flight is read by name before the full run, and even when the full run is red (test/app_version_gate_test.dart is on main).
+      - name: Test the POS rules (who a sale is for, what a 200 answer means, the key of a sale, what the camera reads, what becomes of a sale that could not be sent, what the cart keeps after a refusal, whose sale a queued sale is; K-05, K-06, K-18)
+        if: always()
+        run: flutter test test/pos_customer_id_test.dart test/pos_order_answer_test.dart test/pos_idempotency_key_test.dart test/product_barcode_formats_test.dart test/outbox_policy_test.dart test/offline_outbox_behaviour_test.dart test/pos_sale_outcome_test.dart test/offline_outbox_owner_test.dart
+
+      # A queued sale is replayed in the market it was taken in, not in the market the seller works in when it is sent. The entry names the market, and the replay sends it, only in a build with storefronts on:
+      # the full run below is the build without the flag, so this step reads the file by name, and the next step runs it with the flag on.
+      - name: Test that a queued sale keeps the market it was taken in, and is replayed there whatever market is chosen afterwards (K-03, K-06)
+        if: always()
+        run: flutter test test/market_selector/queued_sale_market_test.dart
+
+      - name: Test that a queued sale keeps the market it was taken in, with the storefront flag on (K-03, K-06)
+        if: always()
+        run: flutter test --dart-define=GCC_STOREFRONTS_ENABLED=true test/market_selector/queued_sale_market_test.dart
+
+      - name: Test that a queued sale is sent only by the session of the seller who took it, also when it names no seller (K-06)
+        if: always()
+        run: flutter test test/offline_outbox_owner_test.dart
+
+      # One phone on the counter, more than one seller: a sign-out takes the market, the cart and the currency of the seller who signed out, and leaves the sales that could not be sent for them. The file
+      # asks for the market with storefronts on itself, so it says the same thing in either build; the step is run with the flag as well, because that is the build the market a sale is owed to is written in.
+      - name: Test that a second login on the same device inherits no market, cart or currency of the first, while the unsent sales stay queued for the seller who took them (K-12)
+        if: always()
+        run: flutter test test/second_login_on_one_device_test.dart
+
+      - name: Test that a second login on the same device starts clean, with the storefront flag on (K-12)
+        if: always()
+        run: flutter test --dart-define=GCC_STOREFRONTS_ENABLED=true test/second_login_on_one_device_test.dart
+
+      # The seller flows are read by name before the full run, and even when the full run is red (test/app_version_gate_test.dart is
+      # red on main by an owner decision): a step after a failed step does not run unless it says so, so a named step is the only
+      # way what one flow proves can be read on its own. `!cancelled()` rather than `always()`, which would go on running these
+      # six after someone pressed cancel. Neither carries continue-on-error, so a flow that fails still fails the job.
+      - name: Test the order list, the order screen and the change of an order's status, in the request and in the handling of the answer (K-16.4)
+        if: ${{ !cancelled() }}
+        run: flutter test test/flows/orders_flow_test.dart
+
+      - name: Test the product list, the delete and the status switch, in the request and in the handling of the answer (K-16.4)
+        if: ${{ !cancelled() }}
+        run: flutter test test/flows/products_flow_test.dart
+
+      - name: Test the adding and the updating of a product, in the request and in the handling of the answer (K-16.4)
+        if: ${{ !cancelled() }}
+        run: flutter test test/flows/product_save_flow_test.dart
+
+      - name: Test the stock-out list, the quantity updates, the restock requests and the stock ledger, in the request and in the handling of the answer (K-16.4)
+        if: ${{ !cancelled() }}
+        run: flutter test test/flows/stock_flow_test.dart
+
+      - name: Test the withdrawal request, the list of withdrawals and the ledger's payouts, in the request and in the handling of the answer (K-16.4)
+        if: ${{ !cancelled() }}
+        run: flutter test test/flows/withdrawals_flow_test.dart
+
+      - name: Test the review list, the filter, the status switch and the reply, in the request and in the handling of the answer (K-16.4)
+        if: ${{ !cancelled() }}
+        run: flutter test test/flows/reviews_flow_test.dart
+
+      # The contract files that had no step of their own. Which of them count as
+      # GCC work is a judgement — control tower and security are GCC-20 surface,
+      # the rest carry the seller features the GCC work reads — so they are all
+      # named here rather than sorted, and every test file on the branch except
+      # the reserved version gate now reports under a name of its own.
+      - name: Test the remaining seller contracts the GCC work reads (action centre, automation, brand claim, bulk job, control tower, finance control, inventory, order breakdown, pricing policy, report export, returns, security, seller centre)
+        if: always()
+        run: |
+          flutter test test/action_center_contract_test.dart test/automation_contract_test.dart \
+            test/brand_claim_contract_test.dart test/bulk_job_contract_test.dart \
+            test/control_tower_contract_test.dart test/finance_control_contract_test.dart \
+            test/inventory_contract_test.dart test/order_breakdown_contract_test.dart \
+            test/pricing_policy_contract_test.dart test/report_export_helper_test.dart \
+            test/return_contract_test.dart test/security_contract_test.dart \
+            test/seller_center_contract_test.dart
+
+      # The whole run is last, so that every named step above reports before it,
+      # and it carries `always()` for the same reason those steps do: without a
+      # guard its default is `success()`, so one red named step would skip it and
+      # the suite's own figures — the only evidence of how many tests fail and
+      # which — would be missing from the run. A failure here still fails the job.
       - name: Test
+        if: always()
         run: flutter test
 
   build-android:

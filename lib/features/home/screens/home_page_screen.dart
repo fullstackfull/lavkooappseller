@@ -1,7 +1,8 @@
-import 'package:flutter/cupertino.dart';
 import 'package:syriacosmeticsmanger/localization/controllers/localization_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:syriacosmeticsmanger/di_container.dart';
+import 'package:syriacosmeticsmanger/features/storefront/controllers/seller_market_controller.dart';
 import 'package:syriacosmeticsmanger/features/notification/controllers/notification_controller.dart';
 import 'package:syriacosmeticsmanger/features/product/domain/models/product_model.dart';
 import 'package:syriacosmeticsmanger/features/bank_info/controllers/bank_info_controller.dart';
@@ -18,13 +19,11 @@ import 'package:syriacosmeticsmanger/features/review/controllers/product_review_
 import 'package:syriacosmeticsmanger/features/shipping/controllers/shipping_controller.dart';
 import 'package:syriacosmeticsmanger/features/splash/controllers/splash_controller.dart';
 import 'package:syriacosmeticsmanger/utill/dimensions.dart';
-import 'package:syriacosmeticsmanger/utill/images.dart';
-import 'package:syriacosmeticsmanger/utill/styles.dart';
 import 'package:syriacosmeticsmanger/features/home/widgets/chart_widget.dart';
+import 'package:syriacosmeticsmanger/features/home/widgets/home_app_bar_widget.dart';
 import 'package:syriacosmeticsmanger/features/home/widgets/completed_order_widget.dart';
 import 'package:syriacosmeticsmanger/features/home/widgets/on_going_order_widget.dart';
 import 'package:syriacosmeticsmanger/features/product/widgets/stock_out_product_widget.dart';
-import 'package:syriacosmeticsmanger/features/notification/screens/notification_screen.dart';
 import 'package:syriacosmeticsmanger/features/product/screens/most_popular_product_screen.dart';
 import 'package:syriacosmeticsmanger/features/product/screens/top_selling_product_screen.dart';
 import 'package:syriacosmeticsmanger/features/delivery_man/widgets/top_delivery_man_view_widget.dart';
@@ -74,6 +73,12 @@ class _HomePageScreenState extends State<HomePageScreen> {
     Provider.of<ProductController>(context,listen: false).getMostPopularProductList(1, context, LocalizationController.apiLanguageCode(context), reload: reload);
 
     Provider.of<ProductReviewController>(context, listen: false).getReviewList(context);
+
+    // The markets this token carries, re-read with the rest of Home: a grant changed on the server reaches the picker on the next
+    // load rather than on the next sign-in (K-09). A build without markets has no controller to ask.
+    if (sl.isRegistered<SellerMarketController>()) {
+      sl<SellerMarketController>().refreshGrant();
+    }
   }
 
 
@@ -101,43 +106,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
             child: CustomScrollView(
               controller: _scrollController,
               slivers: [
-                SliverAppBar(
-                  pinned: true,
-                  floating: true,
-                  elevation: 0,
-                  centerTitle: false,
-                  automaticallyImplyLeading: false,
-                  surfaceTintColor: Theme.of(context).highlightColor,
-                  backgroundColor: Theme.of(context).highlightColor,
-                  snap: true,
-                  title: Image.asset(Images.logoWithAppName, height: 35),
-                  actions: [
-                    Consumer<NotificationController>(
-                      builder: (context, notificationController, _) {
-                        return InkWell(onTap: ()=> Navigator.push(context, MaterialPageRoute(builder: (_)=> const NotificationScreen())),
-                          child: Stack(
-                            children: [
-                              Padding(padding: const EdgeInsets.fromLTRB(Dimensions.paddingSizeDefault, Dimensions.paddingSizeSmall, Dimensions.paddingSizeDefault, 0),
-                                child: Icon(CupertinoIcons.bell, color: Theme.of(context).primaryColor),
-                              ),
-                              Positioned(top: 5,right: 18,child: Align(alignment: AlignmentDirectional.topEnd,
-                                child: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.error,
-                                  radius: 8,child: Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(1.0),
-                                      child: Text('${notificationController.notificationModel?.newNotificationItem??0}',
-                                        style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeExtraSmall, color: Colors.white),),
-                                    ),
-                                  ),)
-                                )
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-                    )
-                  ],
-                ),
+                const HomeAppBarWidget(),
 
                 SliverToBoxAdapter(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start,

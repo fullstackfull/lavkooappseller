@@ -84,7 +84,80 @@ void main() {
 
       expect(statement.entries, isEmpty);
       expect(statement.entryTypes, isEmpty);
-      expect(statement.summary.withdrawable, 0);
+      // Null, not zero. An absent figure and a balance of nothing are different
+      // facts, and the screen draws them differently: one is "we cannot tell
+      // you one number", the other is "there is nothing to withdraw". This
+      // assertion read `0` and went red when the summary became nullable, which
+      // is the test doing its job — the expectation is what had to change.
+      expect(statement.summary.withdrawable, isNull);
+    });
+
+    // The report proves this for a report (report_contract_test.dart); the
+    // statement had no test of its own, although the statement screen is where
+    // a seller reads what they can withdraw. A combined total over two
+    // currencies is not money, so the server refuses it and names a reason; the
+    // app must draw the reason, and must not read the refusal as a zero.
+    group('a ledger that holds two currencies', () {
+      const String refusedSummary = '''
+      {"summary":{"currency":null,
+        "range":{"entries":4,"credits":null,"debits":null,"net":null},
+        "buckets":{"pending":null,"available":null,"reserved":null,"paid":null,"balance":null},
+        "withdrawable":null,
+        "totals_refused_because":"totals_of_different_currencies_are_not_added",
+        "range_by_currency":[
+          {"currency_code":"SAR","credits":700,"debits":302,"net":398},
+          {"currency_code":"AED","credits":120,"debits":20,"net":100}],
+        "buckets_by_currency":[
+          {"currency_code":"SAR","available":700,"balance":398,"withdrawable":398},
+          {"currency_code":"AED","available":120,"balance":100,"withdrawable":100}]},
+       "entries":[]}''';
+
+      test('refuses the single total and says why, instead of adding riyals to dirhams', () {
+        final StatementSummaryModel summary =
+            StatementModel.fromJson(jsonDecode(refusedSummary)).summary;
+
+        expect(summary.totalsRefused, isTrue);
+        expect(summary.totalsRefusedBecause, 'totals_of_different_currencies_are_not_added');
+      });
+
+      test('leaves every combined figure null, because a refused total is not a zero balance', () {
+        final StatementSummaryModel summary =
+            StatementModel.fromJson(jsonDecode(refusedSummary)).summary;
+
+        expect(summary.withdrawable, isNull, reason: 'a refused withdrawable must not read as 0.00');
+        expect(summary.balance, isNull);
+        expect(summary.available, isNull);
+        expect(summary.reserved, isNull);
+        expect(summary.paid, isNull);
+        expect(summary.pending, isNull);
+        expect(summary.rangeCredits, isNull);
+        expect(summary.rangeDebits, isNull);
+        expect(summary.rangeNet, isNull);
+        expect(summary.currency, isNull, reason: 'no one currency is the account\'s currency');
+      });
+
+      test('answers each currency its own real figures, which is what there is to draw', () {
+        final StatementSummaryModel summary =
+            StatementModel.fromJson(jsonDecode(refusedSummary)).summary;
+
+        expect(summary.rangeByCurrency.map((StatementCurrencyFiguresModel row) => row.currencyCode),
+            <String>['SAR', 'AED']);
+        expect(summary.rangeByCurrency.first.figures['net'], 398);
+        expect(summary.bucketsByCurrency.last.currencyCode, 'AED');
+        expect(summary.bucketsByCurrency.last.figures['withdrawable'], 100);
+        expect(summary.rangeEntries, 4, reason: 'a count of entries is not money and is still one number');
+      });
+
+      test('refuses nothing, and offers no per-currency figures, while the ledger holds one currency', () {
+        final StatementSummaryModel summary =
+            StatementModel.fromJson(jsonDecode(liveStatement)).summary;
+
+        expect(summary.totalsRefused, isFalse);
+        expect(summary.totalsRefusedBecause, isNull);
+        expect(summary.rangeByCurrency, isEmpty);
+        expect(summary.bucketsByCurrency, isEmpty);
+        expect(summary.withdrawable, 398, reason: 'one currency: the combined figure is the answer');
+      });
     });
   });
 }

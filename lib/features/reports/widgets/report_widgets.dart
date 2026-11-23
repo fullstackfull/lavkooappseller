@@ -132,7 +132,13 @@ class ReportMetricWidget extends StatelessWidget {
 class ReportChartWidget extends StatelessWidget {
   final ReportChartModel chart;
   final String title;
-  const ReportChartWidget({super.key, required this.chart, required this.title});
+
+  /// Shown after the title, already in the reader's words rather than a
+  /// language key: it carries a currency code when one chart is drawn per
+  /// currency, because two series of different money need telling apart.
+  final String? subtitle;
+
+  const ReportChartWidget({super.key, required this.chart, required this.title, this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -143,8 +149,16 @@ class ReportChartWidget extends StatelessWidget {
     final double peak = chart.peak;
 
     return ReportCardWidget(children: [
-      Text(getTranslated(title, context) ?? title,
-          style: robotoMedium.copyWith(color: Theme.of(context).textTheme.bodyLarge?.color)),
+      Row(children: [
+        Text(getTranslated(title, context) ?? title,
+            style: robotoMedium.copyWith(color: Theme.of(context).textTheme.bodyLarge?.color)),
+        if (subtitle != null) ...[
+          const SizedBox(width: Dimensions.paddingSizeExtraSmall),
+          Text(subtitle!,
+              style: robotoBold.copyWith(
+                  fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).hintColor)),
+        ],
+      ]),
       const SizedBox(height: Dimensions.paddingSizeDefault),
       SizedBox(
         height: 140,

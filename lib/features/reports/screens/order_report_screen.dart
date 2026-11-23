@@ -145,44 +145,53 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
                   ]),
                   const SizedBox(height: Dimensions.paddingSizeSmall),
 
-                  ReportCardWidget(children: [
-                    Text(getTranslated('order_amount', context)!,
-                        style: robotoMedium.copyWith(color: Theme.of(context).textTheme.bodyLarge?.color)),
+                  // Two currencies in the period and there is no one amount to
+                  // show, so the reason goes where the figure would have been
+                  // and each currency is listed under it. The screen must never
+                  // draw the refusal as 0.00: a zero is a figure a seller acts
+                  // on, and this one would say they are owed nothing.
+                  if (report.totalsRefused)
+                    ..._perCurrency(context, report)
+                  else ...[
+                    ReportCardWidget(children: [
+                      Text(getTranslated('order_amount', context)!,
+                          style: robotoMedium.copyWith(color: Theme.of(context).textTheme.bodyLarge?.color)),
+                      const SizedBox(height: Dimensions.paddingSizeSmall),
+                      ReportRowWidget(
+                        label: 'settled',
+                        value: PriceConverter.convertPrice(context, report.settled ?? 0),
+                        valueColor: Theme.of(context).colorScheme.onTertiaryContainer,
+                      ),
+                      ReportRowWidget(
+                        label: 'due',
+                        value: PriceConverter.convertPrice(context, report.due ?? 0),
+                      ),
+                      const Divider(height: Dimensions.paddingSizeDefault),
+                      ReportRowWidget(
+                        label: 'total',
+                        value: PriceConverter.convertPrice(context, report.turnover ?? 0),
+                      ),
+                    ]),
                     const SizedBox(height: Dimensions.paddingSizeSmall),
-                    ReportRowWidget(
-                      label: 'settled',
-                      value: PriceConverter.convertPrice(context, report.settled),
-                      valueColor: Theme.of(context).colorScheme.onTertiaryContainer,
-                    ),
-                    ReportRowWidget(
-                      label: 'due',
-                      value: PriceConverter.convertPrice(context, report.due),
-                    ),
-                    const Divider(height: Dimensions.paddingSizeDefault),
-                    ReportRowWidget(
-                      label: 'total',
-                      value: PriceConverter.convertPrice(context, report.turnover),
-                    ),
-                  ]),
-                  const SizedBox(height: Dimensions.paddingSizeSmall),
+                  ],
 
-                  if (report.payments.hasAny) ...[
+                  if (report.payments?.hasAny ?? false) ...[
                     ReportCardWidget(children: [
                       Text(getTranslated('payments_received', context)!,
                           style: robotoMedium.copyWith(color: Theme.of(context).textTheme.bodyLarge?.color)),
                       const SizedBox(height: Dimensions.paddingSizeSmall),
                       ReportRowWidget(label: 'cash_payments',
-                          value: PriceConverter.convertPrice(context, report.payments.cash)),
+                          value: PriceConverter.convertPrice(context, report.payments!.cash)),
                       ReportRowWidget(label: 'digital_payments',
-                          value: PriceConverter.convertPrice(context, report.payments.digital)),
+                          value: PriceConverter.convertPrice(context, report.payments!.digital)),
                       ReportRowWidget(label: 'wallet',
-                          value: PriceConverter.convertPrice(context, report.payments.wallet)),
+                          value: PriceConverter.convertPrice(context, report.payments!.wallet)),
                       ReportRowWidget(label: 'offline_payments',
-                          value: PriceConverter.convertPrice(context, report.payments.offline)),
-                      if (report.payments.returned > 0)
+                          value: PriceConverter.convertPrice(context, report.payments!.offline)),
+                      if (report.payments!.returned > 0)
                         ReportRowWidget(
                           label: 'returned_amount',
-                          value: '- ${PriceConverter.convertPrice(context, report.payments.returned)}',
+                          value: '- ${PriceConverter.convertPrice(context, report.payments!.returned)}',
                           valueColor: Theme.of(context).colorScheme.error,
                         ),
                       const Divider(height: Dimensions.paddingSizeDefault),
@@ -190,12 +199,25 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
                       // added and taken back what it returned, so this is not
                       // the sum of the rows above and must not be recomputed.
                       ReportRowWidget(label: 'total_payment',
-                          value: PriceConverter.convertPrice(context, report.payments.total)),
+                          value: PriceConverter.convertPrice(context, report.payments!.total)),
                     ]),
                     const SizedBox(height: Dimensions.paddingSizeSmall),
                   ],
 
-                  ReportChartWidget(chart: report.chart, title: 'settled_over_time'),
+                  // One chart per currency when there is no one series: the
+                  // combined values are null and a chart of nulls is a flat
+                  // line that reads as "nothing sold".
+                  if (report.totalsRefused)
+                    ...report.chartByCurrency.map((series) => Padding(
+                          padding: const EdgeInsets.only(bottom: Dimensions.paddingSizeSmall),
+                          child: ReportChartWidget(
+                            chart: ReportChartModel(labels: report.chart.labels, values: series.values),
+                            title: 'settled_over_time',
+                            subtitle: series.currencyCode,
+                          ),
+                        ))
+                  else
+                    ReportChartWidget(chart: report.chart, title: 'settled_over_time'),
                   const SizedBox(height: Dimensions.paddingSizeSmall),
 
                   if (report.orders.isNotEmpty) ...[
@@ -217,6 +239,48 @@ class _OrderReportScreenState extends State<OrderReportScreen> {
       ),
     );
   }
+
+  /// The amounts of a period that holds more than one currency.
+  ///
+  /// The reason first, in the seller's language, then one card per currency with
+  /// that currency's own real figures — the same shape the statement screen
+  /// uses for a ledger holding two currencies. Deliberately not one number with
+  /// a footnote: the figure is the thing a seller reads, and there isn't one.
+  List<Widget> _perCurrency(BuildContext context, OrderReportModel report) {
+    return [
+      ReportCardWidget(children: [
+        Row(children: [
+          Icon(Icons.info_outline, size: 18, color: Theme.of(context).colorScheme.error),
+          const SizedBox(width: Dimensions.paddingSizeExtraSmall),
+          Expanded(
+            child: Text(
+              getTranslated(report.totalsRefusedBecause!, context) ?? report.totalsRefusedBecause!,
+              style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall),
+            ),
+          ),
+        ]),
+      ]),
+      const SizedBox(height: Dimensions.paddingSizeSmall),
+      ...report.amountsByCurrency.map((group) => Padding(
+            padding: const EdgeInsets.only(bottom: Dimensions.paddingSizeSmall),
+            child: ReportCardWidget(children: [
+              Text(group.currencyCode, style: robotoBold.copyWith(fontSize: Dimensions.fontSizeSmall)),
+              ReportRowWidget(label: 'settled', value: _amount(group['settled'])),
+              ReportRowWidget(label: 'due', value: _amount(group['due'])),
+              const Divider(height: Dimensions.paddingSizeDefault),
+              ReportRowWidget(label: 'cash_payments', value: _amount(group['cash'])),
+              ReportRowWidget(label: 'digital_payments', value: _amount(group['digital'])),
+              ReportRowWidget(label: 'wallet', value: _amount(group['wallet'])),
+              ReportRowWidget(label: 'offline_payments', value: _amount(group['offline'])),
+              ReportRowWidget(label: 'total_payment', value: _amount(group['total'])),
+            ]),
+          )),
+    ];
+  }
+
+  /// A figure in its own currency, never converted to the display currency: the
+  /// point of the per-currency answer is that these are different kinds of money.
+  String _amount(double? figure) => figure == null ? '\u2014' : figure.toStringAsFixed(2);
 }
 
 class _OrderRowWidget extends StatelessWidget {

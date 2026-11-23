@@ -1,0 +1,11 @@
+{
+  "data": {
+    "mfa_required": true,
+    "challenge": "lkpc_TESTCHALLENGE0123456789TESTCHALLENGE0123456789AB",
+    "challenge_expires_at": "2026-11-17T10:05:00Z",
+    "methods": [
+      "totp",
+      "recovery_code"
+    ]
+  }
+}
