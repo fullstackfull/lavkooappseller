@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main, 'claude/**']
+    # `gcc/**` is the branch the GCC plan is developed on, in all three repositories, so its pushes are verified like any other.
+    branches: [main, 'claude/**', 'gcc/**']
   # Every pull request, whatever its base: a pull request stacked on another has its own run, which a filter on the base `main` never gave it.
   pull_request:
 
