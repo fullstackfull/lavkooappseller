@@ -15,6 +15,7 @@ import 'package:syriacosmeticsmanger/features/order/controllers/order_controller
 import 'package:syriacosmeticsmanger/features/order/domain/models/order_model.dart';
 import 'package:syriacosmeticsmanger/features/order_details/domain/models/order_details_model.dart';
 import 'package:syriacosmeticsmanger/features/order_details/domain/models/order_breakdown_model.dart';
+import 'package:syriacosmeticsmanger/features/order_details/domain/models/shipment_hold_model.dart';
 import 'package:syriacosmeticsmanger/features/order_details/domain/models/order_setup_model.dart';
 import 'package:syriacosmeticsmanger/features/order_details/domain/services/order_details_service_interface.dart';
 import 'package:syriacosmeticsmanger/helper/api_checker.dart';
@@ -61,6 +62,11 @@ class OrderDetailsController extends ChangeNotifier{
   bool _isBreakdownLoading = false;
   bool get isBreakdownLoading => _isBreakdownLoading;
 
+  List<ShipmentHoldModel> _shipmentHolds = const <ShipmentHoldModel>[];
+
+  /// Why shipments of this order have not left (H1-04, H1-06). Empty when nothing is held, which is almost every order.
+  List<ShipmentHoldModel> get shipmentHolds => _shipmentHolds;
+
 
   Future<void> getOrderDetails( String orderID) async {
     _orderDetails = null;
@@ -94,6 +100,21 @@ class OrderDetailsController extends ChangeNotifier{
     }
 
     _isBreakdownLoading = false;
+    notifyListeners();
+  }
+
+  /// Why a shipment of this order has not left.
+  ///
+  /// Asked separately from the order itself, like the breakdown, so a slow or failing answer never keeps the order screen from rendering:
+  /// the seller still needs to see the order. A failure leaves the list empty and shows nothing rather than an error on a screen the
+  /// seller opened to look at something else -- a held shipment is unusual, and an unanswered question about one is not news.
+  Future<void> getShipmentHolds(String orderID) async {
+    final ApiResponse apiResponse = await orderDetailsServiceInterface.getShipmentHolds(orderID);
+
+    _shipmentHolds = apiResponse.response?.statusCode == 200
+        ? ShipmentHoldModel.listFrom(apiResponse.response?.data)
+        : const <ShipmentHoldModel>[];
+
     notifyListeners();
   }
 
@@ -261,6 +282,7 @@ class OrderDetailsController extends ChangeNotifier{
 
   void emptyOrderDetails() {
     _breakdown = null;
+    _shipmentHolds = const <ShipmentHoldModel>[];
     _orderDetails = null;
     notifyListeners();
   }

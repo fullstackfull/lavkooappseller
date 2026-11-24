@@ -1998,5 +1998,7 @@
   "sales_not_sent_explained": "These sales were rung up on this device and the server did not accept them after several tries. They stay here with the reason until you retry or remove them.",
   "remove_sale": "Remove this sale from the device",
   "remove_sale_confirmation": "The server never recorded this sale. If you remove it, no copy of it is left. Remove it?",
-  "totals_of_different_currencies_are_not_added": "Totals of different currencies are not added"
+  "totals_of_different_currencies_are_not_added": "Totals of different currencies are not added",
+  "shipment_on_hold": "A shipment has not left yet",
+  "the_reason_was_not_recorded": "The reason was not recorded."
 }

@@ -6,6 +6,8 @@ abstract class OrderDetailsServiceInterface{
   Future<dynamic> setUpOrder(OrderSetupModel orderSetUpModel);
   Future<dynamic> getOrderDetails(String orderID);
   Future<dynamic> getOrderBreakdown(String orderID);
+
+  Future<dynamic> getShipmentHolds(String orderID);
   Future<dynamic> getOrderStatusList(String type);
   Future<dynamic> uploadAfterSellDigitalProduct(File? filePath, String token, String orderId);
   Future<HttpClientResponse> productDownload(String url);

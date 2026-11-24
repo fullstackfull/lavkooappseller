@@ -1998,5 +1998,7 @@
   "sales_not_sent_explained": "سُجّلت هذه المبيعات على هذا الجهاز ولم يقبلها الخادم بعد عدة محاولات. تبقى هنا مع سبب الرفض إلى أن تعيد المحاولة أو تحذفها.",
   "remove_sale": "حذف هذه البيعة من الجهاز",
   "remove_sale_confirmation": "لم يسجّل الخادم هذه البيعة قط. إذا حذفتها فلن تبقى منها أي نسخة. هل تريد حذفها؟",
-  "totals_of_different_currencies_are_not_added": "لا تُجمع الإجماليات بعملات مختلفة"
+  "totals_of_different_currencies_are_not_added": "لا تُجمع الإجماليات بعملات مختلفة",
+  "shipment_on_hold": "لم تُغادر إحدى الشحنات بعد",
+  "the_reason_was_not_recorded": "لم يُسجَّل السبب."
 }

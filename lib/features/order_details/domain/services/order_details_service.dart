@@ -19,6 +19,11 @@ class OrderDetailsService implements OrderDetailsServiceInterface {
   }
 
   @override
+  Future getShipmentHolds(String orderID) {
+    return orderDetailsRepositoryInterface.getShipmentHolds(orderID);
+  }
+
+  @override
   Future getOrderStatusList(String type) {
     return orderDetailsRepositoryInterface.getOrderStatusList(type);
   }

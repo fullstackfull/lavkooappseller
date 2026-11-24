@@ -14,4 +14,7 @@ abstract class OrderDetailsRepositoryInterface implements RepositoryInterface{
   /// What the order is worth to this seller, and every recorded event on it.
   Future<ApiResponse> getOrderBreakdown(String orderID);
 
+  /// Why a shipment of this order has not left (H1-04, H1-06).
+  Future<ApiResponse> getShipmentHolds(String orderID);
+
 }

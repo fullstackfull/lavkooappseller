@@ -66,6 +66,16 @@ class OrderDetailsRepository implements OrderDetailsRepositoryInterface{
   }
 
   @override
+  Future<ApiResponse> getShipmentHolds(String orderID) async {
+    try {
+      final response = await dioClient!.get('${AppConstants.orderDetails}$orderID/shipment-holds');
+      return ApiResponse.withSuccess(response);
+    } catch (e) {
+      return ApiResponse.withError(ApiErrorHandler.getMessage(e));
+    }
+  }
+
+  @override
   Future<ApiResponse> uploadAfterSellDigitalProduct(File? filePath, String token, String orderId) async {
     http.MultipartRequest request = http.MultipartRequest('POST', Uri.parse('${AppConstants.baseUrl}${AppConstants.digitalProductUploadAfterSell}'));
     request.headers.addAll(dioClient!.multipartHeaders(token: token));
