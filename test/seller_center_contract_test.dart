@@ -156,17 +156,25 @@ void main() {
 
       expect(payouts.reserved, -100, reason: 'a live hold is a negative bucket');
       expect(payouts.paid, -200, reason: 'money already paid out stays in the balance as a negative');
+      // The `!` is part of the assertion now: a bucket the answer did not carry would throw here rather than quietly add
+      // itself as a zero and keep the column looking as if it adds up.
       expect(
-        payouts.available + payouts.pending + payouts.reserved + payouts.paid,
+        payouts.available! + payouts.pending! + payouts.reserved! + payouts.paid!,
         payouts.balance,
       );
     });
 
-    test('survives a payload with no balances object', () {
+    test('survives a payload with no balances object, and reads a figure it does not carry as none rather than as zero', () {
+      // This used to assert 0, which is what the screen then printed: "withdrawable 0.00" in the largest type on the screen a
+      // seller asks for money from. A zero is a figure a seller acts on and an absent figure is not one, so the model keeps
+      // them apart and the screen draws a dash or the server's reason (K-04.2).
       final PayoutOverviewModel payouts = PayoutOverviewModel.fromJson(<String, dynamic>{});
 
-      expect(payouts.available, 0);
-      expect(payouts.withdrawable, 0);
+      expect(payouts.available, isNull);
+      expect(payouts.withdrawable, isNull);
+      expect(payouts.hasWithdrawableFigure, isFalse, reason: 'so there is nothing to ask a payout against');
+      expect(payouts.totalsRefused, isFalse, reason: 'and nothing was refused either: the answer was simply empty');
+      expect(payouts.balancesByCurrency, isEmpty);
       expect(payouts.requests, isEmpty);
       expect(payouts.payoutEligible, isTrue);
     });

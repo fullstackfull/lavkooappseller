@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:syriacosmeticsmanger/data/model/currency_figures.dart';
 import 'package:syriacosmeticsmanger/features/action_center/widgets/action_center_widgets.dart';
 import 'package:syriacosmeticsmanger/features/control_tower/domain/models/control_tower_models.dart';
 import 'package:syriacosmeticsmanger/features/reports/widgets/report_widgets.dart';
@@ -170,11 +171,34 @@ class DailyBriefingWidget extends StatelessWidget {
         ),
         ReportRowWidget(label: 'returns_to_answer', value: '${briefing.returnsToAnswer}'),
         ReportRowWidget(label: 'low_stock_products', value: '${briefing.lowStockProducts}'),
+        // A dash where the server refused to add two currencies, and the reason under the card: the same choice the changes
+        // above make for a figure the server deliberately did not produce. A zero here is a figure a seller acts on (K-04.2).
         ReportRowWidget(
           label: 'withdrawable_balance',
-          value: PriceConverter.convertPrice(context, briefing.withdrawable),
+          value: briefing.withdrawable == null ? '—' : PriceConverter.convertPrice(context, briefing.withdrawable),
         ),
       ]),
+
+      if (briefing.totalsRefused) ...[
+        const SizedBox(height: Dimensions.paddingSizeSmall),
+        ReportCardWidget(children: [
+          Row(children: [
+            Icon(Icons.info_outline, size: 18, color: Theme.of(context).colorScheme.error),
+            const SizedBox(width: Dimensions.paddingSizeExtraSmall),
+            Expanded(
+              child: Text(
+                getTranslated(briefing.totalsRefusedBecause!, context) ?? briefing.totalsRefusedBecause!,
+                style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall),
+              ),
+            ),
+          ]),
+          for (final CurrencyFiguresModel group in briefing.balanceByCurrency)
+            ReportRowWidget(
+              label: group.currencyCode,
+              value: group['withdrawable'] == null ? '—' : group['withdrawable']!.toStringAsFixed(2),
+            ),
+        ]),
+      ],
     ]);
   }
 

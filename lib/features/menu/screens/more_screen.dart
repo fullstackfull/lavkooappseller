@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:provider/provider.dart';
+import 'package:syriacosmeticsmanger/features/security/controllers/seller_permission_controller.dart';
+import 'package:syriacosmeticsmanger/features/security/domain/models/seller_permission_scope.dart';
 import 'package:syriacosmeticsmanger/features/automation/screens/automation_screen.dart';
 import 'package:syriacosmeticsmanger/features/brand_claims/screens/brand_claims_screen.dart';
 import 'package:syriacosmeticsmanger/features/security/screens/security_screen.dart';
@@ -55,10 +58,35 @@ class MoreScreen extends StatelessWidget {
 
   /// Whether the market tile is part of the screen: only in a build with storefronts on.
   final bool storefrontsEnabled;
-  const MoreScreen({super.key, this.onSelectTab, this.storefrontsEnabled = StorefrontConfig.enabled});
+
+  /// What the signed-in role may use; the controller of the app when none is given, and no limit at all when the container has
+  /// none — a build whose role screens are off draws every entry, as this screen always did.
+  final SellerPermissionController? permissionController;
+
+  const MoreScreen({
+    super.key,
+    this.onSelectTab,
+    this.storefrontsEnabled = StorefrontConfig.enabled,
+    this.permissionController,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final GetIt locator = GetIt.instance;
+    final SellerPermissionController? permissions = permissionController ??
+        (locator.isRegistered<SellerPermissionController>() ? locator<SellerPermissionController>() : null);
+
+    if (permissions == null) {
+      return _screen(context, const SellerPermissionScope.unrestricted());
+    }
+
+    return ListenableBuilder(
+      listenable: permissions,
+      builder: (BuildContext context, Widget? child) => _screen(context, permissions.scope),
+    );
+  }
+
+  Widget _screen(BuildContext context, SellerPermissionScope scope) {
     return Scaffold(
       appBar: CustomAppBarWidget(title: getTranslated('more', context), isBackButtonExist: false),
       body: Consumer<SplashController>(
@@ -80,106 +108,135 @@ class MoreScreen extends StatelessWidget {
                       isProfile: true, title: getTranslated('profile', context),
                       onTap: () => _push(context, const ProfileScreenView()),
                     ),
-                    CustomBottomSheetWidget(image: Images.myShop, title: getTranslated('my_shop', context),
-                      onTap: () => _push(context, const ShopScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.pieChart, title: getTranslated('seller_center', context),
-                      onTap: () => _push(context, const ScorecardScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.termsAndCondition, title: getTranslated('verification', context),
-                      onTap: () => _push(context, const VerificationScreen()),
-                    ),
+                    if(scope.allows(SellerScreen.myShop))
+                      CustomBottomSheetWidget(image: Images.myShop, title: getTranslated('my_shop', context),
+                        onTap: () => _push(context, const ShopScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.sellerCentre))
+                      CustomBottomSheetWidget(image: Images.pieChart, title: getTranslated('seller_center', context),
+                        onTap: () => _push(context, const ScorecardScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.verification))
+                      CustomBottomSheetWidget(image: Images.termsAndCondition, title: getTranslated('verification', context),
+                        onTap: () => _push(context, const VerificationScreen()),
+                      ),
                     CustomBottomSheetWidget(image: Images.settings, title: getTranslated('settings', context),
                       onTap: () => _push(context, const SettingsScreen()),
                     ),
                   ]),
 
                   _MenuSection(title: 'catalog_and_sales', items: [
-                    CustomBottomSheetWidget(image: Images.addProduct, title: getTranslated('add_product', context),
-                      onTap: () => _push(context, const AddProductTabView(fromHome: false)),
-                    ),
-                    CustomBottomSheetWidget(image: Images.productIconPp, title: getTranslated('products', context),
-                      onTap: () => onSelectTab?.call(3),
-                    ),
-                    CustomBottomSheetWidget(image: Images.productIconPp, title: getTranslated('bulk_operations', context),
-                      onTap: () => _push(context, const BulkJobsScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.restockIcon, title: getTranslated('inventory', context),
-                      onTap: () => _push(context, const InventoryScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.restockIcon, title: getTranslated('restock', context),
-                      onTap: () => _push(context, const RestockListScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.clearanceSaleImage, title: getTranslated('clearance_sale', context),
-                      onTap: () => _push(context, const ClearanceSaleScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.couponIcon, title: getTranslated('coupons', context),
-                      onTap: () => _push(context, const CouponListScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.reviewIcon, title: getTranslated('reviews', context),
-                      onTap: () => _push(context, const ProductReviewScreen()),
-                    ),
+                    if(scope.allows(SellerScreen.addProduct))
+                      CustomBottomSheetWidget(image: Images.addProduct, title: getTranslated('add_product', context),
+                        onTap: () => _push(context, const AddProductTabView(fromHome: false)),
+                      ),
+                    if(scope.allows(SellerScreen.products))
+                      CustomBottomSheetWidget(image: Images.productIconPp, title: getTranslated('products', context),
+                        onTap: () => onSelectTab?.call(3),
+                      ),
+                    if(scope.allows(SellerScreen.bulkOperations))
+                      CustomBottomSheetWidget(image: Images.productIconPp, title: getTranslated('bulk_operations', context),
+                        onTap: () => _push(context, const BulkJobsScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.inventory))
+                      CustomBottomSheetWidget(image: Images.restockIcon, title: getTranslated('inventory', context),
+                        onTap: () => _push(context, const InventoryScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.restock))
+                      CustomBottomSheetWidget(image: Images.restockIcon, title: getTranslated('restock', context),
+                        onTap: () => _push(context, const RestockListScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.clearanceSale))
+                      CustomBottomSheetWidget(image: Images.clearanceSaleImage, title: getTranslated('clearance_sale', context),
+                        onTap: () => _push(context, const ClearanceSaleScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.coupons))
+                      CustomBottomSheetWidget(image: Images.couponIcon, title: getTranslated('coupons', context),
+                        onTap: () => _push(context, const CouponListScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.reviews))
+                      CustomBottomSheetWidget(image: Images.reviewIcon, title: getTranslated('reviews', context),
+                        onTap: () => _push(context, const ProductReviewScreen()),
+                      ),
                   ]),
 
                   _MenuSection(title: 'orders_and_operations', items: [
-                    if(configModel?.posActive == 1 && profileProvider.userInfoModel?.posActive == 1)
+                    if(configModel?.posActive == 1 && profileProvider.userInfoModel?.posActive == 1
+                        && scope.allows(SellerScreen.pointOfSale))
                       CustomBottomSheetWidget(image: Images.pos, title: getTranslated('pos', context),
                         onTap: () => onSelectTab?.call(2),
                       ),
-                    CustomBottomSheetWidget(image: Images.refund, title: getTranslated('refund', context),
-                      onTap: () => _push(context, const RefundScreen(fromNotification: false, isBacButtonExist: true)),
-                    ),
-                    CustomBottomSheetWidget(image: Images.refund, title: getTranslated('returns', context),
-                      onTap: () => _push(context, const ReturnsScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.message, title: getTranslated('inbox', context),
-                      onTap: () => _push(context, const InboxScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.deliveryManIcon, title: getTranslated('deliveryman', context),
-                      onTap: () => _push(context, const DeliveryManSetupScreen()),
-                    ),
+                    if(scope.allows(SellerScreen.refund))
+                      CustomBottomSheetWidget(image: Images.refund, title: getTranslated('refund', context),
+                        onTap: () => _push(context, const RefundScreen(fromNotification: false, isBacButtonExist: true)),
+                      ),
+                    if(scope.allows(SellerScreen.returns))
+                      CustomBottomSheetWidget(image: Images.refund, title: getTranslated('returns', context),
+                        onTap: () => _push(context, const ReturnsScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.inbox))
+                      CustomBottomSheetWidget(image: Images.message, title: getTranslated('inbox', context),
+                        onTap: () => _push(context, const InboxScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.deliveryMan))
+                      CustomBottomSheetWidget(image: Images.deliveryManIcon, title: getTranslated('deliveryman', context),
+                        onTap: () => _push(context, const DeliveryManSetupScreen()),
+                      ),
                   ]),
 
                   _MenuSection(title: 'finance_and_reports', items: [
-                    CustomBottomSheetWidget(image: Images.wallet, title: getTranslated('wallet', context),
-                      onTap: () => _push(context, const WalletScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.bankingInfo, title: getTranslated('bank_info', context),
-                      onTap: () => _push(context, const BankInfoScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.wallet, title: getTranslated('payouts', context),
-                      onTap: () => _push(context, const PayoutsScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.bankingInfo, title: getTranslated('statement', context),
-                      onTap: () => _push(context, const StatementScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.pieChart, title: getTranslated('analytics', context),
-                      onTap: () => _push(context, const AnalyticsScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.reportIcon, title: getTranslated('control_tower', context),
-                      onTap: () => _push(context, const ControlTowerScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.settings, title: getTranslated('automation', context),
-                      onTap: () => _push(context, const AutomationScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.bankingInfo, title: getTranslated('money_and_pricing', context),
-                      onTap: () => _push(context, const FinanceControlScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.privacyPolicy, title: getTranslated('brands', context),
-                      onTap: () => _push(context, const BrandClaimsScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.privacyPolicy, title: getTranslated('security_centre', context),
-                      onTap: () => _push(context, const SecurityScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.reportIcon, title: getTranslated('order_report', context),
-                      onTap: () => _push(context, const OrderReportScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.reportIcon, title: getTranslated('product_report', context),
-                      onTap: () => _push(context, const ProductReportScreen()),
-                    ),
-                    CustomBottomSheetWidget(image: Images.reportIcon, title: getTranslated('stock_report', context),
-                      onTap: () => _push(context, const StockReportScreen()),
-                    ),
+                    if(scope.allows(SellerScreen.wallet))
+                      CustomBottomSheetWidget(image: Images.wallet, title: getTranslated('wallet', context),
+                        onTap: () => _push(context, const WalletScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.bankInformation))
+                      CustomBottomSheetWidget(image: Images.bankingInfo, title: getTranslated('bank_info', context),
+                        onTap: () => _push(context, const BankInfoScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.payouts))
+                      CustomBottomSheetWidget(image: Images.wallet, title: getTranslated('payouts', context),
+                        onTap: () => _push(context, const PayoutsScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.statement))
+                      CustomBottomSheetWidget(image: Images.bankingInfo, title: getTranslated('statement', context),
+                        onTap: () => _push(context, const StatementScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.analytics))
+                      CustomBottomSheetWidget(image: Images.pieChart, title: getTranslated('analytics', context),
+                        onTap: () => _push(context, const AnalyticsScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.controlTower))
+                      CustomBottomSheetWidget(image: Images.reportIcon, title: getTranslated('control_tower', context),
+                        onTap: () => _push(context, const ControlTowerScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.automation))
+                      CustomBottomSheetWidget(image: Images.settings, title: getTranslated('automation', context),
+                        onTap: () => _push(context, const AutomationScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.moneyAndPricing))
+                      CustomBottomSheetWidget(image: Images.bankingInfo, title: getTranslated('money_and_pricing', context),
+                        onTap: () => _push(context, const FinanceControlScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.brands))
+                      CustomBottomSheetWidget(image: Images.privacyPolicy, title: getTranslated('brands', context),
+                        onTap: () => _push(context, const BrandClaimsScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.securityCentre))
+                      CustomBottomSheetWidget(image: Images.privacyPolicy, title: getTranslated('security_centre', context),
+                        onTap: () => _push(context, const SecurityScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.orderReport))
+                      CustomBottomSheetWidget(image: Images.reportIcon, title: getTranslated('order_report', context),
+                        onTap: () => _push(context, const OrderReportScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.productReport))
+                      CustomBottomSheetWidget(image: Images.reportIcon, title: getTranslated('product_report', context),
+                        onTap: () => _push(context, const ProductReportScreen()),
+                      ),
+                    if(scope.allows(SellerScreen.stockReport))
+                      CustomBottomSheetWidget(image: Images.reportIcon, title: getTranslated('stock_report', context),
+                        onTap: () => _push(context, const StockReportScreen()),
+                      ),
                     CustomBottomSheetWidget(image: Images.reportIcon, title: getTranslated('vat_management', context),
                       onTap: () => _push(context, const VatManagementScreen()),
                     ),

@@ -375,6 +375,82 @@ void main() {
     });
   });
 
+  /// A market is a selling company and not only a country (GCC-20 AC2): the figures on a card are that company's books, and an
+  /// owner reading six cards has to be able to tell whose. The platform answers one company per market, so the app names each
+  /// market's own and never carries one market's company onto another's card -- which is what will matter on the day the
+  /// platform stops answering the same name for all six.
+  group('the company that sells in a market', () {
+    setUp(signIn);
+
+    /// The directory of markets, with the company of the markets named in [entities] replaced by what it maps them to.
+    void marketsNaming(Map<String, String?> entities) {
+      final Map<String, dynamic> directory = fixtureData('markets_owner');
+      final List<Map<String, dynamic>> markets = (directory['markets'] as List)
+          .map((Object? row) => Map<String, dynamic>.from(row as Map))
+          .toList();
+      for (final Map<String, dynamic> market in markets) {
+        if (entities.containsKey(market['code'])) {
+          market['legal_entity'] = entities[market['code']];
+        }
+      }
+      directory['markets'] = markets;
+      service.onMarkets = () async =>
+          PlatformAdminResult<PlatformMarketDirectory>.success(PlatformMarketDirectory.fromJson(directory));
+    }
+
+    testWidgets('is named on every card, under the name of the market it sells in', (WidgetTester tester) async {
+      await pumpOverview(tester);
+
+      expect(find.text('Lavkoo Trading Co.', skipOffstage: false), findsNWidgets(6));
+      expect(inCard('SA', find.text('Lavkoo Trading Co.')), findsOneWidget);
+      expect(
+        tester.getTopLeft(inCard('SA', find.text('Lavkoo Trading Co.'))).dy,
+        greaterThan(tester.getTopLeft(inCard('SA', find.text('Saudi Arabia'))).dy),
+        reason: 'the company is read under the market, not instead of it',
+      );
+      expect(
+        tester.getTopLeft(inCard('SA', find.text('Lavkoo Trading Co.'))).dy,
+        lessThan(tester.getTopLeft(inCard('SA', find.text('Orders in this window'))).dy),
+        reason: 'and above the figures it owns, never beside one',
+      );
+    });
+
+    testWidgets('is each market\'s own, and one market\'s company is never read on another\'s card',
+        (WidgetTester tester) async {
+      marketsNaming(<String, String?>{'AE': 'Lavkoo Emirates LLC', 'KW': 'Lavkoo Kuwait WLL'});
+
+      await pumpOverview(tester);
+
+      expect(inCard('AE', find.text('Lavkoo Emirates LLC')), findsOneWidget);
+      expect(inCard('KW', find.text('Lavkoo Kuwait WLL')), findsOneWidget);
+      expect(inCard('AE', find.text('Lavkoo Kuwait WLL')), findsNothing);
+      expect(inCard('SA', find.text('Lavkoo Emirates LLC')), findsNothing);
+      expect(find.text('Lavkoo Trading Co.', skipOffstage: false), findsNWidgets(4));
+    });
+
+    testWidgets('a market the platform names no company for says nothing in its place', (WidgetTester tester) async {
+      marketsNaming(<String, String?>{'SA': null});
+
+      await pumpOverview(tester);
+
+      expect(inCard('SA', find.text('Lavkoo Trading Co.')), findsNothing);
+      expect(inCard('SA', find.text('Saudi Arabia')), findsOneWidget, reason: 'the card itself is unchanged');
+      expect(find.text('Lavkoo Trading Co.', skipOffstage: false), findsNWidgets(5));
+    });
+
+    testWidgets('and a market whose own facts have not been read yet says nothing either', (WidgetTester tester) async {
+      final PlatformOverviewModel overview = PlatformOverviewModel.fromJson(fixtureData('overview_owner_all'));
+      PlatformAdminHarness.useScreen(tester, PlatformAdminHarness.tallPhone);
+      await tester.pumpWidget(await PlatformAdminHarness.app(
+        tester,
+        home: Scaffold(body: PlatformMarketCard(overview: overview.markets.first)),
+      ));
+
+      expect(find.text('Lavkoo Trading Co.'), findsNothing);
+      expect(find.text('Saudi Arabia'), findsOneWidget);
+    });
+  });
+
   group('when it cannot be counted', () {
     setUp(signIn);
 

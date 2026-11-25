@@ -65,7 +65,12 @@ class SellerCenterCardWidget extends StatelessWidget {
                     ),
                     _OverviewStatWidget(
                       title: 'withdrawable_balance',
-                      value: PriceConverter.convertPrice(context, overview.finance?.withdrawable ?? 0),
+                      // A dash where the server refused to add two currencies, as the briefing's own changes do. One tile is
+                      // no place for six currencies, and the payouts screen below says why in full; what matters here is that
+                      // a refusal is never drawn as 0.00, which is a figure a seller acts on (K-04.2).
+                      value: overview.finance?.withdrawable == null
+                          ? '—'
+                          : PriceConverter.convertPrice(context, overview.finance!.withdrawable),
                       color: Theme.of(context).textTheme.bodyLarge?.color,
                     ),
                     _OverviewStatWidget(

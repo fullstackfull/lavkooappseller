@@ -33,7 +33,11 @@ class PlatformMarketCard extends StatelessWidget {
 
     return ReportCardWidget(
       children: [
-        _Header(code: overview.market, currency: overview.storefrontCurrency),
+        _Header(
+          code: overview.market,
+          currency: overview.storefrontCurrency,
+          legalEntity: facts?.legalEntity,
+        ),
         const SizedBox(height: Dimensions.paddingSizeSmall),
         Wrap(spacing: Dimensions.paddingSizeExtraSmall, runSpacing: Dimensions.paddingSizeExtraSmall, children: [
           _statusTag(context, overview.active, getTranslated('platform_admin_market_active', context)!,
@@ -196,18 +200,37 @@ class _Header extends StatelessWidget {
   final String code;
   final String? currency;
 
-  const _Header({required this.code, this.currency});
+  /// The company that sells in this market, as the platform answered it; null
+  /// until the market itself has been read, and on a platform that names none.
+  ///
+  /// It is on the card because a market is a selling company and not only a
+  /// country (GCC-20 AC2): the figures under it are that company's books, and
+  /// an owner reading six cards has to be able to tell whose. It is drawn as a
+  /// name and never beside a figure, which is the rule the money note keeps.
+  final String? legalEntity;
+
+  const _Header({required this.code, this.currency, this.legalEntity});
 
   @override
   Widget build(BuildContext context) {
-    return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+    final String? entity = legalEntity;
+
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Expanded(
-        child:
-            Wrap(spacing: Dimensions.paddingSizeExtraSmall, crossAxisAlignment: WrapCrossAlignment.center, children: [
-          Text(PlatformAdminTexts.marketName(context, code),
-              style: robotoBold.copyWith(fontSize: Dimensions.fontSizeLarge)),
-          Text(code,
-              style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).hintColor)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Wrap(spacing: Dimensions.paddingSizeExtraSmall, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            Text(PlatformAdminTexts.marketName(context, code),
+                style: robotoBold.copyWith(fontSize: Dimensions.fontSizeLarge)),
+            Text(code,
+                style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).hintColor)),
+          ]),
+          if (entity != null)
+            Padding(
+              padding: const EdgeInsets.only(top: Dimensions.paddingSizeExtraSmall),
+              child: Text(entity,
+                  style:
+                      robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).hintColor)),
+            ),
         ]),
       ),
       if (currency != null)
