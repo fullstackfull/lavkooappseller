@@ -49,7 +49,20 @@ class SellerSessionToken {
   bool get isPrimed => _primed;
 
   /// The token to sign a request with, or empty when there is no session.
-  String get value => _primed ? _cached : (_preferences?.getString(AppConstants.token) ?? '');
+  ///
+  /// A primed store with NO session in hand still consults the legacy key, for
+  /// the same reason an unprimed one does: a session that exists must never be
+  /// lost because of where it happens to be written. [prime] erases that key and
+  /// so does [clear], so on a real device the fallback finds nothing after the
+  /// first launch — it only ever answers when something has written a token
+  /// there since, which is a writer that has not been moved across yet.
+  ///
+  /// It is not a way back to plaintext: nothing here WRITES the legacy key
+  /// except [save]'s last resort, when the keystore itself refused the write and
+  /// the alternative is locking the seller out.
+  String get value => _primed && _cached.isNotEmpty
+      ? _cached
+      : (_preferences?.getString(AppConstants.token) ?? '');
 
   bool get exists => value.isNotEmpty;
 
