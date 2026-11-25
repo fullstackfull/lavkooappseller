@@ -71,6 +71,7 @@ abstract final class PlatformAdminTexts {
         'payments_unreconciled' => getTranslated('platform_admin_alert_payments_unreconciled', context)!,
         'channels_failing' => getTranslated('platform_admin_alert_channels_failing', context)!,
         'carriers_failing' => getTranslated('platform_admin_alert_carriers_failing', context)!,
+        'books_need_a_person' => getTranslated('platform_admin_alert_books_need_a_person', context)!,
         'shop_issues_open' => getTranslated('platform_admin_alert_shop_issues_open', context)!,
         'approvals_pending' => getTranslated('platform_admin_alert_approvals_pending', context)!,
         _ => code.toTitleCase(),

@@ -82,6 +82,39 @@ class PlatformHealthCard extends StatelessWidget {
           ),
           const Divider(height: Dimensions.paddingSizeLarge),
           Text(
+            getTranslated('platform_admin_books', context)!,
+            style: robotoMedium.copyWith(fontSize: Dimensions.fontSizeDefault),
+          ),
+          const SizedBox(height: Dimensions.paddingSizeExtraSmall),
+          _figure(
+            context,
+            label: getTranslated('platform_admin_postings_needing_a_person', context)!,
+            value: health.books.postingsNeedingAPerson,
+            meaning: means['integrations.books.postings_needing_a_person'],
+          ),
+          _figure(
+            context,
+            label: getTranslated('platform_admin_overdue_postings', context)!,
+            value: health.books.overduePostings,
+            meaning: means['integrations.books.overdue_postings'],
+          ),
+          _figure(
+            context,
+            label: getTranslated('platform_admin_queued_postings', context)!,
+            value: health.books.queuedPostings,
+            meaning: means['integrations.books.queued_postings'],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: Dimensions.paddingSizeExtraSmall),
+            child: Text(
+              health.books.lastPostedAt == null
+                  ? getTranslated('platform_admin_never_posted', context)!
+                  : '${getTranslated('platform_admin_last_posted', context)!}: ${PlatformAdminTexts.moment(health.books.lastPostedAt!)}',
+              style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).hintColor),
+            ),
+          ),
+          const Divider(height: Dimensions.paddingSizeLarge),
+          Text(
             getTranslated('platform_admin_issues', context)!,
             style: robotoMedium.copyWith(fontSize: Dimensions.fontSizeDefault),
           ),

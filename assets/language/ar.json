@@ -2022,5 +2022,12 @@
   "platform_admin_alert_channels_failing": "قناة بيع متعطلة",
   "platform_admin_alert_carriers_failing": "ناقل متعطل",
   "platform_admin_alert_shop_issues_open": "متاجر خارج السياسة",
-  "platform_admin_alert_approvals_pending": "موافقات معلقة"
+  "platform_admin_alert_approvals_pending": "موافقات معلقة",
+  "platform_admin_books": "طابور المحاسبة",
+  "platform_admin_postings_needing_a_person": "متوقف ويحتاج قرارًا",
+  "platform_admin_overdue_postings": "متأخر في الطابور",
+  "platform_admin_queued_postings": "في انتظار الترحيل",
+  "platform_admin_last_posted": "آخر ترحيل",
+  "platform_admin_never_posted": "لم يُرحَّل شيء بعد",
+  "platform_admin_alert_books_need_a_person": "قيود محاسبية متوقفة"
 }

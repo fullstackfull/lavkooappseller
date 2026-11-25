@@ -2022,5 +2022,12 @@
   "platform_admin_alert_channels_failing": "Sales channel failing",
   "platform_admin_alert_carriers_failing": "Carrier failing",
   "platform_admin_alert_shop_issues_open": "Shops out of policy",
-  "platform_admin_alert_approvals_pending": "Approvals waiting"
+  "platform_admin_alert_approvals_pending": "Approvals waiting",
+  "platform_admin_books": "Accounting queue",
+  "platform_admin_postings_needing_a_person": "Stopped, needs a decision",
+  "platform_admin_overdue_postings": "Overdue in the queue",
+  "platform_admin_queued_postings": "Waiting to post",
+  "platform_admin_last_posted": "Last posted",
+  "platform_admin_never_posted": "Nothing has posted yet",
+  "platform_admin_alert_books_need_a_person": "Accounting entries stopped"
 }

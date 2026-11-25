@@ -114,6 +114,44 @@ class PlatformCarrierHealth {
   bool get hasTrouble => failingCapabilities > 0 || lateCapabilities > 0;
 }
 
+/// A market's accounting queue: what is waiting, what has stopped, what is
+/// overdue, and when an entry last reached the books (L-09).
+///
+/// Three figures and three different questions, never added together. `queued`
+/// is work the queue can still do by itself and is NOT a fault; `needsAPerson`
+/// is what it has stopped on and is the figure to act on; `overdue` is queued
+/// work whose turn has passed, which is how a stopped worker looks from here.
+class PlatformBooksHealth {
+  /// Entries the queue can still post by itself. Not a fault.
+  final int queuedPostings;
+
+  /// Entries the queue has stopped trying on: a decision is owed, or it gave up.
+  final int postingsNeedingAPerson;
+
+  /// Queued entries whose turn has passed and that nothing has worked.
+  final int overduePostings;
+
+  /// The latest entry that reached the books, whenever it was.
+  final DateTime? lastPostedAt;
+
+  const PlatformBooksHealth({
+    this.queuedPostings = 0,
+    this.postingsNeedingAPerson = 0,
+    this.overduePostings = 0,
+    this.lastPostedAt,
+  });
+
+  factory PlatformBooksHealth.fromJson(Map<String, dynamic> json) => PlatformBooksHealth(
+        queuedPostings: PlatformJson.count(json['queued_postings']),
+        postingsNeedingAPerson: PlatformJson.count(json['postings_needing_a_person']),
+        overduePostings: PlatformJson.count(json['overdue_postings']),
+        lastPostedAt: PlatformJson.moment(json['last_posted_at']),
+      );
+
+  /// A queued entry is not trouble. Only what has stopped, or is overdue, is.
+  bool get hasTrouble => postingsNeedingAPerson > 0 || overduePostings > 0;
+}
+
 /// One market's health, or the rows whose market the platform does not record.
 class PlatformMarketHealth {
   /// Null for the unattributed row.
@@ -122,6 +160,7 @@ class PlatformMarketHealth {
   final PlatformPaymentHealth payments;
   final PlatformChannelHealth channels;
   final PlatformCarrierHealth carriers;
+  final PlatformBooksHealth books;
   final PlatformIssueHealth issues;
 
   /// Why these rows are apart, which the server sends only for the unattributed row.
@@ -131,6 +170,7 @@ class PlatformMarketHealth {
     required this.payments,
     required this.channels,
     required this.carriers,
+    this.books = const PlatformBooksHealth(),
     this.issues = const PlatformIssueHealth(),
     this.market,
     this.legalEntity,
@@ -143,6 +183,7 @@ class PlatformMarketHealth {
         payments: PlatformPaymentHealth.fromJson(PlatformJson.map(json['payments'])),
         channels: PlatformChannelHealth.fromJson(PlatformJson.map(PlatformJson.map(json['integrations'])['channels'])),
         carriers: PlatformCarrierHealth.fromJson(PlatformJson.map(PlatformJson.map(json['integrations'])['carriers'])),
+        books: PlatformBooksHealth.fromJson(PlatformJson.map(PlatformJson.map(json['integrations'])['books'])),
         issues: PlatformIssueHealth.fromJson(PlatformJson.map(json['issues'])),
         reason: PlatformJson.string(json['reason']),
       );
@@ -153,7 +194,8 @@ class PlatformMarketHealth {
   ///
   /// Every group is asked, the issues included: a market whose shops are out of
   /// policy and whose payments are fine was drawn as though nothing were on it.
-  bool get needsAttention => payments.hasTrouble || channels.hasTrouble || carriers.hasTrouble || issues.hasTrouble;
+  bool get needsAttention =>
+      payments.hasTrouble || channels.hasTrouble || carriers.hasTrouble || books.hasTrouble || issues.hasTrouble;
 }
 
 /// The whole answer of `GET /health`.
