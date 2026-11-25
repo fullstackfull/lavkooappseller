@@ -2012,5 +2012,6 @@
   "platform_admin_late": "No success in this window",
   "platform_admin_last_success": "Last success",
   "platform_admin_never_succeeded": "Has never succeeded",
-  "platform_admin_unattributed": "Market not recorded"
+  "platform_admin_unattributed": "Market not recorded",
+  "platform_admin_reconciliation_breaks": "Costs not reconciled"
 }

@@ -80,6 +80,8 @@ void main() {
 
       expect(saudi.health.payments.stuckAttempts, 2);
       expect(kuwait.health.payments.stuckAttempts, 0);
+      expect(saudi.health.payments.reconciliationBreaks, 2, reason: 'a backlog of its own, counted apart from the attempts');
+      expect(kuwait.health.payments.reconciliationBreaks, 0);
       expect(saudi.health.channels.failingResources, 1);
       expect(kuwait.health.channels.lateResources, 1);
       expect(saudi.health.carriers.failingCapabilities, 1);
@@ -100,6 +102,11 @@ void main() {
         reason: 'the carrier figure is not made the way the channel figure is',
       );
       expect(inCard(null, find.textContaining('never counted as the default market')), findsOneWidget);
+      expect(
+        inCard('SA', find.textContaining('does not fall when the window moves')),
+        findsOneWidget,
+        reason: 'the reconciliation figure is a backlog, and the screen says so in the server\'s words',
+      );
     });
 
     testWidgets('a market with nothing wrong reads zero rather than nothing at all', (WidgetTester tester) async {

@@ -3,21 +3,42 @@
     "scope": "all",
     "market": "KW",
     "generated_at": "2026-11-25T06:00:00Z",
-    "window": {"from": "2026-11-18", "to": "2026-11-25", "days": 7},
-    "freshness": {"mode": "live", "cached": false},
+    "window": {
+      "from": "2026-11-18",
+      "to": "2026-11-25",
+      "days": 7
+    },
+    "freshness": {
+      "mode": "live",
+      "cached": false
+    },
     "means": {
       "payments.stuck_attempts": "started, never confirmed, and older than 30 minutes",
       "integrations.channels.failing_resources": "resources that have failed 3 times in a row",
-      "integrations.carriers.failing_capabilities": "capabilities whose LAST event was a failure"
+      "integrations.carriers.failing_capabilities": "capabilities whose LAST event was a failure",
+      "payments.reconciliation_breaks": "cost reconciliations nobody has settled -- a variance not accepted, an invoice line with no estimate, an estimate with no invoice line. A BACKLOG and not a window: one from last month is still money this platform cannot account for, so this figure does not fall when the window moves"
     },
     "markets": [
       {
         "market": "KW",
         "legal_entity": "Lavkoo Kuwait",
-        "payments": {"stuck_attempts": 0},
+        "payments": {
+          "stuck_attempts": 0,
+          "reconciliation_breaks": 0
+        },
         "integrations": {
-          "channels": {"accounts": 1, "failing_resources": 0, "late_resources": 1, "last_success_at": null},
-          "carriers": {"connections": 0, "failing_capabilities": 0, "late_capabilities": 0, "last_success_at": null}
+          "channels": {
+            "accounts": 1,
+            "failing_resources": 0,
+            "late_resources": 1,
+            "last_success_at": null
+          },
+          "carriers": {
+            "connections": 0,
+            "failing_capabilities": 0,
+            "late_capabilities": 0,
+            "last_success_at": null
+          }
         }
       }
     ],

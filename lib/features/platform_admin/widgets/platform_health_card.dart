@@ -50,6 +50,12 @@ class PlatformHealthCard extends StatelessWidget {
             value: health.payments.stuckAttempts,
             meaning: means['payments.stuck_attempts'],
           ),
+          _figure(
+            context,
+            label: getTranslated('platform_admin_reconciliation_breaks', context)!,
+            value: health.payments.reconciliationBreaks,
+            meaning: means['payments.reconciliation_breaks'],
+          ),
           const Divider(height: Dimensions.paddingSizeLarge),
           _group(
             context,
