@@ -4,6 +4,7 @@ import 'package:syriacosmeticsmanger/common/basewidgets/confirmation_dialog_widg
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_app_bar_widget.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_dialog_widget.dart';
 import 'package:syriacosmeticsmanger/features/seller_center/controllers/seller_center_controller.dart';
+import 'package:syriacosmeticsmanger/data/model/currency_figures.dart';
 import 'package:syriacosmeticsmanger/features/seller_center/domain/models/payout_models.dart';
 import 'package:syriacosmeticsmanger/features/seller_center/widgets/request_payout_sheet_widget.dart';
 import 'package:syriacosmeticsmanger/features/seller_center/widgets/status_pill_widget.dart';
@@ -51,7 +52,11 @@ class _PayoutsScreenState extends State<PayoutsScreen> {
               ]);
             }
 
-            final bool canRequest = payouts.withdrawable > 0
+            // A refusal is not a ceiling of zero and not an unlimited one: there is no ceiling, so there is nothing to ask
+            // against. `hasWithdrawableFigure` is named as well as the figure itself, so a server that ever answered both a
+            // figure and a refusal refuses the request rather than letting the figure win (K-04.2).
+            final bool canRequest = payouts.hasWithdrawableFigure
+                && payouts.withdrawable! > 0
                 && payouts.payoutEligible
                 && !payouts.inCoolingPeriod;
 
@@ -66,15 +71,21 @@ class _PayoutsScreenState extends State<PayoutsScreen> {
                 // as negatives (money held for a request, money already paid
                 // out). All four are shown because they sum to the total — drop
                 // one and the column silently stops adding up.
-                _CardWidget(children: [
-                  _BalanceRowWidget(title: 'available', amount: payouts.available),
-                  _BalanceRowWidget(title: 'pending', amount: payouts.pending),
-                  _BalanceRowWidget(title: 'on_hold', amount: payouts.reserved),
-                  _BalanceRowWidget(title: 'already_paid_out', amount: payouts.paid),
-                  Divider(height: Dimensions.paddingSizeLarge,
-                      color: Theme.of(context).hintColor.withValues(alpha: .15)),
-                  _BalanceRowWidget(title: 'total_balance', amount: payouts.balance, isBold: true),
-                ]),
+                //
+                // Two currencies and there are no combined buckets to show, so each currency's own are listed instead. The
+                // screen must never print the refusal as 0.00: a zero is a figure a seller acts on (K-04.2).
+                if (payouts.totalsRefused)
+                  ..._perCurrencyBalances(context, payouts)
+                else
+                  _CardWidget(children: [
+                    _BalanceRowWidget(title: 'available', amount: payouts.available),
+                    _BalanceRowWidget(title: 'pending', amount: payouts.pending),
+                    _BalanceRowWidget(title: 'on_hold', amount: payouts.reserved),
+                    _BalanceRowWidget(title: 'already_paid_out', amount: payouts.paid),
+                    Divider(height: Dimensions.paddingSizeLarge,
+                        color: Theme.of(context).hintColor.withValues(alpha: .15)),
+                    _BalanceRowWidget(title: 'total_balance', amount: payouts.balance, isBold: true),
+                  ]),
 
                 // A refusal the seller can act on beats a disabled button with no reason.
                 if (!payouts.payoutEligible) ...[
@@ -115,6 +126,30 @@ class _PayoutsScreenState extends State<PayoutsScreen> {
       ),
     );
   }
+
+  /// The buckets of a ledger that holds more than one currency: one card per currency with that currency's own real figures.
+  ///
+  /// Deliberately not a single number with a footnote, and deliberately not a zero. The figure is the thing a seller reads,
+  /// and there isn't one.
+  List<Widget> _perCurrencyBalances(BuildContext context, PayoutOverviewModel payouts) {
+    return [
+      for (final CurrencyFiguresModel group in payouts.balancesByCurrency)
+        Padding(
+          padding: const EdgeInsets.only(bottom: Dimensions.paddingSizeSmall),
+          child: _CardWidget(children: [
+            Text(group.currencyCode,
+                style: robotoMedium.copyWith(
+                    fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).textTheme.bodyLarge?.color)),
+            _BalanceRowWidget(title: 'available', amount: group['available'], inOwnCurrency: true),
+            _BalanceRowWidget(title: 'pending', amount: group['pending'], inOwnCurrency: true),
+            _BalanceRowWidget(title: 'on_hold', amount: group['reserved'], inOwnCurrency: true),
+            _BalanceRowWidget(title: 'already_paid_out', amount: group['paid'], inOwnCurrency: true),
+            Divider(height: Dimensions.paddingSizeLarge, color: Theme.of(context).hintColor.withValues(alpha: .15)),
+            _BalanceRowWidget(title: 'total_balance', amount: group['balance'], isBold: true, inOwnCurrency: true),
+          ]),
+        ),
+    ];
+  }
 }
 
 class _WithdrawableCardWidget extends StatelessWidget {
@@ -139,11 +174,21 @@ class _WithdrawableCardWidget extends StatelessWidget {
             style: robotoRegular.copyWith(
                 fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).cardColor)),
         const SizedBox(height: Dimensions.paddingSizeExtraSmall),
-        // The withdrawable figure is a ceiling, so it truncates rather than
-        // rounds — rounding up would advertise more than the ledger allows.
-        Text(PriceConverter.convertPriceForWithdraw(context, payouts.withdrawable),
+        // Two currencies and there is no one ceiling, so the reason the server gave is shown where the figure would have been.
+        // This card used to print the refusal as 0.00 in the largest type on the screen, on the screen a seller asks for money
+        // from — and a zero looks authoritative in a way a sentence does not (K-04.2).
+        if (payouts.totalsRefused)
+          Text(
+            getTranslated(payouts.totalsRefusedBecause!, context) ?? payouts.totalsRefusedBecause!,
             style: robotoMedium.copyWith(
-                fontSize: Dimensions.fontSizeMaxLarge, color: Theme.of(context).cardColor)),
+                fontSize: Dimensions.fontSizeLarge, color: Theme.of(context).cardColor),
+          )
+        else
+          // The withdrawable figure is a ceiling, so it truncates rather than
+          // rounds — rounding up would advertise more than the ledger allows.
+          Text(PriceConverter.convertPriceForWithdraw(context, payouts.withdrawable ?? 0),
+              style: robotoMedium.copyWith(
+                  fontSize: Dimensions.fontSizeMaxLarge, color: Theme.of(context).cardColor)),
         const SizedBox(height: Dimensions.paddingSizeDefault),
 
         SizedBox(
@@ -220,19 +265,39 @@ class _PayoutRequestCardWidget extends StatelessWidget {
 
 class _BalanceRowWidget extends StatelessWidget {
   final String title;
-  final double amount;
+
+  /// The figure, or null where the answer carries none. A dash is drawn then: a zero is a figure a seller acts on, and a
+  /// figure the server deliberately refused to produce is not one.
+  final double? amount;
   final bool isBold;
-  const _BalanceRowWidget({required this.title, required this.amount, this.isBold = false});
+
+  /// Whether the figure is already in a currency the card names, so it is written as it came rather than converted to the
+  /// display currency. The point of a per-currency answer is that these are different kinds of money.
+  final bool inOwnCurrency;
+
+  const _BalanceRowWidget({
+    required this.title,
+    required this.amount,
+    this.isBold = false,
+    this.inOwnCurrency = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final TextStyle style = (isBold ? robotoMedium : robotoRegular)
         .copyWith(color: Theme.of(context).textTheme.bodyLarge?.color);
+    final double? figure = amount;
+    final String value = figure == null
+        ? '—'
+        : inOwnCurrency
+            ? figure.toStringAsFixed(2)
+            : PriceConverter.convertPrice(context, figure);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: Dimensions.paddingSizeExtraSmall),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Text(getTranslated(title, context)!, style: style),
-        Text(PriceConverter.convertPrice(context, amount), style: style),
+        Text(value, style: style),
       ]),
     );
   }

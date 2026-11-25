@@ -1175,6 +1175,14 @@ class SellerAppVersionControl {
 }
 
 class PlatformVersion {
+  /// Whether the platform's force-update gate is on for this platform: 1 on,
+  /// 0 off, null for a platform that published no switch.
+  ///
+  /// It used to be read as 0 whenever the key was absent or unreadable, which
+  /// is indistinguishable from a platform that switched the gate OFF — and
+  /// nothing read it, so nothing noticed. The gate honours it now
+  /// (`AppVersion.refusesEntryUntilUpdated`), so the difference matters: an
+  /// absent switch has to stay absent and leave the gate where it was.
   final int? status;
   final String? version;
   final String? link;
@@ -1187,7 +1195,7 @@ class PlatformVersion {
 
   factory PlatformVersion.fromJson(Map<String, dynamic> json) {
     return PlatformVersion(
-      status: int.tryParse(json['status']?.toString() ?? '0') ?? 0,
+      status: int.tryParse(json['status']?.toString() ?? ''),
       version: json['version'],
       link: json['link'],
     );

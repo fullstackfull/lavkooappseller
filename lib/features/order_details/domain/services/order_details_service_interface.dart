@@ -12,6 +12,9 @@ abstract class OrderDetailsServiceInterface{
   Future<dynamic> uploadAfterSellDigitalProduct(File? filePath, String token, String orderId);
   Future<HttpClientResponse> productDownload(String url);
 
+  /// The headers a fetch of [url] must carry (K-17).
+  Map<String, String> downloadHeaders(String url);
+
   Future <dynamic> getOrderInvoice(String orderID);
 
 }

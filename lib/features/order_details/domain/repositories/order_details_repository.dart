@@ -8,6 +8,7 @@ import 'package:syriacosmeticsmanger/data/datasource/remote/dio/dio_client.dart'
 import 'package:syriacosmeticsmanger/data/datasource/remote/exception/api_error_handler.dart';
 import 'package:syriacosmeticsmanger/features/order_details/domain/models/order_setup_model.dart';
 import 'package:syriacosmeticsmanger/features/order_details/domain/repositories/order_details_repository_interface.dart';
+import 'package:syriacosmeticsmanger/helper/digital_file_address.dart';
 import 'package:syriacosmeticsmanger/utill/app_constants.dart';
 
 class OrderDetailsRepository implements OrderDetailsRepositoryInterface{
@@ -148,11 +149,24 @@ class OrderDetailsRepository implements OrderDetailsRepositoryInterface{
   @override
   Future<HttpClientResponse> productDownload(String? url) async {
     HttpClient client = HttpClient();
+    final Map<String, String> headers = downloadHeaders(url ?? '');
     final response = await client.getUrl(Uri.parse(url!)).then((HttpClientRequest request) {
+      // The authenticated route of a private digital file needs the credential every other request of this app carries; a
+      // public storage address is given none, and neither is any other host (K-17).
+      headers.forEach((String name, String value) => request.headers.set(name, value));
       return request.close();
     },
     );
     return response;
+  }
+
+  @override
+  Map<String, String> downloadHeaders(String url) {
+    return DigitalFileAddress.headersFor(
+      url,
+      baseUrl: dioClient?.baseUrl ?? AppConstants.baseUrl,
+      token: dioClient?.token,
+    );
   }
 
   @override

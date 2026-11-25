@@ -51,4 +51,30 @@ class AppVersion {
     if (minimumVersion == null || minimumVersion.isEmpty) return false;
     return compare(minimumVersion, _version) == 1;
   }
+
+  /// Whether the platform's force-update gate is on for this platform.
+  ///
+  /// [publishedStatus] is `status` of `seller_app_version_control.for_android`
+  /// or `for_ios`, exactly as the platform published it: 1 is on, 0 is off, and
+  /// null is a platform that published no switch at all.
+  ///
+  /// Null keeps the gate ON, which is what the gate has always done: the vendor
+  /// form of the admin panel posts the status as a hidden 1, and a platform
+  /// that sends nothing has not asked for anything. Reading an absent switch as
+  /// "off" would open the gate on every installation at once, which is the
+  /// opposite of what this switch is for.
+  static bool isGateOn(int? publishedStatus) => publishedStatus != 0;
+
+  /// Whether a seller is refused the login form until they update: the gate is
+  /// on for their platform AND the published minimum is newer than what they
+  /// have installed.
+  ///
+  /// The switch exists because the minimum is a number typed into a form. A
+  /// number typed one digit too high locks every seller out of the app before
+  /// the login screen, and the only way back used to be to type another number
+  /// — so a platform that had locked itself out had to guess its way out. The
+  /// switch neutralises a wrong minimum without choosing a different one, and
+  /// without a release of either app (Discovery E19-F06).
+  static bool refusesEntryUntilUpdated({required String? minimumVersion, required int? publishedStatus}) =>
+      isGateOn(publishedStatus) && isUpdateRequired(minimumVersion);
 }

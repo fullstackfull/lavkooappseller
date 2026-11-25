@@ -3,8 +3,11 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:syriacosmeticsmanger/features/security/controllers/seller_permission_controller.dart';
+import 'package:syriacosmeticsmanger/features/security/domain/models/seller_permission_scope.dart';
 import 'package:syriacosmeticsmanger/common/basewidgets/custom_snackbar_widget.dart';
 import 'package:syriacosmeticsmanger/features/auth/domain/models/register_model.dart';
 import 'package:syriacosmeticsmanger/data/model/response/base/api_response.dart';
@@ -309,6 +312,11 @@ class AuthController with ChangeNotifier {
     Provider.of<ShopController>(Get.context!, listen: false).clearShopModel();
     Provider.of<ProfileController>(Get.context!, listen: false).forgetSignedInSeller();
     Provider.of<CartController>(Get.context!, listen: false).dropPosCart();
+    // What the role that signed out may use goes with it. The controller is one for the app and outlives a sign-out, so leaving
+    // the scope behind would draw the previous role's screens for whoever signs in next on the same phone (K-08, K-12).
+    if (GetIt.instance.isRegistered<SellerPermissionController>()) {
+      GetIt.instance<SellerPermissionController>().apply(const SellerPermissionScope.unrestricted());
+    }
     return await authServiceInterface.clearSharedData();
   }
 

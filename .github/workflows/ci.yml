@@ -52,6 +52,18 @@ jobs:
         if: always()
         run: flutter test test/dio_storefront_header_test.dart test/market_scope_test.dart test/seller_market_choice_test.dart test/dio_auth_header_test.dart test/version_helper_test.dart
 
+      # The platform's own switch for the force-update gate, read by name: it is the lever that gets a platform out of a minimum
+      # typed one digit too high, so what it does has to be readable on its own and not only inside the whole run.
+      - name: Test the switch the platform publishes for the version gate (K-V5)
+        if: always()
+        run: flutter test test/seller_version_gate_switch_test.dart
+
+      # Where a digital file is fetched from and what the fetch carries. Half of this file is about where the seller's
+      # credential must NOT go, so it is read by name rather than only inside the whole run.
+      - name: Test the address of a digital file and what its fetch carries (K-17)
+        if: always()
+        run: flutter test test/digital_file_address_test.dart
+
       - name: Test the point-of-sale scan of country-scoped codes (K-05, K-13)
         if: always()
         run: flutter test test/pos_scan
@@ -84,6 +96,16 @@ jobs:
         if: always()
         run: flutter test test/storefront_pause_test.dart
 
+      # What the signed-in role may use, and the entries of the "more" screen a role cannot. The rule is read with the flag both
+      # ways by the tests themselves, so the step below is what the build the hiding is made for does on its own.
+      - name: Test what a role may use and the entries a role is not shown (K-08)
+        if: always()
+        run: flutter test test/seller_permission_scope_test.dart test/more_screen_permissions_test.dart
+
+      - name: Test what a role may use with the role screens on (K-08)
+        if: always()
+        run: flutter test --dart-define=GCC_ROLE_SCREENS_ENABLED=true test/seller_permission_scope_test.dart test/more_screen_permissions_test.dart
+
       - name: Test the lavkooseller:// link (K-11)
         if: always()
         run: flutter test test/seller_deep_link_test.dart test/seller_deep_link_entry_test.dart test/notification_screens_test.dart
@@ -101,11 +123,11 @@ jobs:
 
       # The market's own money is written only in a build made with the flag and a stored market; the full run tests the build without the flag, in which these tests
       # follow the flag. This step runs the same folder with the flag on, so that what a build with storefronts writes is read on its own.
-      - name: Test the market's own money, its decimals and the amounts typed (K-10)
+      - name: Test the market's own money, its decimals, the amounts typed and the balance that is refused rather than zeroed (K-04.2, K-10)
         if: always()
         run: flutter test test/market_money test/market_scope_test.dart
 
-      - name: Test the market's own money with the storefront flag on (K-10)
+      - name: Test the market's own money with the storefront flag on (K-04.2, K-10)
         if: always()
         run: flutter test --dart-define=GCC_STOREFRONTS_ENABLED=true test/market_money test/market_scope_test.dart
 
