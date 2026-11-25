@@ -80,6 +80,10 @@ jobs:
         if: always()
         run: flutter test test/notification_market_test.dart test/seller_push_topics_test.dart
 
+      - name: Test the paused market the seller is told about (K-V4)
+        if: always()
+        run: flutter test test/storefront_pause_test.dart
+
       - name: Test the lavkooseller:// link (K-11)
         if: always()
         run: flutter test test/seller_deep_link_test.dart test/seller_deep_link_entry_test.dart test/notification_screens_test.dart
