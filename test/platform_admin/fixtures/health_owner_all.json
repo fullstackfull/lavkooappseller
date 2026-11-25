@@ -19,7 +19,9 @@
       "integrations.carriers.failing_capabilities": "capabilities whose LAST event was a failure; the carrier table keeps no failure counter, so this is a different test from the channels above",
       "integrations.carriers.late_capabilities": "capabilities with no success inside this window",
       "unattributed": "rows whose market is not recorded; never counted as the default market",
-      "payments.reconciliation_breaks": "cost reconciliations nobody has settled -- a variance not accepted, an invoice line with no estimate, an estimate with no invoice line. A BACKLOG and not a window: one from last month is still money this platform cannot account for, so this figure does not fall when the window moves"
+      "payments.reconciliation_breaks": "cost reconciliations nobody has settled -- a variance not accepted, an invoice line with no estimate, an estimate with no invoice line. A BACKLOG and not a window: one from last month is still money this platform cannot account for, so this figure does not fall when the window moves",
+      "issues.open_shop_issues": "shop service-level breaches nobody has cleared, counted in the market of the shop they are against. A BACKLOG and not a window. STAFF issues and ESCALATIONS are not in this figure and are not sent at all: this platform keeps no record of either, and a zero would read as \"none open\"",
+      "issues.pending_approvals": "approval requests nobody has decided, counted in the market of the shop that asked. Also a backlog. A request that names no shop is counted apart rather than placed in a market"
     },
     "markets": [
       {
@@ -42,6 +44,10 @@
             "late_capabilities": 0,
             "last_success_at": "2026-11-25T05:30:00Z"
           }
+        },
+        "issues": {
+          "open_shop_issues": 3,
+          "pending_approvals": 1
         }
       },
       {
@@ -64,6 +70,10 @@
             "late_capabilities": 0,
             "last_success_at": null
           }
+        },
+        "issues": {
+          "open_shop_issues": 0,
+          "pending_approvals": 0
         }
       }
     ],
@@ -88,7 +98,11 @@
           "last_success_at": null
         }
       },
-      "reason": "no_market_recorded"
+      "reason": "no_market_recorded",
+      "issues": {
+        "open_shop_issues": 2,
+        "pending_approvals": 1
+      }
     }
   }
 }

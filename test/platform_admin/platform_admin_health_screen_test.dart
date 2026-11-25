@@ -86,6 +86,39 @@ void main() {
       expect(kuwait.health.channels.lateResources, 1);
       expect(saudi.health.carriers.failingCapabilities, 1);
       expect(kuwait.health.carriers.connections, 0);
+      expect(saudi.health.issues.openShopIssues, 3, reason: 'the shops of that market that are out of policy');
+      expect(saudi.health.issues.pendingApprovals, 1);
+      expect(kuwait.health.issues.openShopIssues, 0, reason: 'a market with nothing open reads zero, not nothing');
+    });
+
+    testWidgets('a market with issues open and payments fine is still marked as needing attention', (WidgetTester tester) async {
+      await pumpHealth(tester);
+
+      final PlatformHealthCard kuwait = tester.widget<PlatformHealthCard>(card('KW'));
+
+      expect(kuwait.health.needsAttention, isTrue, reason: 'its channel resource is late');
+      expect(
+        const PlatformMarketHealth(
+          payments: PlatformPaymentHealth(),
+          channels: PlatformChannelHealth(),
+          carriers: PlatformCarrierHealth(),
+          issues: PlatformIssueHealth(openShopIssues: 1),
+          market: 'BH',
+        ).needsAttention,
+        isTrue,
+        reason: 'issues alone are enough: a market whose shops are out of policy is not a market with nothing on it',
+      );
+    });
+
+    testWidgets('the screen says the issue figures are a backlog and that staff issues are not recorded', (WidgetTester tester) async {
+      await pumpHealth(tester);
+
+      expect(inCard('SA', find.textContaining('A BACKLOG and not a window')), findsWidgets);
+      expect(
+        inCard('SA', find.textContaining('keeps no record of either')),
+        findsOneWidget,
+        reason: 'staff issues and escalations are not sent, and the screen passes on the server\'s reason rather than drawing a zero',
+      );
     });
 
     testWidgets('is told what a figure means in the words of the server that counted it', (WidgetTester tester) async {

@@ -64,6 +64,15 @@ abstract final class PlatformAdminTexts {
         'legal_not_ready' => getTranslated('platform_admin_alert_legal_not_ready', context)!,
         'stock_zero' => getTranslated('platform_admin_alert_stock_zero', context)!,
         'orders_pending_too_long' => getTranslated('platform_admin_alert_orders_pending_too_long', context)!,
+        // The six operational health signals (L-09). An operator who does not hold
+        // the health capability never receives any of these, so a title for one is
+        // never drawn for them.
+        'payments_stuck' => getTranslated('platform_admin_alert_payments_stuck', context)!,
+        'payments_unreconciled' => getTranslated('platform_admin_alert_payments_unreconciled', context)!,
+        'channels_failing' => getTranslated('platform_admin_alert_channels_failing', context)!,
+        'carriers_failing' => getTranslated('platform_admin_alert_carriers_failing', context)!,
+        'shop_issues_open' => getTranslated('platform_admin_alert_shop_issues_open', context)!,
+        'approvals_pending' => getTranslated('platform_admin_alert_approvals_pending', context)!,
         _ => code.toTitleCase(),
       };
 
