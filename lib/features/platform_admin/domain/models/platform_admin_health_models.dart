@@ -34,6 +34,34 @@ class PlatformPaymentHealth {
   bool get hasTrouble => stuckAttempts > 0 || reconciliationBreaks > 0;
 }
 
+/// A market's open issues: the shops that are out of policy, and the approvals
+/// nobody has decided (L-09).
+///
+/// Both are BACKLOGS and not windows, which is what the server's sentence under
+/// each one says: neither stops being true because time passed, so neither falls
+/// when the window moves.
+///
+/// Staff issues and escalations are deliberately NOT here. The server keeps no
+/// record of either, so it sends neither -- a zero would read as "none open",
+/// which is a different and untrue statement -- and this class has no field for
+/// a figure the server does not send.
+class PlatformIssueHealth {
+  /// Shop service-level breaches nobody has cleared.
+  final int openShopIssues;
+
+  /// Approval requests nobody has decided.
+  final int pendingApprovals;
+
+  const PlatformIssueHealth({this.openShopIssues = 0, this.pendingApprovals = 0});
+
+  factory PlatformIssueHealth.fromJson(Map<String, dynamic> json) => PlatformIssueHealth(
+        openShopIssues: PlatformJson.count(json['open_shop_issues']),
+        pendingApprovals: PlatformJson.count(json['pending_approvals']),
+      );
+
+  bool get hasTrouble => openShopIssues > 0 || pendingApprovals > 0;
+}
+
 /// A market's sales-channel accounts and how their syncs are doing.
 class PlatformChannelHealth {
   final int accounts;
@@ -94,6 +122,7 @@ class PlatformMarketHealth {
   final PlatformPaymentHealth payments;
   final PlatformChannelHealth channels;
   final PlatformCarrierHealth carriers;
+  final PlatformIssueHealth issues;
 
   /// Why these rows are apart, which the server sends only for the unattributed row.
   final String? reason;
@@ -102,6 +131,7 @@ class PlatformMarketHealth {
     required this.payments,
     required this.channels,
     required this.carriers,
+    this.issues = const PlatformIssueHealth(),
     this.market,
     this.legalEntity,
     this.reason,
@@ -113,13 +143,17 @@ class PlatformMarketHealth {
         payments: PlatformPaymentHealth.fromJson(PlatformJson.map(json['payments'])),
         channels: PlatformChannelHealth.fromJson(PlatformJson.map(PlatformJson.map(json['integrations'])['channels'])),
         carriers: PlatformCarrierHealth.fromJson(PlatformJson.map(PlatformJson.map(json['integrations'])['carriers'])),
+        issues: PlatformIssueHealth.fromJson(PlatformJson.map(json['issues'])),
         reason: PlatformJson.string(json['reason']),
       );
 
   bool get isUnattributed => market == null;
 
   /// Whether anything on this row is worth a person's attention right now.
-  bool get needsAttention => payments.hasTrouble || channels.hasTrouble || carriers.hasTrouble;
+  ///
+  /// Every group is asked, the issues included: a market whose shops are out of
+  /// policy and whose payments are fine was drawn as though nothing were on it.
+  bool get needsAttention => payments.hasTrouble || channels.hasTrouble || carriers.hasTrouble || issues.hasTrouble;
 }
 
 /// The whole answer of `GET /health`.

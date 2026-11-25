@@ -2013,5 +2013,14 @@
   "platform_admin_last_success": "آخر نجاح",
   "platform_admin_never_succeeded": "لم تنجح قطّ",
   "platform_admin_unattributed": "سوق غير مُسجَّل",
-  "platform_admin_reconciliation_breaks": "تكاليف لم تُطابَق"
+  "platform_admin_reconciliation_breaks": "تكاليف لم تُطابَق",
+  "platform_admin_issues": "مشكلات مفتوحة",
+  "platform_admin_open_shop_issues": "متاجر خارج السياسة",
+  "platform_admin_pending_approvals": "موافقات معلقة",
+  "platform_admin_alert_payments_stuck": "مدفوعات لم تُأكَّد",
+  "platform_admin_alert_payments_unreconciled": "تكاليف لم تُطابَق",
+  "platform_admin_alert_channels_failing": "قناة بيع متعطلة",
+  "platform_admin_alert_carriers_failing": "ناقل متعطل",
+  "platform_admin_alert_shop_issues_open": "متاجر خارج السياسة",
+  "platform_admin_alert_approvals_pending": "موافقات معلقة"
 }

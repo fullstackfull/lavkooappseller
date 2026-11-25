@@ -2013,5 +2013,14 @@
   "platform_admin_last_success": "Last success",
   "platform_admin_never_succeeded": "Has never succeeded",
   "platform_admin_unattributed": "Market not recorded",
-  "platform_admin_reconciliation_breaks": "Costs not reconciled"
+  "platform_admin_reconciliation_breaks": "Costs not reconciled",
+  "platform_admin_issues": "Open issues",
+  "platform_admin_open_shop_issues": "Shops out of policy",
+  "platform_admin_pending_approvals": "Approvals waiting",
+  "platform_admin_alert_payments_stuck": "Payments never confirmed",
+  "platform_admin_alert_payments_unreconciled": "Costs not reconciled",
+  "platform_admin_alert_channels_failing": "Sales channel failing",
+  "platform_admin_alert_carriers_failing": "Carrier failing",
+  "platform_admin_alert_shop_issues_open": "Shops out of policy",
+  "platform_admin_alert_approvals_pending": "Approvals waiting"
 }

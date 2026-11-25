@@ -80,6 +80,24 @@ class PlatformHealthCard extends StatelessWidget {
             lateMeaning: means['integrations.carriers.late_capabilities'],
             lastSuccessAt: health.carriers.lastSuccessAt,
           ),
+          const Divider(height: Dimensions.paddingSizeLarge),
+          Text(
+            getTranslated('platform_admin_issues', context)!,
+            style: robotoMedium.copyWith(fontSize: Dimensions.fontSizeDefault),
+          ),
+          const SizedBox(height: Dimensions.paddingSizeExtraSmall),
+          _figure(
+            context,
+            label: getTranslated('platform_admin_open_shop_issues', context)!,
+            value: health.issues.openShopIssues,
+            meaning: means['issues.open_shop_issues'],
+          ),
+          _figure(
+            context,
+            label: getTranslated('platform_admin_pending_approvals', context)!,
+            value: health.issues.pendingApprovals,
+            meaning: means['issues.pending_approvals'],
+          ),
         ],
       ),
     );
