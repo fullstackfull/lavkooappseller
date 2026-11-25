@@ -16,6 +16,7 @@ import 'package:syriacosmeticsmanger/features/order/controllers/order_controller
 import 'package:syriacosmeticsmanger/features/product/controllers/product_controller.dart';
 import 'package:syriacosmeticsmanger/features/profile/controllers/profile_controller.dart';
 import 'package:syriacosmeticsmanger/features/review/controllers/product_review_controller.dart';
+import 'package:syriacosmeticsmanger/features/security/controllers/seller_permission_controller.dart';
 import 'package:syriacosmeticsmanger/features/shipping/controllers/shipping_controller.dart';
 import 'package:syriacosmeticsmanger/features/splash/controllers/splash_controller.dart';
 import 'package:syriacosmeticsmanger/utill/dimensions.dart';
@@ -81,6 +82,12 @@ class _HomePageScreenState extends State<HomePageScreen> {
       // And the market the platform serves whoever has chosen none, so moving the default on the server reaches a seller who has
       // chosen nothing on the next load rather than on the next release (A1-03).
       sl<SellerMarketController>().refreshPlatformDefault();
+    }
+
+    // And what the signed-in role may use, re-read with the rest of Home: a permission taken away on the server reaches the
+    // screens on the next load rather than on the next sign-in (K-08). A build whose role screens are off asks nothing.
+    if (sl.isRegistered<SellerPermissionController>()) {
+      sl<SellerPermissionController>().refresh();
     }
   }
 

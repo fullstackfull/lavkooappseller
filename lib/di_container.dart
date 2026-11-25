@@ -42,7 +42,9 @@ import 'package:syriacosmeticsmanger/features/inventory/domain/services/inventor
 import 'package:syriacosmeticsmanger/features/inventory/domain/services/inventory_service_interface.dart';
 import 'package:syriacosmeticsmanger/features/automation/controllers/automation_controller.dart';
 import 'package:syriacosmeticsmanger/features/brand_claims/controllers/brand_claim_controller.dart';
+import 'package:syriacosmeticsmanger/features/security/controllers/seller_permission_controller.dart';
 import 'package:syriacosmeticsmanger/features/security/controllers/security_controller.dart';
+import 'package:syriacosmeticsmanger/features/security/domain/seller_permission_source.dart';
 import 'package:syriacosmeticsmanger/features/security/domain/repositories/security_repository.dart';
 import 'package:syriacosmeticsmanger/features/security/domain/repositories/security_repository_interface.dart';
 import 'package:syriacosmeticsmanger/features/security/domain/services/security_service.dart' as security;
@@ -247,6 +249,10 @@ Future<void> init() async {
   sl.registerLazySingleton(() => Dio());
   sl.registerLazySingleton(() => LoggingInterceptor());
   registerStorefrontDependencies(sl);
+  // What the signed-in role may use, one for the whole app: the "more" screen reads it and Home re-reads it from the server, so
+  // a role changed there reaches the screens on the next load rather than on the next sign-in (K-08). A build whose role
+  // screens are off never asks and never hides, which is why the flag is the controller's own default and is named nowhere here.
+  sl.registerLazySingleton(() => SellerPermissionController(source: SellerPermissionSource(sl())));
 
   // Interface
   AuthRepositoryInterface authRepoInterface = AuthRepository(dioClient: sl(), sharedPreferences: sl());

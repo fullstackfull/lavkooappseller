@@ -84,6 +84,16 @@ jobs:
         if: always()
         run: flutter test test/storefront_pause_test.dart
 
+      # What the signed-in role may use, and the entries of the "more" screen a role cannot. The rule is read with the flag both
+      # ways by the tests themselves, so the step below is what the build the hiding is made for does on its own.
+      - name: Test what a role may use and the entries a role is not shown (K-08)
+        if: always()
+        run: flutter test test/seller_permission_scope_test.dart test/more_screen_permissions_test.dart
+
+      - name: Test what a role may use with the role screens on (K-08)
+        if: always()
+        run: flutter test --dart-define=GCC_ROLE_SCREENS_ENABLED=true test/seller_permission_scope_test.dart test/more_screen_permissions_test.dart
+
       - name: Test the lavkooseller:// link (K-11)
         if: always()
         run: flutter test test/seller_deep_link_test.dart test/seller_deep_link_entry_test.dart test/notification_screens_test.dart
