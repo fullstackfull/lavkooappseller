@@ -449,14 +449,17 @@ class PlatformAdminController with ChangeNotifier {
 
     if (_loadingHealth == key) _loadingHealth = null;
 
-    if (result.failure?.kind == PlatformAdminFailureKind.unauthenticated) {
-      _endSession();
-      return;
-    }
+    if (_endedBy(result.failure)) return;
 
     if (result.value != null) _health[key] = result.value!;
     _healthFailure = result.failure;
     notifyListeners();
+
+    // A part the server refuses is a reason to read the grant again, once: the list the app holds may be out of date,
+    // and if the part really is gone `_applyProfile` throws away what was held for it rather than leaving a failure on
+    // a screen that is no longer offered. Every other part of the shell does this, and the guards that walk all of
+    // them are what caught its absence here.
+    await _readAgainIfRefused(<PlatformAdminFailure?>[result.failure]);
   }
 
   Future<void> loadOverview({bool force = false}) async {
