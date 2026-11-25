@@ -70,15 +70,22 @@ class SplashScreenState extends State<SplashScreen> {
           final config = Provider.of<SplashController>(Get.context!, listen: false).configModel;
           SellerAppVersionControl? appVersion = Provider.of<SplashController>(Get.context!, listen: false).configModel?.sellerAppVersionControl;
           String? minimumVersion = '0';
+          // The platform's own switch for this platform, beside the minimum it published and never instead of it. The gate used
+          // to read the minimum alone, so a minimum typed one digit too high locked every seller out before the login screen and
+          // the only way back was to type another number. A null switch -- which is every platform that sends none -- leaves the
+          // gate exactly where it was (K-V5, Discovery E19-F06).
+          int? versionGateStatus;
 
           if(Platform.isAndroid) {
             minimumVersion =  appVersion?.forAndroid?.version ?? '0';
+            versionGateStatus = appVersion?.forAndroid?.status;
           } else if(Platform.isIOS) {
             minimumVersion = appVersion?.forIos?.version ?? '0';
+            versionGateStatus = appVersion?.forIos?.status;
           }
 
 
-          if(AppVersion.isUpdateRequired(minimumVersion)) {
+          if(AppVersion.refusesEntryUntilUpdated(minimumVersion: minimumVersion, publishedStatus: versionGateStatus)) {
             Navigator.of(Get.context!).pushReplacement(MaterialPageRoute(builder: (_) => const UpdateScreen()));
           } else if(config?.maintenanceModeData?.maintenanceStatus == 1 && config?.maintenanceModeData?.selectedMaintenanceSystem?.vendorApp == 1) {
             Navigator.of(Get.context!).pushReplacement(MaterialPageRoute(

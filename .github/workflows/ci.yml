@@ -52,6 +52,12 @@ jobs:
         if: always()
         run: flutter test test/dio_storefront_header_test.dart test/market_scope_test.dart test/seller_market_choice_test.dart test/dio_auth_header_test.dart test/version_helper_test.dart
 
+      # The platform's own switch for the force-update gate, read by name: it is the lever that gets a platform out of a minimum
+      # typed one digit too high, so what it does has to be readable on its own and not only inside the whole run.
+      - name: Test the switch the platform publishes for the version gate (K-V5)
+        if: always()
+        run: flutter test test/seller_version_gate_switch_test.dart
+
       - name: Test the point-of-sale scan of country-scoped codes (K-05, K-13)
         if: always()
         run: flutter test test/pos_scan
