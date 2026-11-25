@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:syriacosmeticsmanger/data/datasource/local/seller_session_token.dart';
 import 'package:syriacosmeticsmanger/data/datasource/remote/dio/logging_interceptor.dart';
 import 'package:syriacosmeticsmanger/data/datasource/remote/dio/storefront_interceptor.dart';
 import 'package:syriacosmeticsmanger/features/storefront/seller_market_choice.dart';
@@ -31,13 +32,22 @@ class DioClient {
     }
   }
 
+  /// Where the session token is kept: the platform secure store, read into
+  /// memory before this client is built (K-268). A client built WITHOUT one —
+  /// a test, or any caller not yet moved — reads the token where this app has
+  /// always read it, so nothing that worked before this store existed stops
+  /// working.
+  final SellerSessionToken? sessionToken;
+
   DioClient(this.baseUrl,
       Dio? dioC, {
         required this.loggingInterceptor,
         required this.sharedPreferences,
+        this.sessionToken,
         bool storefrontsEnabled = StorefrontConfig.enabled,
       }) : _marketChoice = SellerMarketChoice(sharedPreferences, enabled: storefrontsEnabled) {
-    token = sharedPreferences.getString(AppConstants.token);
+    final String? stored = sessionToken == null ? sharedPreferences.getString(AppConstants.token) : sessionToken!.value;
+    token = stored == null || stored.isEmpty ? null : stored;
     _language = sharedPreferences.getString(AppConstants.languageCode) ?? 'en';
     dio = dioC ?? Dio();
     dio!

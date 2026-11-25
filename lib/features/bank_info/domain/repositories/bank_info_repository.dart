@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:syriacosmeticsmanger/data/datasource/local/seller_session_token.dart';
 import 'package:syriacosmeticsmanger/data/datasource/remote/dio/dio_client.dart';
 import 'package:syriacosmeticsmanger/data/datasource/remote/exception/api_error_handler.dart';
 import 'package:syriacosmeticsmanger/features/profile/domain/models/profile_body.dart';
@@ -12,7 +13,14 @@ class BankInfoRepository implements BankInfoRepositoryInterface{
 
   final DioClient? dioClient;
   final SharedPreferences? sharedPreferences;
-  BankInfoRepository({required this.dioClient, required this.sharedPreferences});
+
+  /// The session token comes from the platform secure store, not from the
+  /// plaintext key this used to read (K-268).
+  late final SellerSessionToken _sessionToken;
+
+  BankInfoRepository({required this.dioClient, required this.sharedPreferences, SellerSessionToken? sessionToken}) {
+    _sessionToken = sessionToken ?? SellerSessionToken(preferences: sharedPreferences);
+  }
 
   @override
   Future<http.StreamedResponse> updateBank(ProfileInfoModel userInfoModel, ProfileBody seller, String token) async {
@@ -32,7 +40,7 @@ class BankInfoRepository implements BankInfoRepositoryInterface{
 
   @override
   String getBankToken() {
-    return sharedPreferences!.getString(AppConstants.token) ?? "";
+    return _sessionToken.value;
   }
 
   @override

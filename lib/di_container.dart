@@ -228,6 +228,7 @@ import 'package:syriacosmeticsmanger/theme/controllers/theme_controller.dart';
 import 'package:syriacosmeticsmanger/features/bank_info/controllers/bank_info_controller.dart';
 import 'package:syriacosmeticsmanger/features/transaction/controllers/transaction_controller.dart';
 import 'package:syriacosmeticsmanger/utill/app_constants.dart';
+import 'data/datasource/local/seller_session_token.dart';
 import 'data/datasource/remote/dio/dio_client.dart';
 import 'data/datasource/remote/dio/logging_interceptor.dart';
 import 'features/pos/controllers/customer_controller.dart';
@@ -241,11 +242,17 @@ final sl = GetIt.instance;
 
 Future<void> init() async {
   // Core
-  sl.registerLazySingleton(() => DioClient(AppConstants.baseUrl, sl(), loggingInterceptor: sl(), sharedPreferences: sl()));
+  sl.registerLazySingleton(() => DioClient(AppConstants.baseUrl, sl(), loggingInterceptor: sl(), sharedPreferences: sl(), sessionToken: sl()));
 
   // External
   final sharedPreferences = await SharedPreferences.getInstance();
   sl.registerLazySingleton(() => sharedPreferences);
+  // The seller's session token, in the platform secure store (K-268). It is READ INTO MEMORY HERE, before anything can resolve the Dio
+  // client, because every reader of the token is synchronous while the secure store is not; a token an older build left in plaintext is
+  // migrated by the same call. Registered before the client so one cache serves the client, the auth repository and the bank screen.
+  final sellerSessionToken = SellerSessionToken(preferences: sharedPreferences);
+  await sellerSessionToken.prime();
+  sl.registerLazySingleton(() => sellerSessionToken);
   sl.registerLazySingleton(() => Dio());
   sl.registerLazySingleton(() => LoggingInterceptor());
   registerStorefrontDependencies(sl);
@@ -255,9 +262,9 @@ Future<void> init() async {
   sl.registerLazySingleton(() => SellerPermissionController(source: SellerPermissionSource(sl())));
 
   // Interface
-  AuthRepositoryInterface authRepoInterface = AuthRepository(dioClient: sl(), sharedPreferences: sl());
+  AuthRepositoryInterface authRepoInterface = AuthRepository(dioClient: sl(), sharedPreferences: sl(), sessionToken: sl());
   sl.registerLazySingleton(() => authRepoInterface);
-  BankInfoRepositoryInterface bankInfoRepoInterface = BankInfoRepository(dioClient: sl(), sharedPreferences: sl());
+  BankInfoRepositoryInterface bankInfoRepoInterface = BankInfoRepository(dioClient: sl(), sharedPreferences: sl(), sessionToken: sl());
   sl.registerLazySingleton(() => bankInfoRepoInterface);
   SellerAnalyticsRepositoryInterface sellerAnalyticsRepoInterface = SellerAnalyticsRepository(dioClient: sl());
   sl.registerLazySingleton(() => sellerAnalyticsRepoInterface);

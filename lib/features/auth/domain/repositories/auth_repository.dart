@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:syriacosmeticsmanger/data/datasource/local/secure_credential_store.dart';
+import 'package:syriacosmeticsmanger/data/datasource/local/seller_session_token.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
@@ -20,13 +21,22 @@ class AuthRepository implements AuthRepositoryInterface{
   final SharedPreferences? sharedPreferences;
   late final SecureCredentialStore secureCredentialStore;
 
+  /// Where the session token is kept: the platform secure store (K-268). The
+  /// dependency setup hands over the one instance it primed, so this repository,
+  /// the Dio client and the bank screen read one cache. A repository built
+  /// without one makes its own, which reads the legacy plaintext key until
+  /// something primes it, so a test or a build that has not been wired behaves
+  /// as it did before this store existed.
+  late final SellerSessionToken sessionToken;
+
   /// The market this device is working in, for the topics it subscribes to (K-11). Null in a build or a test that has not wired it, which
   /// subscribes to the platform-wide topics alone -- exactly what this app did before markets existed.
   SellerMarketChoice? get _marketChoice =>
       sharedPreferences == null ? null : SellerMarketChoice(sharedPreferences!);
 
-  AuthRepository({required this.dioClient, required this.sharedPreferences, SecureCredentialStore? credentialStore}) {
+  AuthRepository({required this.dioClient, required this.sharedPreferences, SecureCredentialStore? credentialStore, SellerSessionToken? sessionToken}) {
     secureCredentialStore = credentialStore ?? SecureCredentialStore(sharedPreferences: sharedPreferences);
+    this.sessionToken = sessionToken ?? SellerSessionToken(preferences: sharedPreferences);
   }
 
   @override
@@ -124,21 +134,21 @@ class AuthRepository implements AuthRepositoryInterface{
   Future<void> saveUserToken(String token) async {
     dioClient!.updateAuthToken(token);
 
-    try {
-      await sharedPreferences!.setString(AppConstants.token, token);
-    } catch (e) {
-      rethrow;
-    }
+    await sessionToken.save(token);
   }
 
   @override
   String getUserToken() {
-    return sharedPreferences!.getString(AppConstants.token) ?? "";
+    return sessionToken.value;
   }
 
+  /// Whether there is a session, which is whether a token is HELD and not
+  /// whether a key exists: the token moved to the secure store, where the
+  /// question "is this key present" is an asynchronous one and this is asked
+  /// while a frame is being built.
   @override
   bool isLoggedIn() {
-    return sharedPreferences!.containsKey(AppConstants.token);
+    return sessionToken.exists;
   }
 
   /// What the device holds for whoever is signed in, and for nobody else: the market the seller works in, the till they are ringing up
@@ -166,12 +176,17 @@ class AuthRepository implements AuthRepositoryInterface{
     // the login screen again. A dashboard load fires about twenty requests at
     // once, so one expired token started twenty of these at a time.
     dioClient!.clearAuthToken();
+    // Empties the token cache before its first `await`, so a synchronous reader
+    // cannot still be handed the session that was just abandoned; the stores it
+    // then clears are the secure one and, belt and braces, the legacy key.
+    final Future<void> sessionEnded = sessionToken.clear();
     final Future<bool> tokenRemoved = sharedPreferences!.remove(AppConstants.token);
     final Future<List<bool>> sellerDataRemoved = Future.wait<bool>(
       _keysOfTheSignedInSeller.map(sharedPreferences!.remove).toList(),
     );
     final bool removed = await tokenRemoved;
     await sellerDataRemoved;
+    await sessionEnded;
     await secureCredentialStore.clearPassword();
 
     // Best effort, and last: unsubscribing is a courtesy to the push service,
@@ -201,7 +216,10 @@ class AuthRepository implements AuthRepositoryInterface{
   }
 
   @override
-  Future<void> primeCredentialCache() => secureCredentialStore.prime();
+  Future<void> primeCredentialCache() async {
+    await secureCredentialStore.prime();
+    await sessionToken.prime();
+  }
 
   @override
   String getUserEmail() {
