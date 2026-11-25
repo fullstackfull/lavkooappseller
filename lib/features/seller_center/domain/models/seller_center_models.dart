@@ -1,3 +1,5 @@
+import 'package:syriacosmeticsmanger/data/model/currency_figures.dart';
+
 /// The seller-center overview: verification + performance + finance + SLA,
 /// exactly as `GET /api/v3/seller/seller-center/overview` composes it.
 class SellerCenterOverviewModel {
@@ -26,31 +28,48 @@ class SellerCenterOverviewModel {
   }
 }
 
+/// The shop's money on the dashboard card.
+///
+/// **Every figure is nullable, and null is not zero.** Where the ledger holds two currencies the server refuses the single
+/// total and answers each currency's own figures beside a reason (`SellerCenterService`). Read as `value ?? 0` this card put
+/// "withdrawable 0.00" in front of a seller who had money in two currencies.
 class SellerFinanceModel {
-  final double available;
-  final double pending;
-  final double balance;
-  final double withdrawable;
+  final double? available;
+  final double? pending;
+  final double? balance;
+  final double? withdrawable;
   final String? recentPayoutStatus;
   final String? recentPayoutReference;
 
+  /// Why there is no one figure, as a language key, or null when there is one.
+  final String? totalsRefusedBecause;
+
+  /// The account's buckets in each currency it holds; empty while there is one.
+  final List<CurrencyFiguresModel> balancesByCurrency;
+
   SellerFinanceModel({
-    this.available = 0,
-    this.pending = 0,
-    this.balance = 0,
-    this.withdrawable = 0,
+    this.available,
+    this.pending,
+    this.balance,
+    this.withdrawable,
     this.recentPayoutStatus,
     this.recentPayoutReference,
+    this.totalsRefusedBecause,
+    this.balancesByCurrency = const <CurrencyFiguresModel>[],
   });
+
+  bool get totalsRefused => totalsRefusedBecause != null;
 
   factory SellerFinanceModel.fromJson(Map<String, dynamic> json) {
     return SellerFinanceModel(
-      available: _toDouble(json['available']),
-      pending: _toDouble(json['pending']),
-      balance: _toDouble(json['balance']),
-      withdrawable: _toDouble(json['withdrawable']),
+      available: _toDoubleOrNull(json['available']),
+      pending: _toDoubleOrNull(json['pending']),
+      balance: _toDoubleOrNull(json['balance']),
+      withdrawable: _toDoubleOrNull(json['withdrawable']),
       recentPayoutStatus: json['recent_payout_status'],
       recentPayoutReference: json['recent_payout_reference'],
+      totalsRefusedBecause: json['totals_refused_because']?.toString(),
+      balancesByCurrency: CurrencyFiguresModel.listFrom(json['balances_by_currency']),
     );
   }
 }
@@ -221,5 +240,9 @@ Map<String, double> _toThresholds(dynamic value) {
 }
 
 double _toDouble(dynamic value) => double.tryParse('$value') ?? 0;
+
+/// A figure the answer carries, or null where it carries none. Never 0 for an absent figure: a refused total and a
+/// balance of nothing are different things, and only one of them is a number a seller can act on.
+double? _toDoubleOrNull(dynamic value) => value is num ? value.toDouble() : double.tryParse('$value');
 
 int _toInt(dynamic value) => int.tryParse('$value') ?? 0;

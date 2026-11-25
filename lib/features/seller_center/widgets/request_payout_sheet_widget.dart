@@ -34,7 +34,9 @@ class _RequestPayoutSheetWidgetState extends State<RequestPayoutSheetWidget> {
   /// The withdrawable ceiling in the display currency, truncated and without a
   /// symbol so it can be both shown in the field and parsed back for the check.
   String _withdrawableInLocalCurrency(BuildContext context) =>
-      PriceConverter.convertPriceWithoutSymbolForWithdraw(context, widget.payouts.withdrawable);
+      // The sheet is only reachable from a card that has a ceiling to show, so there is one; `?? 0` is the floor that
+      // keeps a refused ceiling from ever reading as an amount (K-04.2).
+      PriceConverter.convertPriceWithoutSymbolForWithdraw(context, widget.payouts.withdrawable ?? 0);
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +67,7 @@ class _RequestPayoutSheetWidgetState extends State<RequestPayoutSheetWidget> {
                         color: Theme.of(context).textTheme.bodyLarge?.color)),
                 const SizedBox(height: Dimensions.paddingSizeExtraSmall),
                 Text('${getTranslated('withdrawable_balance', context)}: '
-                    '${PriceConverter.convertPriceForWithdraw(context, widget.payouts.withdrawable)}',
+                    '${PriceConverter.convertPriceForWithdraw(context, widget.payouts.withdrawable ?? 0)}',
                     style: robotoRegular.copyWith(
                         fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).hintColor)),
                 const SizedBox(height: Dimensions.paddingSizeDefault),

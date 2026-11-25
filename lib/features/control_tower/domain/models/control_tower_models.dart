@@ -1,3 +1,5 @@
+import 'package:syriacosmeticsmanger/data/model/currency_figures.dart';
+
 /// One operational issue, as the control tower describes it.
 ///
 /// `affectedCount` is the number a seller acts on. "37 products require action"
@@ -212,8 +214,19 @@ class DailyBriefingModel {
   final int dueToday;
 
   final String? currency;
-  final double pending;
-  final double withdrawable;
+
+  /// **Nullable, and null is not zero.** Where the ledger holds two currencies the server refuses the single figure and
+  /// answers each currency's own beside a reason (`DailyBriefingService`). Read as `value ?? 0` the briefing printed
+  /// "withdrawable 0.00" to a seller who had money in two currencies.
+  final double? pending;
+  final double? withdrawable;
+
+  /// Why there is no one figure, as a language key, or null when there is one.
+  final String? totalsRefusedBecause;
+
+  /// The balance in each currency it holds; empty while there is one. Note the singular key the briefing answers it under
+  /// (`balance_by_currency`), which is not the `balances_by_currency` of the payouts and overview answers.
+  final List<CurrencyFiguresModel> balanceByCurrency;
 
   const DailyBriefingModel({
     this.date,
@@ -232,9 +245,13 @@ class DailyBriefingModel {
     this.criticalIssues = 0,
     this.dueToday = 0,
     this.currency,
-    this.pending = 0,
-    this.withdrawable = 0,
+    this.pending,
+    this.withdrawable,
+    this.totalsRefusedBecause,
+    this.balanceByCurrency = const <CurrencyFiguresModel>[],
   });
+
+  bool get totalsRefused => totalsRefusedBecause != null;
 
   factory DailyBriefingModel.fromJson(Map<String, dynamic> json) {
     Map<String, dynamic> section(String key) =>
@@ -264,8 +281,10 @@ class DailyBriefingModel {
       criticalIssues: IssueModel._int(issues['critical']) ?? 0,
       dueToday: IssueModel._int(issues['due_today']) ?? 0,
       currency: balance['currency']?.toString(),
-      pending: IssueModel._double(balance['pending']) ?? 0,
-      withdrawable: IssueModel._double(balance['withdrawable']) ?? 0,
+      pending: IssueModel._double(balance['pending']),
+      withdrawable: IssueModel._double(balance['withdrawable']),
+      totalsRefusedBecause: balance['totals_refused_because']?.toString(),
+      balanceByCurrency: CurrencyFiguresModel.listFrom(balance['balance_by_currency']),
     );
   }
 }
