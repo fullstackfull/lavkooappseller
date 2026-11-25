@@ -76,9 +76,9 @@ jobs:
         if: always()
         run: flutter test test/notification_route_test.dart test/approved_rating_screens_test.dart test/product_card_rating_test.dart
 
-      - name: Test the market of a push (K-11)
+      - name: Test the market of a push and the topics of a market (K-11, K-V4)
         if: always()
-        run: flutter test test/notification_market_test.dart
+        run: flutter test test/notification_market_test.dart test/seller_push_topics_test.dart
 
       - name: Test the market selector and the reload of the screens (K-03)
         if: always()
