@@ -6,6 +6,7 @@ import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platf
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_market_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_mfa_models.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_health_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_session_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/repositories/platform_admin_repository_interface.dart';
@@ -77,6 +78,15 @@ void main() {
       expect(repository.overviewCalls, <String>['all from null']);
     });
 
+    test('asks for health by the same first day as the overview, so the two cannot disagree about the window', () async {
+      final PlatformAdminService service = serviceAt(DateTime(2026, 11, 17, 9));
+
+      await service.health(market: 'KW', windowDays: 7);
+      await service.health(market: 'all');
+
+      expect(repository.healthCalls, <String>['KW from 2026-11-11', 'all from null']);
+    });
+
     test('asks for the largest page of alerts the API gives, with the filters it was handed', () async {
       final PlatformAdminService service = serviceAt(DateTime(2026, 11, 17));
 
@@ -123,6 +133,7 @@ void main() {
 
 class _RecordingRepository implements PlatformAdminRepositoryInterface {
   final List<String> overviewCalls = <String>[];
+  final List<String> healthCalls = <String>[];
   final List<String> alertCalls = <String>[];
   final List<String> auditCalls = <String>[];
   final List<String> signIns = <String>[];
@@ -134,6 +145,12 @@ class _RecordingRepository implements PlatformAdminRepositoryInterface {
   @override
   Future<PlatformAdminResult<PlatformOverviewModel>> overview({required String market, String? from}) async {
     overviewCalls.add('$market from $from');
+    return _nothing;
+  }
+
+  @override
+  Future<PlatformAdminResult<PlatformHealthModel>> health({required String market, String? from}) async {
+    healthCalls.add('$market from $from');
     return _nothing;
   }
 

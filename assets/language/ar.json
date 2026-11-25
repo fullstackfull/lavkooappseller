@@ -2000,5 +2000,17 @@
   "remove_sale_confirmation": "لم يسجّل الخادم هذه البيعة قط. إذا حذفتها فلن تبقى منها أي نسخة. هل تريد حذفها؟",
   "totals_of_different_currencies_are_not_added": "لا تُجمع الإجماليات بعملات مختلفة",
   "shipment_on_hold": "لم تُغادر إحدى الشحنات بعد",
-  "the_reason_was_not_recorded": "لم يُسجَّل السبب."
+  "the_reason_was_not_recorded": "لم يُسجَّل السبب.",
+  "platform_admin_health": "الحالة التشغيلية",
+  "platform_admin_no_health": "لا يوجد ما يستدعي الانتباه في هذه الأسواق.",
+  "platform_admin_stuck_payments": "محاولات دفع لم تُؤكَّد",
+  "platform_admin_sales_channels": "قنوات البيع",
+  "platform_admin_carriers": "شركات الشحن",
+  "platform_admin_accounts": "الحسابات",
+  "platform_admin_connections": "الاتصالات",
+  "platform_admin_failing": "متعثّرة",
+  "platform_admin_late": "بدون نجاح في هذه الفترة",
+  "platform_admin_last_success": "آخر نجاح",
+  "platform_admin_never_succeeded": "لم تنجح قطّ",
+  "platform_admin_unattributed": "سوق غير مُسجَّل"
 }

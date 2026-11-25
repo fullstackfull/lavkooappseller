@@ -8,9 +8,18 @@ enum PlatformCapability {
   markets,
   alerts,
   audit,
-  sessions;
+  sessions,
+  health;
 
-  /// Every capability this version of the app knows: what a grant has that names none.
+  /// What a grant that names NO capability has.
+  ///
+  /// Not every capability this version of the app knows: `health` is left out,
+  /// to match the server, where a capability added after the first grant was
+  /// made is given only to a grant that names it
+  /// (`PlatformAdminGrant::NOT_GIVEN_BY_DEFAULT`). The same answer also fits a
+  /// server too old to have capabilities at all, which is the other way this
+  /// set is reached: such a server has no health endpoint, so offering its
+  /// screen would be offering a 404.
   static const Set<PlatformCapability> every = <PlatformCapability>{
     PlatformCapability.overview,
     PlatformCapability.markets,

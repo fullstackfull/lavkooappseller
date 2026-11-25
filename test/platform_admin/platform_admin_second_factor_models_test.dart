@@ -40,19 +40,31 @@ void main() {
       expect(viewer.can(PlatformCapability.sessions), isFalse);
     });
 
-    test('of the platform owner are all five', () {
+    test('of the platform owner are the ones the server listed', () {
       final PlatformAdminProfile owner = PlatformAdminProfile.fromJson(fixtureData('me_with_capabilities'));
 
-      expect(owner.capabilities, PlatformCapability.values.toSet());
+      expect(owner.capabilities, PlatformCapability.every);
       expect(PlatformCapability.values.map((PlatformCapability capability) => capability.name),
-          <String>['overview', 'markets', 'alerts', 'audit', 'sessions'],
+          <String>['overview', 'markets', 'alerts', 'audit', 'sessions', 'health'],
           reason: 'the names are the ones the server uses, in its order');
     });
 
-    test('of a server that sends none are all five, so that an older server loses nothing', () {
+    /// `health` is deliberately NOT among them, on both sides.
+    ///
+    /// On the server a capability added after the first grant was made is given only to a grant that names it
+    /// (`PlatformAdminGrant::NOT_GIVEN_BY_DEFAULT`), so a grant that names none is refused it -- and a server old
+    /// enough to send no capabilities at all has no health endpoint to offer. Reading it as included would put a tab
+    /// in front of an admin that answers 403, or 404.
+    test('of a server that sends none are the five it had, so that an older server loses nothing and gains nothing', () {
       final PlatformAdminProfile older = PlatformAdminProfile.fromJson(fixtureData('me_owner'));
 
-      expect(older.capabilities, PlatformCapability.values.toSet());
+      expect(older.capabilities, PlatformCapability.every);
+      expect(older.can(PlatformCapability.health), isFalse);
+      expect(
+        PlatformCapability.values.toSet().difference(PlatformCapability.every),
+        <PlatformCapability>{PlatformCapability.health},
+        reason: 'exactly what a grant naming none does not get, and the same list the server keeps',
+      );
       expect(older.grantExpiresAt, isNull);
       expect(older.mfa, isNull, reason: 'a server that says nothing of the second factor has not said');
     });

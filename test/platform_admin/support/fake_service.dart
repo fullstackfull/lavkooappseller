@@ -5,6 +5,7 @@ import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platf
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_market_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_mfa_models.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_health_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_session_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/services/platform_admin_service_interface.dart';
@@ -71,6 +72,9 @@ class FakePlatformAdminService implements PlatformAdminServiceInterface {
       (String market, int? windowDays) async =>
           PlatformAdminResult<PlatformOverviewModel>.success(overviewOf(market, windowDays));
 
+  Future<PlatformAdminResult<PlatformHealthModel>> Function(String market, int? windowDays) onHealth =
+      (String market, int? windowDays) async => PlatformAdminResult<PlatformHealthModel>.success(healthOf(market));
+
   Future<PlatformAdminResult<PlatformAlertPage>> Function(String market, int page, String? severity) onAlerts =
       (String market, int page, String? severity) async =>
           PlatformAdminResult<PlatformAlertPage>.success(alertsOf(market, page, severity));
@@ -99,6 +103,10 @@ class FakePlatformAdminService implements PlatformAdminServiceInterface {
     };
     return PlatformOverviewModel.fromJson(fixtureData(fixtureName));
   }
+
+  /// Every market's health, or one market's: Kuwait answers with its own, which has no unattributed row.
+  static PlatformHealthModel healthOf(String market) =>
+      PlatformHealthModel.fromJson(fixtureData(market == 'KW' ? 'health_owner_kw' : 'health_owner_all'));
 
   /// All markets answer with two pages of three and one, a market with nothing wrong with none.
   static PlatformAlertPage alertsOf(String market, int page, String? severity) {
@@ -173,6 +181,12 @@ class FakePlatformAdminService implements PlatformAdminServiceInterface {
   Future<PlatformAdminResult<PlatformOverviewModel>> overview({required String market, int? windowDays}) {
     calls.add('overview $market $windowDays');
     return onOverview(market, windowDays);
+  }
+
+  @override
+  Future<PlatformAdminResult<PlatformHealthModel>> health({required String market, int? windowDays}) {
+    calls.add('health $market $windowDays');
+    return onHealth(market, windowDays);
   }
 
   @override

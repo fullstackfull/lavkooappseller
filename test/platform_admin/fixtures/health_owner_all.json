@@ -1,0 +1,47 @@
+{
+  "data": {
+    "scope": "all",
+    "market": "all",
+    "generated_at": "2026-11-25T06:00:00Z",
+    "window": {"from": "2026-11-18", "to": "2026-11-25", "days": 7},
+    "freshness": {"mode": "live", "cached": false},
+    "means": {
+      "payments.stuck_attempts": "started, never confirmed, and older than 30 minutes; a shopper who closed the tab leaves the same row, so watch it for a change rather than reading it as failures",
+      "integrations.channels.failing_resources": "resources that have failed 3 times in a row",
+      "integrations.channels.late_resources": "resources with no success inside this window",
+      "integrations.carriers.failing_capabilities": "capabilities whose LAST event was a failure; the carrier table keeps no failure counter, so this is a different test from the channels above",
+      "integrations.carriers.late_capabilities": "capabilities with no success inside this window",
+      "unattributed": "rows whose market is not recorded; never counted as the default market"
+    },
+    "markets": [
+      {
+        "market": "SA",
+        "legal_entity": "Lavkoo Trading Co.",
+        "payments": {"stuck_attempts": 2},
+        "integrations": {
+          "channels": {"accounts": 1, "failing_resources": 1, "late_resources": 0, "last_success_at": "2026-11-25T05:00:00Z"},
+          "carriers": {"connections": 2, "failing_capabilities": 1, "late_capabilities": 0, "last_success_at": "2026-11-25T05:30:00Z"}
+        }
+      },
+      {
+        "market": "KW",
+        "legal_entity": "Lavkoo Kuwait",
+        "payments": {"stuck_attempts": 0},
+        "integrations": {
+          "channels": {"accounts": 1, "failing_resources": 0, "late_resources": 1, "last_success_at": null},
+          "carriers": {"connections": 0, "failing_capabilities": 0, "late_capabilities": 0, "last_success_at": null}
+        }
+      }
+    ],
+    "unattributed": {
+      "market": null,
+      "legal_entity": null,
+      "payments": {"stuck_attempts": 1},
+      "integrations": {
+        "channels": {"accounts": 0, "failing_resources": 0, "late_resources": 0, "last_success_at": null},
+        "carriers": {"connections": 1, "failing_capabilities": 0, "late_capabilities": 1, "last_success_at": null}
+      },
+      "reason": "no_market_recorded"
+    }
+  }
+}
