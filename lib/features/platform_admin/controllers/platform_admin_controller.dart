@@ -5,6 +5,7 @@ import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platf
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_market_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_mfa_models.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_health_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_session_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/services/platform_admin_service_interface.dart';
@@ -26,6 +27,7 @@ enum PlatformAdminStage {
 }
 
 typedef _OverviewKey = ({String market, int? windowDays});
+typedef _HealthKey = ({String market, int? windowDays});
 typedef _AlertsKey = ({String market, String? severity});
 
 class _AlertList {
@@ -190,6 +192,18 @@ class PlatformAdminController with ChangeNotifier {
   /// Whether the overview can be drawn: the market the viewer asked about and the
   /// facts about every market are both here, or the facts are not to be had.
   bool get hasOverview => overview != null && (_directory != null || _directoryUnavailable);
+
+  final Map<_HealthKey, PlatformHealthModel> _health = <_HealthKey, PlatformHealthModel>{};
+
+  _HealthKey? _loadingHealth;
+
+  PlatformAdminFailure? _healthFailure;
+
+  _HealthKey get _healthKey => (market: _market, windowDays: _windowDays);
+  PlatformHealthModel? get health => _health[_healthKey];
+  bool get isLoadingHealth => _loadingHealth == _healthKey;
+  PlatformAdminFailure? get healthFailure => _healthFailure;
+  bool get hasHealth => health != null;
 
   final Map<_AlertsKey, _AlertList> _alerts = <_AlertsKey, _AlertList>{};
   String? _alertSeverity;
@@ -390,6 +404,7 @@ class PlatformAdminController with ChangeNotifier {
 
     _windowDays = days;
     _overviewFailure = null;
+    _healthFailure = null;
     notifyListeners();
   }
 
@@ -408,6 +423,40 @@ class PlatformAdminController with ChangeNotifier {
   bool canOpen(PlatformAlertModel alert) {
     final PlatformDeepLink? link = alert.link;
     return link != null && canOpenMarket(link.market);
+  }
+
+  /// Reads the health of the market in view, and keeps it per market and window
+  /// so that moving between markets does not show one market's figures under
+  /// another's name while the next answer is on its way.
+  Future<void> loadHealth({bool force = false}) async {
+    if (_stage != PlatformAdminStage.signedIn) return;
+
+    final _HealthKey key = _healthKey;
+    if (_loadingHealth == key || (!force && _health.containsKey(key))) return;
+
+    final int session = _sessionEpoch;
+    final int market = _marketEpoch;
+    _loadingHealth = key;
+    _healthFailure = null;
+    notifyListeners();
+
+    final PlatformAdminResult<PlatformHealthModel> result = await platformAdminServiceInterface.health(
+      market: key.market,
+      windowDays: key.windowDays,
+    );
+
+    if (session != _sessionEpoch || market != _marketEpoch) return;
+
+    if (_loadingHealth == key) _loadingHealth = null;
+
+    if (result.failure?.kind == PlatformAdminFailureKind.unauthenticated) {
+      _endSession();
+      return;
+    }
+
+    if (result.value != null) _health[key] = result.value!;
+    _healthFailure = result.failure;
+    notifyListeners();
   }
 
   Future<void> loadOverview({bool force = false}) async {
@@ -794,8 +843,11 @@ class PlatformAdminController with ChangeNotifier {
   void _forgetMarketData() {
     _marketEpoch++;
     _overviews.clear();
+    _health.clear();
     _loadingOverview = null;
+    _loadingHealth = null;
     _overviewFailure = null;
+    _healthFailure = null;
     _alerts.clear();
     _loadingAlerts = null;
     _loadingMoreAlerts = false;

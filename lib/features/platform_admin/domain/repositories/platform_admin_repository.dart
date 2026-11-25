@@ -1,6 +1,7 @@
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_alert_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_audit_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_health_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_json.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_market_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_mfa_models.dart';
@@ -121,6 +122,17 @@ class PlatformAdminRepository implements PlatformAdminRepositoryInterface {
         ),
         (PlatformAdminReply reply) =>
             reply.data is Map ? PlatformOverviewModel.fromJson(PlatformJson.map(reply.data)) : null,
+      );
+
+  @override
+  Future<PlatformAdminResult<PlatformHealthModel>> health({required String market, String? from}) =>
+      _authenticated<PlatformHealthModel>(
+        (String token) => apiClient.get(
+          '/health',
+          bearerToken: token,
+          query: <String, String>{'market': market, if (from != null) 'from': from},
+        ),
+        (PlatformAdminReply reply) => reply.data is Map ? PlatformHealthModel.fromJson(PlatformJson.map(reply.data)) : null,
       );
 
   @override

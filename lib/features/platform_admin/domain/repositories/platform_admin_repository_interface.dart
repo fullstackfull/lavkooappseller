@@ -1,6 +1,7 @@
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_alert_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_audit_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_health_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_market_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_mfa_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
@@ -44,6 +45,11 @@ abstract class PlatformAdminRepositoryInterface {
   /// [from] is the first day of the window, `YYYY-MM-DD`; the window ends today.
   /// With none, the server chooses its own.
   Future<PlatformAdminResult<PlatformOverviewModel>> overview({required String market, String? from});
+
+  /// Operational health per market: payment attempts that never came back, and
+  /// integrations that have stopped syncing. [from] is the first day of the
+  /// window, `YYYY-MM-DD`; with none, the server chooses its own.
+  Future<PlatformAdminResult<PlatformHealthModel>> health({required String market, String? from});
 
   Future<PlatformAdminResult<PlatformAlertPage>> alerts({
     required String market,

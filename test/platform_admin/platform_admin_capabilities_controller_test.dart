@@ -5,6 +5,7 @@ import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platf
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_capability_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_market_models.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_health_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_session_models.dart';
 
@@ -59,9 +60,18 @@ void main() {
       });
     });
 
-    test('is everything for the platform owner, and for a server that does not list capabilities', () async {
-      expect(PlatformCapability.values.every((await signedInAs(owner())).can), isTrue);
-      expect(PlatformCapability.values.every((await signedInAs(ownerProfile())).can), isTrue);
+    /// Everything the grant was given, which is not everything this version of the app knows about.
+    ///
+    /// A capability added after the first grant was made is given only to a grant that NAMES it, on the server
+    /// (`PlatformAdminGrant::NOT_GIVEN_BY_DEFAULT`) and here. So the owner of a server that lists its capabilities
+    /// has the ones it listed, and an owner of a server that lists none has the ones that existed when grants began --
+    /// never the newer ones, which would put a tab in front of them that answers 403, or that the server does not
+    /// serve at all.
+    test('is everything the grant was given, for the platform owner and for a server that lists no capabilities',
+        () async {
+      expect(PlatformCapability.every.every((await signedInAs(owner())).can), isTrue);
+      expect(PlatformCapability.every.every((await signedInAs(ownerProfile())).can), isTrue);
+      expect((await signedInAs(ownerProfile())).can(PlatformCapability.health), isFalse);
     });
 
     test('says when the grant ends, when it does', () async {
@@ -138,6 +148,7 @@ void main() {
         <String, Future<void> Function(PlatformAdminController)>{
       'overview': (PlatformAdminController controller) => controller.loadOverview(),
       'alerts': (PlatformAdminController controller) => controller.loadAlerts(),
+      'health': (PlatformAdminController controller) => controller.loadHealth(),
       'sessions': (PlatformAdminController controller) => controller.loadSessions(),
       'audit': (PlatformAdminController controller) => controller.loadAuditLog(),
     };
@@ -148,6 +159,8 @@ void main() {
           service.onOverview = (String market, int? windowDays) async => notIncluded<PlatformOverviewModel>();
         case 'alerts':
           service.onAlerts = (String market, int page, String? severity) async => notIncluded<PlatformAlertPage>();
+        case 'health':
+          service.onHealth = (String market, int? windowDays) async => notIncluded<PlatformHealthModel>();
         case 'sessions':
           service.onSessions = () async => notIncluded<List<PlatformSessionModel>>();
         case 'audit':
@@ -158,6 +171,7 @@ void main() {
     PlatformAdminFailure? failureOf(PlatformAdminController controller, String part) => switch (part) {
           'overview' => controller.overviewFailure,
           'alerts' => controller.alertsFailure,
+          'health' => controller.healthFailure,
           'sessions' => controller.sessionsFailure,
           _ => controller.auditFailure,
         };

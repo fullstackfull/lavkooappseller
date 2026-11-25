@@ -6,6 +6,7 @@ import 'package:syriacosmeticsmanger/features/platform_admin/controllers/platfor
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_capability_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_alerts_screen.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_audit_screen.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_health_screen.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_overview_screen.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/screens/platform_admin_sessions_screen.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/widgets/platform_admin_sign_out.dart';
@@ -18,6 +19,7 @@ import 'package:syriacosmeticsmanger/utill/styles.dart';
 enum _Tab {
   overview(Icons.dashboard_outlined, PlatformCapability.overview),
   alerts(Icons.notifications_none_rounded, PlatformCapability.alerts),
+  health(Icons.monitor_heart_outlined, PlatformCapability.health),
   sessions(Icons.devices_other_outlined, PlatformCapability.sessions),
   auditLog(Icons.history_rounded, PlatformCapability.audit);
 
@@ -31,6 +33,7 @@ enum _Tab {
   String title(BuildContext context) => switch (this) {
         _Tab.overview => getTranslated('overview', context)!,
         _Tab.alerts => getTranslated('platform_admin_alerts', context)!,
+        _Tab.health => getTranslated('platform_admin_health', context)!,
         _Tab.sessions => getTranslated('sessions', context)!,
         _Tab.auditLog => getTranslated('platform_admin_audit_log', context)!,
       };
@@ -130,6 +133,8 @@ class _PlatformAdminHomeScreenState extends State<PlatformAdminHomeScreen> with 
         _controller.loadOverview();
       case _Tab.alerts:
         _controller.loadAlerts();
+      case _Tab.health:
+        _controller.loadHealth();
       case _Tab.sessions:
         _controller.loadSessions();
       case _Tab.auditLog:
@@ -161,6 +166,7 @@ class _PlatformAdminHomeScreenState extends State<PlatformAdminHomeScreen> with 
   Widget _screenOf(_Tab tab) => switch (tab) {
         _Tab.overview => PlatformAdminOverviewScreen(onOpenAlerts: _openAlertsOf),
         _Tab.alerts => PlatformAdminAlertsScreen(onOpenMarket: _openOverviewOf),
+        _Tab.health => const PlatformAdminHealthScreen(),
         _Tab.sessions => const PlatformAdminSessionsScreen(),
         _Tab.auditLog => const PlatformAdminAuditScreen(),
       };

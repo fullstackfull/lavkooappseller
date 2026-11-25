@@ -3,6 +3,7 @@ import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platf
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_market_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_mfa_models.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_health_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_overview_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_session_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/repositories/platform_admin_repository_interface.dart';
@@ -52,6 +53,13 @@ class PlatformAdminService implements PlatformAdminServiceInterface {
   @override
   Future<PlatformAdminResult<PlatformOverviewModel>> overview({required String market, int? windowDays}) =>
       platformAdminRepoInterface.overview(
+        market: market,
+        from: windowDays == null ? null : PlatformWindows.firstDay(days: windowDays, today: _now()),
+      );
+
+  @override
+  Future<PlatformAdminResult<PlatformHealthModel>> health({required String market, int? windowDays}) =>
+      platformAdminRepoInterface.health(
         market: market,
         from: windowDays == null ? null : PlatformWindows.firstDay(days: windowDays, today: _now()),
       );

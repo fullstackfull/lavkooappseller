@@ -1,4 +1,5 @@
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_alert_models.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_health_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_audit_models.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_market_models.dart';
@@ -33,6 +34,10 @@ abstract class PlatformAdminServiceInterface {
   /// [windowDays] is how many days, ending today, to count; with none the server
   /// counts its own default window.
   Future<PlatformAdminResult<PlatformOverviewModel>> overview({required String market, int? windowDays});
+
+  /// Operational health per market. [windowDays] is how many days back to look;
+  /// with none, the server chooses its own window.
+  Future<PlatformAdminResult<PlatformHealthModel>> health({required String market, int? windowDays});
 
   Future<PlatformAdminResult<PlatformAlertPage>> alerts({required String market, required int page, String? severity});
 
