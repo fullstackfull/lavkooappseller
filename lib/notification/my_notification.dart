@@ -13,18 +13,14 @@ import 'package:syriacosmeticsmanger/features/auth/controllers/auth_controller.d
 import 'package:syriacosmeticsmanger/features/auth/screens/login_screen.dart';
 import 'package:syriacosmeticsmanger/features/dashboard/screens/dashboard_screen.dart';
 import 'package:syriacosmeticsmanger/features/maintenance/maintenance_screen.dart';
-import 'package:syriacosmeticsmanger/features/product/screens/product_list_screen.dart';
-import 'package:syriacosmeticsmanger/features/refund/domain/models/refund_model.dart';
-import 'package:syriacosmeticsmanger/features/refund/screens/refund_details_screen.dart';
 import 'package:syriacosmeticsmanger/features/splash/controllers/splash_controller.dart';
 import 'package:syriacosmeticsmanger/features/splash/domain/models/config_model.dart';
-import 'package:syriacosmeticsmanger/features/wallet/screens/wallet_screen.dart';
 import 'package:syriacosmeticsmanger/notification/models/notification_body.dart';
-import 'package:syriacosmeticsmanger/notification/notification_route.dart';
+import 'package:get_it/get_it.dart';
+import 'package:syriacosmeticsmanger/features/storefront/controllers/seller_market_controller.dart';
+import 'package:syriacosmeticsmanger/notification/notification_market.dart';
+import 'package:syriacosmeticsmanger/notification/notification_screens.dart';
 import 'package:syriacosmeticsmanger/utill/app_constants.dart';
-import 'package:syriacosmeticsmanger/features/chat/screens/inbox_screen.dart';
-import 'package:syriacosmeticsmanger/features/notification/screens/notification_screen.dart';
-import 'package:syriacosmeticsmanger/features/order_details/screens/order_details_screen.dart';
 
 import '../firebase_options.dart';
 import 'package:syriacosmeticsmanger/core/app_context.dart';
@@ -40,7 +36,7 @@ class MyNotification {
 
       try{
         if(data.payload != null && data.payload!.isNotEmpty) {
-          _open(NotificationBody.fromJson(jsonDecode(data.payload!)));
+          open(NotificationBody.fromJson(jsonDecode(data.payload!)));
         }
       } catch (e) {
         if (kDebugMode) {
@@ -142,7 +138,7 @@ class MyNotification {
       if (kDebugMode) {
         debugPrint("onOpenApp: ${message.notification?.title}/${message.toMap()}/${message.notification?.titleLocKey}");
       }
-      _open(message.data.isNotEmpty ? NotificationBody.fromJson(message.data) : null, legacyOrderKey: message.notification?.titleLocKey);
+      open(message.data.isNotEmpty ? NotificationBody.fromJson(message.data) : null, legacyOrderKey: message.notification?.titleLocKey);
 
       if(message.data['type'] == 'maintenance_mode') {
         final SplashController splashProvider = Provider.of<SplashController>(Get.context!,listen: false);
@@ -172,28 +168,65 @@ class MyNotification {
     });
   }
 
-  /// Opens the screen a notification is about (NotificationRoute): from the data it carries, in whatever language its title is written.
-  static void _open(NotificationBody? payload, {String? legacyOrderKey}) {
+  /// Opens the screen a notification is about (NotificationRoute): from the data it carries, in whatever language its title is written, and
+  /// in the market the notification is about rather than the one the app happens to be showing (NotificationMarket).
+  ///
+  /// Public because a `lavkooseller://` link opens through this same door (K-11): a link and a push about the same thing must land on one
+  /// decision and one opener, or a screen added to one path quietly stays missing from the other.
+  static Future<void> open(NotificationBody? payload, {String? legacyOrderKey}) async {
     final NavigatorState? navigator = Get.navigator;
     if (navigator == null) {
       return;
     }
 
     final bool signedIn = Provider.of<AuthController>(navigator.context, listen: false).isLoggedIn();
-    final Widget? screen = switch (NotificationRoute.targetOf(payload, signedIn: signedIn, legacyOrderKey: legacyOrderKey)) {
-      NotificationTarget.chat => InboxScreen(fromNotification: true, initIndex: payload?.messageKey == 'message_from_delivery_man' ? 1 : 0),
-      NotificationTarget.themeNotifications => const NotificationScreen(),
-      NotificationTarget.order => OrderDetailsScreen(orderId: NotificationRoute.orderIdOf(payload, legacyOrderKey: legacyOrderKey), fromNotification: true),
-      NotificationTarget.wallet => const WalletScreen(fromNotification: true),
-      NotificationTarget.productRequests => const ProductListMenuScreen(fromNotification: true),
-      NotificationTarget.refund => RefundDetailsScreen(fromNotification: true, refundModel: RefundModel(id: payload?.refundId), orderDetailsId: payload?.orderDetailsId),
-      NotificationTarget.none => null,
-    };
+    final Widget? screen = NotificationScreens.of(payload, signedIn: signedIn, legacyOrderKey: legacyOrderKey);
 
-    if (screen != null) {
+    if (screen == null) {
+      return;
+    }
+
+    if (!await marketIsReady(payload)) {
+      return;
+    }
+
+    // `navigator` is a NavigatorState and not a BuildContext, but the market switch above is awaited, so the app may have been torn down
+    // while it ran.
+    if (navigator.mounted) {
       navigator.push(MaterialPageRoute(builder: (BuildContext context) => screen));
     }
   }
+
+  /// Puts the app in the market the notification is about, and answers whether its screen may be opened at all.
+  ///
+  /// A notification about another market opened as-is would ask that market's order of THIS market's storefront, and the server would
+  /// answer -- correctly -- that no such order exists. So the market is changed first. A market the seller is not granted opens nothing:
+  /// switching would set a header the server refuses and not switching would ask the wrong market, and both of those end in a screen that
+  /// is wrong without saying so.
+  ///
+  /// False on a switch that did not take, because the market is the one thing the screen cannot be wrong about.
+  static Future<bool> marketIsReady(NotificationBody? payload) async {
+    if (!GetIt.instance.isRegistered<SellerMarketController>()) {
+      return true;
+    }
+
+    final SellerMarketController markets = GetIt.instance<SellerMarketController>();
+    final NotificationMarketDecision decision = NotificationMarket.decide(
+      payload,
+      current: markets.market,
+      grant: markets.grant,
+    );
+
+    if (!decision.mayOpen) {
+      return false;
+    }
+    if (!decision.mustSwitch) {
+      return true;
+    }
+
+    return markets.choose(decision.market!);
+  }
+
 
   static Future<void> showNotification(
       RemoteMessage message,

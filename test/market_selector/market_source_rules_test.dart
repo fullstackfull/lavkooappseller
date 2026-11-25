@@ -53,7 +53,17 @@ void main() {
       for (final File file in _dartFilesUnder('lib')) {
         final String source = file.readAsStringSync();
 
-        expect(source, isNot(contains('storefrontsEnabled:')), reason: file.path);
+        // A helper that TAKES the flag, with the build flag as its default, may pass its own parameter on -- that is still one answer,
+        // the build's. What the rule forbids is a caller stating an answer of its own, so a file naming a literal is caught either way.
+        // `NotificationMarket` and `SellerPushTopics` are written this way: a test drives them both ways, and no screen names the flag.
+        final bool takesTheFlagItself = source.contains('bool storefrontsEnabled = StorefrontConfig.enabled');
+
+        if (takesTheFlagItself) {
+          expect(RegExp(r'storefrontsEnabled:\s*(true|false)\b').hasMatch(source), isFalse, reason: file.path);
+        } else {
+          expect(source, isNot(contains('storefrontsEnabled:')), reason: file.path);
+        }
+
         expect(RegExp(r'MarketLabeledAction\(\s*enabled:\s*(true|false)\b').hasMatch(source), isFalse, reason: file.path);
       }
     });

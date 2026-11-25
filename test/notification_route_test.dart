@@ -95,13 +95,17 @@ void main() {
   });
 
   group('the handlers of the seller app', () {
-    final List<String> lines = File('lib/notification/my_notification.dart').readAsStringSync().split('\n').where((String line) => !line.trimLeft().startsWith('//')).toList();
-    final String code = lines.join('\n');
+    String withoutComments(String path) =>
+        File(path).readAsStringSync().split('\n').where((String line) => !line.trimLeft().startsWith('//')).join('\n');
+
+    final String code = withoutComments('lib/notification/my_notification.dart');
+    final String splash = withoutComments('lib/features/splash/screens/splash_screen.dart');
 
     test('no handler looks at the words of a title to decide where to go', () {
       final RegExp titleTest = RegExp(r'title\s*[!?]?\s*\.\s*contains\(');
 
       expect(titleTest.hasMatch(code), isFalse, reason: 'a title is in the language of the seller');
+      expect(titleTest.hasMatch(splash), isFalse);
     });
 
     test('a message without a notification part does not stop the handler', () {
@@ -109,19 +113,55 @@ void main() {
     });
 
     test('the tap of a local notification and the opening of the app from a push both go through the one opener', () {
-      expect(RegExp(r'_open\(NotificationBody\.fromJson\(jsonDecode\(data\.payload!\)\)\)').hasMatch(code), isTrue);
-      expect(code, contains('_open(message.data.isNotEmpty ? NotificationBody.fromJson(message.data) : null, legacyOrderKey: message.notification?.titleLocKey)'));
-      expect(RegExp(r'NotificationRoute\.targetOf\(').allMatches(code).length, 1, reason: 'one decision, not one for each entry point');
+      expect(RegExp(r'(?<!_)open\(NotificationBody\.fromJson\(jsonDecode\(data\.payload!\)\)\)').hasMatch(code), isTrue);
+      expect(code, contains('open(message.data.isNotEmpty ? NotificationBody.fromJson(message.data) : null, legacyOrderKey: message.notification?.titleLocKey)'));
+    });
+
+    /// K-11. The splash had a router of its own and the two disagreed: an order notice carrying an order number and no type opened the
+    /// notification LIST on a cold start and the ORDER when the app was already running, and an order notice with a type and no number ran
+    /// `int.parse` on the word "null". One decision, asked from every entry point, is what keeps them in step.
+    test('ONE place in the whole app decides which screen a notification opens', () {
+      final Iterable<File> dartFiles = Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((File file) => file.path.endsWith('.dart'));
+
+      final List<String> deciders = <String>[];
+      for (final File file in dartFiles) {
+        if (RegExp(r'NotificationRoute\.targetOf\(').hasMatch(withoutComments(file.path))) {
+          deciders.add(file.path);
+        }
+      }
+
+      expect(deciders, <String>['lib/notification/notification_screens.dart'],
+          reason: 'a second router drifts from the first and nobody notices until a seller follows a link');
+    });
+
+    test('ONE place names the screens, and the splash is not a second one', () {
+      expect(splash, contains('NotificationScreens.of(widget.body, signedIn: true)'));
+      expect(splash, isNot(contains('notificationType')), reason: 'the splash used to switch on the type alone');
+      expect(splash, isNot(contains('int.parse(widget.body')), reason: "and used to run int.parse on the word 'null'");
+      expect(splash, isNot(contains('OrderDetailsScreen')), reason: 'the screens are named in one place');
+      expect(splash, isNot(contains('RefundDetailsScreen')));
     });
 
     test('the opener does not dereference a navigator that is not mounted', () {
       expect(code, isNot(contains('Get.navigator!')));
       expect(code, contains('final NavigatorState? navigator = Get.navigator;'));
+      expect(code, contains('if (navigator.mounted)'), reason: 'the market switch is awaited, so the app may be gone by then');
     });
 
     test('the opener tells the route whether the seller is signed in, as the chat refresh of a push already asks', () {
       expect(code, contains('final bool signedIn = Provider.of<AuthController>(navigator.context, listen: false).isLoggedIn();'));
-      expect(code, contains('NotificationRoute.targetOf(payload, signedIn: signedIn, legacyOrderKey: legacyOrderKey)'));
+      expect(code, contains('NotificationScreens.of(payload, signedIn: signedIn, legacyOrderKey: legacyOrderKey)'));
+    });
+
+    /// K-11. The market of a push was read and decided on and then nothing asked for the decision, so a Kuwaiti order opened under a Saudi
+    /// header and the server answered -- correctly -- that no such order exists.
+    test('both entry points put the app in the market the notification is about before opening it', () {
+      expect(code, contains('NotificationMarket.decide('));
+      expect(code, contains('if (!await marketIsReady(payload))'));
+      expect(splash, contains('await MyNotification.marketIsReady(widget.body)'));
     });
   });
 }

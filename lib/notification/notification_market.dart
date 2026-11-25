@@ -1,5 +1,6 @@
 import 'package:syriacosmeticsmanger/features/storefront/domain/models/market_scope.dart';
 import 'package:syriacosmeticsmanger/features/storefront/domain/models/seller_market_grant.dart';
+import 'package:syriacosmeticsmanger/features/storefront/storefront_config.dart';
 import 'package:syriacosmeticsmanger/notification/models/notification_body.dart';
 
 /// What a push notification's market means for the app that is about to open it (K-11).
@@ -53,7 +54,9 @@ class NotificationMarket {
 
   static NotificationMarketDecision decide(
     NotificationBody? payload, {
-    required bool storefrontsEnabled,
+    // Defaults to the build flag so no caller in the app states it: a screen or a handler that says whether storefronts are on is a
+    // second answer to a question the build already answers (the market source rule forbids it). A test names it to drive both ways.
+    bool storefrontsEnabled = StorefrontConfig.enabled,
     required MarketScope current,
     required SellerMarketGrant grant,
   }) {

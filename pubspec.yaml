@@ -41,6 +41,11 @@ dependencies:
   barcode_widget: ^2.0.4
   file_picker: ^10.3.10
   url_launcher: ^6.3.2
+  # Receives the `lavkooseller://` links both stores have registered to this app
+  # (K-11). Declared in AndroidManifest.xml and Info.plist since before the GCC
+  # work, with nothing in Dart reading them. Constrained to 6.x so a checkout on
+  # an older Flutter still resolves.
+  app_links: ^6.3.0
   flutter_spinkit: ^5.2.2
   percent_indicator: ^4.2.5
   flutter_speed_dial: ^7.0.0
