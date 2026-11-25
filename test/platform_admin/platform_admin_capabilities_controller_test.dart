@@ -209,10 +209,17 @@ void main() {
       }
     });
 
+    /// Signed in with a grant that NAMES every capability, including the ones a grant naming none does not get, so that
+    /// removing the part under test is a real change for every part. `owner()` lists only the capabilities that existed
+    /// when grants began, so taking `health` out of its list would take out something it never had, and the test would
+    /// be asserting that nothing changed.
     test('and when the list says it is gone, the part is gone: not offered, and nothing held for it', () async {
+      final List<String> everyCapability =
+          PlatformCapability.values.map((PlatformCapability capability) => capability.name).toList();
+
       for (final String part in loaders.keys) {
         service = FakePlatformAdminService();
-        final PlatformAdminController controller = await signedInAs(owner());
+        final PlatformAdminController controller = await signedInAs(ownerWith(everyCapability));
         final List<String> remaining = PlatformCapability.values
             .map((PlatformCapability capability) => capability.name)
             .where((String name) => name != part)
