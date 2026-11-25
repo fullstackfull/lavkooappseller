@@ -19,6 +19,7 @@ import 'package:syriacosmeticsmanger/features/order_details/domain/models/shipme
 import 'package:syriacosmeticsmanger/features/order_details/domain/models/order_setup_model.dart';
 import 'package:syriacosmeticsmanger/features/order_details/domain/services/order_details_service_interface.dart';
 import 'package:syriacosmeticsmanger/helper/api_checker.dart';
+import 'package:syriacosmeticsmanger/helper/digital_file_address.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 import 'package:syriacosmeticsmanger/core/app_context.dart';
 
@@ -176,6 +177,17 @@ class OrderDetailsController extends ChangeNotifier{
   }
 
   void productDownload({required String url, required String fileName, required int index, bool isIos = false}) async {
+    // A file the platform cannot address answers no address at all, and one screen used to hand the downloader the word "null"
+    // as a URL. There is nothing to fetch, so say so instead of failing on a malformed address (K-17).
+    if (DigitalFileAddress.of(url) == null) {
+      showCustomSnackBarWidget(getTranslated('product_download_failed', Get.context!), Get.context!);
+      return;
+    }
+
+    // A private digital file is streamed by an authenticated route of this app, so the fetch carries the seller's credential.
+    // A public storage address, and any other host, is given none.
+    final Map<String, String> downloadHeaders = orderDetailsServiceInterface.downloadHeaders(url);
+
     _isDownloadLoading = true;
     _downloadIndex = index;
     notifyListeners();
@@ -240,6 +252,7 @@ class OrderDetailsController extends ChangeNotifier{
       } else{
         task  = await FlutterDownloader.enqueue(
           url: url,
+          headers: downloadHeaders,
           savedDir: downloadDirectory.path,
           fileName: fileName,
           showNotification: true,

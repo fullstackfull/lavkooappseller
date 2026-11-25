@@ -39,6 +39,11 @@ class OrderDetailsService implements OrderDetailsServiceInterface {
   }
 
   @override
+  Map<String, String> downloadHeaders(String url) {
+    return orderDetailsRepositoryInterface.downloadHeaders(url);
+  }
+
+  @override
   Future setUpOrder(OrderSetupModel orderSetUpModel) {
     return orderDetailsRepositoryInterface.setUpOrder(orderSetUpModel);
   }

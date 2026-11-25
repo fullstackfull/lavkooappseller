@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:provider/provider.dart';
+import 'package:syriacosmeticsmanger/data/model/image_full_url.dart';
 import 'package:syriacosmeticsmanger/features/order_details/controllers/order_details_controller.dart';
 import 'package:syriacosmeticsmanger/features/order_details/domain/models/order_details_model.dart';
 import 'package:syriacosmeticsmanger/features/order/domain/models/order_model.dart';
@@ -366,13 +367,16 @@ class _OrderedProductListItemWidgetState extends State<OrderedProductListItemWid
   }
 
   void _downloadProduct(int index ){
-    String url = widget.orderDetailsModel!.productDetails!.digitalProductType == 'ready_after_sell'?
-    '${widget.orderDetailsModel?.digitalFileAfterSellFullUrl?.path}':
-    '${widget.orderDetailsModel?.productDetails?.digitalFileReadyFullUrl?.path}';
+    // Read, not interpolated. A file the platform cannot address answers `path: null` beside its 404, and interpolating that
+    // null handed the downloader the four letters "null" as a URL (K-17).
+    final bool afterSell = widget.orderDetailsModel!.productDetails!.digitalProductType == 'ready_after_sell';
+    final ImageFullUrl? file = afterSell
+        ? widget.orderDetailsModel?.digitalFileAfterSellFullUrl
+        : widget.orderDetailsModel?.productDetails?.digitalFileReadyFullUrl;
 
-    String filename = widget.orderDetailsModel!.productDetails!.digitalProductType == 'ready_after_sell'?
-    '${widget.orderDetailsModel?.digitalFileAfterSellFullUrl?.key}':
-    '${widget.orderDetailsModel?.productDetails?.digitalFileReadyFullUrl?.key}';
+    String url = file?.path ?? '';
+
+    String filename = file?.key ?? '';
 
     Provider.of<OrderDetailsController>(context, listen: false).productDownload(
         url: url,

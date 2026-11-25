@@ -58,6 +58,12 @@ jobs:
         if: always()
         run: flutter test test/seller_version_gate_switch_test.dart
 
+      # Where a digital file is fetched from and what the fetch carries. Half of this file is about where the seller's
+      # credential must NOT go, so it is read by name rather than only inside the whole run.
+      - name: Test the address of a digital file and what its fetch carries (K-17)
+        if: always()
+        run: flutter test test/digital_file_address_test.dart
+
       - name: Test the point-of-sale scan of country-scoped codes (K-05, K-13)
         if: always()
         run: flutter test test/pos_scan
