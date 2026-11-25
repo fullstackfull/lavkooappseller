@@ -92,7 +92,11 @@ void main() {
 
       await clientWith(adapter).get('/me', bearerToken: _platformToken);
 
-      expect(adapter.requests.single.headers.keys.toSet(), <String>{'accept', 'accept-language', 'authorization'});
+      // Still an exact set rather than a list of forbidden names, so a storefront, a seller
+      // language or this binary's version still fails it. The fourth is the shell declaring
+      // which contract level it can read -- the shell's own, not the seller app's version.
+      expect(adapter.requests.single.headers.keys.toSet(),
+          <String>{'accept', 'accept-language', 'authorization', 'x-platform-admin-contract'});
     });
 
     test('a sign-in carries no Authorization header at all, not even an empty one', () async {
@@ -105,7 +109,8 @@ void main() {
 
       final RecordedRequest request = adapter.requests.single;
       expect(request.headers.containsKey('authorization'), isFalse);
-      expect(request.headers.keys.toSet(), <String>{'accept', 'accept-language', 'content-type', 'content-length'});
+      expect(request.headers.keys.toSet(),
+          <String>{'accept', 'accept-language', 'content-type', 'content-length', 'x-platform-admin-contract'});
       expect(request.header('Content-Type'), startsWith('application/json'));
     });
 

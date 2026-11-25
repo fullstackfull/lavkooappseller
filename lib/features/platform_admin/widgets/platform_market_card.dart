@@ -65,6 +65,16 @@ class PlatformMarketCard extends StatelessWidget {
 }
 
 /// The figures a market and the bucket of orders without a market have in common.
+///
+/// The stock lines read in one order on purpose: what is at zero or low, what went
+/// PAST zero (a subset of zero, and the sharper reading of the same products),
+/// what is promised to orders and not yet shipped, and how a pooled stock is
+/// divided. The last two are drawn only when the platform records them at all --
+/// a zero there would say nothing is held when the truth is that nothing is
+/// recorded -- and a note says so when either is missing.
+///
+/// Every value here is a whole count of products or units. There is no money on
+/// this card: see [PlatformSalesNote] for the one thing that is not reported.
 class PlatformFiguresBlock extends StatelessWidget {
   final PlatformFigures figures;
 
@@ -73,6 +83,8 @@ class PlatformFiguresBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final PlatformOrderFigures orders = figures.orders;
+    final PlatformReservedStock? held = figures.reserved;
+    final PlatformStockAllocation? pooled = figures.allocation;
     final List<MapEntry<String, int>> statuses =
         orders.byStatus.entries.where((MapEntry<String, int> entry) => entry.value > 0).toList();
     final DateTime? latestAt = orders.latestAt;
@@ -107,6 +119,52 @@ class PlatformFiguresBlock extends StatelessWidget {
           value: '${figures.refundRequestsPending}'),
       PlatformFigureRow(label: getTranslated('platform_admin_stock_zero', context)!, value: '${figures.stockZero}'),
       PlatformFigureRow(label: getTranslated('platform_admin_stock_low', context)!, value: '${figures.stockLow}'),
+      PlatformFigureRow(
+          label: getTranslated('platform_admin_stock_oversold', context)!, value: '${figures.stockOversold}'),
+      if (figures.stockOversold > 0)
+        PlatformFigureRow(
+            label: getTranslated('platform_admin_stock_oversold_units', context)!,
+            value: '${figures.stockOversoldUnits}'),
+      if (held != null) ...[
+        PlatformFigureRow(label: getTranslated('platform_admin_stock_reserved_holds', context)!, value: '${held.holds}'),
+        PlatformFigureRow(label: getTranslated('platform_admin_stock_reserved_units', context)!, value: '${held.units}'),
+      ],
+      if (pooled != null) ...[
+        PlatformFigureRow(label: getTranslated('platform_admin_stock_pools', context)!, value: '${pooled.pools}'),
+        if (pooled.short > 0) ...[
+          PlatformFigureRow(
+              label: getTranslated('platform_admin_stock_pools_short', context)!, value: '${pooled.short}'),
+          PlatformFigureRow(
+              label: getTranslated('platform_admin_stock_pools_short_units', context)!,
+              value: '${pooled.shortUnits}'),
+        ],
+      ],
+      if (held == null || pooled == null) ...[
+        const SizedBox(height: Dimensions.paddingSizeExtraSmall),
+        PlatformFigureNote(text: getTranslated('platform_admin_stock_inventory_not_recorded', context)!),
+      ],
+    ]);
+  }
+}
+
+/// A line of small print under the figures: why one of them is missing, or what
+/// is not reported at all. Never a figure itself.
+class PlatformFigureNote extends StatelessWidget {
+  final String text;
+
+  const PlatformFigureNote({super.key, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Icon(Icons.info_outline, size: Dimensions.iconSizeSmall, color: Theme.of(context).hintColor),
+      const SizedBox(width: Dimensions.paddingSizeExtraSmall),
+      Expanded(
+        child: Text(
+          text,
+          style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeExtraSmall, color: Theme.of(context).hintColor),
+        ),
+      ),
     ]);
   }
 }
@@ -150,18 +208,7 @@ class PlatformSalesNote extends StatelessWidget {
   const PlatformSalesNote({super.key, required this.sales});
 
   @override
-  Widget build(BuildContext context) {
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Icon(Icons.info_outline, size: Dimensions.iconSizeSmall, color: Theme.of(context).hintColor),
-      const SizedBox(width: Dimensions.paddingSizeExtraSmall),
-      Expanded(
-        child: Text(
-          PlatformAdminTexts.sales(context, sales),
-          style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeExtraSmall, color: Theme.of(context).hintColor),
-        ),
-      ),
-    ]);
-  }
+  Widget build(BuildContext context) => PlatformFigureNote(text: PlatformAdminTexts.sales(context, sales));
 }
 
 /// The orders that belong to no single market, kept apart from every market's own.

@@ -2031,5 +2031,15 @@
     "platform_admin_never_posted": "لم يُرحَّل شيء بعد",
     "platform_admin_alert_books_need_a_person": "قيود محاسبية متوقفة",
     "market_paused": "هذا السوق متوقف",
-    "this_market_is_paused": "هذا السوق متوقف"
+    "this_market_is_paused": "هذا السوق متوقف",
+    "platform_admin_app_too_old": "هذا الإصدار من التطبيق أقدم من أن تقبله المنصة.",
+    "platform_admin_app_too_old_hint": "حدّث التطبيق للمتابعة. إعادة تسجيل الدخول لن تُفيد.",
+    "platform_admin_stock_oversold": "منتجات بِيعت تحت الصفر",
+    "platform_admin_stock_oversold_units": "وحدات مَبيعة وغير متوفرة",
+    "platform_admin_stock_reserved_holds": "حجوزات مخزون لأجل الطلبات",
+    "platform_admin_stock_reserved_units": "وحدات محجوزة لأجل الطلبات",
+    "platform_admin_stock_pools": "مجموعات مخزون مشتركة",
+    "platform_admin_stock_pools_short": "مجموعات لم تستطع منح كل قناة نصيبها",
+    "platform_admin_stock_pools_short_units": "وحدات ناقصة في تلك المجموعات",
+    "platform_admin_stock_inventory_not_recorded": "حجوزات المخزون والمجموعات المشتركة غير مسجّلة بالكامل على هذه المنصة."
 }

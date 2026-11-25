@@ -162,6 +162,7 @@ abstract final class PlatformAdminTexts {
           getTranslated('platform_admin_capability_not_allowed', context)!,
         PlatformAdminFailureKind.notAvailable => getTranslated('platform_admin_not_available', context)!,
         PlatformAdminFailureKind.notReady => getTranslated('platform_admin_not_ready', context)!,
+        PlatformAdminFailureKind.appTooOld => getTranslated('platform_admin_app_too_old', context)!,
         PlatformAdminFailureKind.throttled => _tryAgain(context, failure),
         PlatformAdminFailureKind.unauthenticated => getTranslated('platform_admin_session_ended', context)!,
         PlatformAdminFailureKind.sessionNotFound ||
@@ -172,8 +173,15 @@ abstract final class PlatformAdminTexts {
       };
 
   /// What to do about it, when there is something to say beyond the title.
-  static String? failureHint(BuildContext context, PlatformAdminFailure failure) =>
-      failure.kind == PlatformAdminFailureKind.network ? getTranslated('connection_failed_message', context) : null;
+  ///
+  /// A build the server will not answer gets one too, and it is the only hint
+  /// that names an action: there is nothing to retry and no setting to change,
+  /// so saying only "no" would leave an operator with nowhere to go.
+  static String? failureHint(BuildContext context, PlatformAdminFailure failure) => switch (failure.kind) {
+        PlatformAdminFailureKind.network => getTranslated('connection_failed_message', context),
+        PlatformAdminFailureKind.appTooOld => getTranslated('platform_admin_app_too_old_hint', context),
+        _ => null,
+      };
 
   static IconData failureIcon(PlatformAdminFailure failure) => switch (failure.kind) {
         PlatformAdminFailureKind.network => Icons.wifi_off_rounded,
@@ -183,6 +191,8 @@ abstract final class PlatformAdminTexts {
           Icons.lock_outline,
         PlatformAdminFailureKind.notAvailable => Icons.block_outlined,
         PlatformAdminFailureKind.notReady => Icons.hourglass_empty_rounded,
+        // Chosen because it is already in this app's own code and therefore compiles: there is no Flutter here to check a prettier one against.
+        PlatformAdminFailureKind.appTooOld => Icons.download_rounded,
         PlatformAdminFailureKind.throttled => Icons.timer_outlined,
         _ => Icons.error_outline,
       };

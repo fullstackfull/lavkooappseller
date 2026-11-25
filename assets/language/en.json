@@ -2031,5 +2031,15 @@
     "platform_admin_never_posted": "Nothing has posted yet",
     "platform_admin_alert_books_need_a_person": "Accounting entries stopped",
     "market_paused": "This market is paused",
-    "this_market_is_paused": "This market is paused"
+    "this_market_is_paused": "This market is paused",
+    "platform_admin_app_too_old": "This version of the app is too old for the platform.",
+    "platform_admin_app_too_old_hint": "Update the app to continue. Signing in again will not help.",
+    "platform_admin_stock_oversold": "Products sold below zero",
+    "platform_admin_stock_oversold_units": "Units sold and not in stock",
+    "platform_admin_stock_reserved_holds": "Stock holds for orders",
+    "platform_admin_stock_reserved_units": "Units held for orders",
+    "platform_admin_stock_pools": "Shared stock pools",
+    "platform_admin_stock_pools_short": "Pools that could not give every channel its share",
+    "platform_admin_stock_pools_short_units": "Units short across those pools",
+    "platform_admin_stock_inventory_not_recorded": "Stock holds and shared pools are not fully recorded on this platform."
 }

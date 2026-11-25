@@ -22,6 +22,12 @@ enum PlatformAdminFailureKind {
   /// 422: the API could not read what it was asked.
   invalidRequest,
 
+  /// 426: this build speaks an older contract level than the oldest the server
+  /// answers, so it would not understand what it was given. It is the one
+  /// refusal the sign-in itself can return, and there is nothing to retry: the
+  /// app has to be updated.
+  appTooOld,
+
   /// 429: too many attempts or requests.
   throttled,
 
@@ -93,6 +99,7 @@ class PlatformAdminFailure {
           code: code,
         ),
       422 => PlatformAdminFailure._(PlatformAdminFailureKind.invalidRequest, statusCode: statusCode, code: code),
+      426 => PlatformAdminFailure._(PlatformAdminFailureKind.appTooOld, statusCode: statusCode, code: code),
       429 => PlatformAdminFailure._(
           PlatformAdminFailureKind.throttled,
           statusCode: statusCode,

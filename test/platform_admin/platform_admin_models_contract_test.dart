@@ -658,7 +658,10 @@ Map<String, dynamic> _withUnknownKeysEverywhere(Map<String, dynamic> source) {
 String _summary(PlatformOverviewModel overview) {
   String figures(PlatformFigures figures) =>
       '${figures.orders.total}/${figures.orders.byStatus}/${figures.orders.latestAt}'
-      '/${figures.pendingFulfilment}/${figures.refundRequests}/${figures.refundRequestsPending}/${figures.stockZero}/${figures.stockLow}/${figures.sales.reason}';
+      '/${figures.pendingFulfilment}/${figures.refundRequests}/${figures.refundRequestsPending}/${figures.stockZero}/${figures.stockLow}'
+      '/${figures.stockOversold}/${figures.stockOversoldUnits}'
+      '/${figures.reserved?.holds}-${figures.reserved?.units}/${figures.allocation?.pools}-${figures.allocation?.short}-${figures.allocation?.shortUnits}'
+      '/${figures.sales.reason}';
 
   return <String>[
     overview.scope.name,

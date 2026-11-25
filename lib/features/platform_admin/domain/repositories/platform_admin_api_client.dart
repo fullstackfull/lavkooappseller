@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_failure.dart';
 import 'package:syriacosmeticsmanger/features/platform_admin/domain/models/platform_admin_json.dart';
+import 'package:syriacosmeticsmanger/features/platform_admin/platform_admin_config.dart';
 
 /// What a successful call answered: `data`, and `meta` for a list.
 class PlatformAdminReply {
@@ -21,8 +22,19 @@ class PlatformAdminReply {
 ///
 /// Nothing here prints. A request of this client carries a password or the keys
 /// to every market, and a log line is a copy nobody can take back.
+///
+/// The one header it adds of its own is the contract level this build speaks. It
+/// is the shell declaring itself, not a seller header: it says nothing about the
+/// seller, the storefront, the language of the seller app or this binary's
+/// version, and the server reads it to decide whether this build can be given
+/// answers it understands.
 class PlatformAdminApiClient {
   static const String apiPath = '/api/platform-admin/v1';
+
+  /// What this build tells the server it can read (`PlatformAdminConfig.contractLevel`).
+  /// Sent on every call, the sign-in included, because the server's refusal of a
+  /// build too old to read its answers comes before any session exists.
+  static const String contractHeader = 'X-Platform-Admin-Contract';
 
   /// Public so that a test can give it an adapter that answers from a script.
   final Dio dio;
@@ -39,7 +51,10 @@ class PlatformAdminApiClient {
             receiveTimeout: const Duration(seconds: 60),
             // A redirect would carry the token to wherever it points.
             followRedirects: false,
-            headers: <String, Object>{Headers.acceptHeader: Headers.jsonContentType},
+            headers: <String, Object>{
+              Headers.acceptHeader: Headers.jsonContentType,
+              contractHeader: '${PlatformAdminConfig.contractLevel}',
+            },
           ),
         );
 

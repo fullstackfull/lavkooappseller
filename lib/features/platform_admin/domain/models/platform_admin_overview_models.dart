@@ -116,10 +116,50 @@ class PlatformAlertCounts {
   int get total => critical + warning + info;
 }
 
+/// The stock a market has promised to orders and not yet shipped.
+///
+/// Whole units and whole holds. The server sends this only on an installation
+/// that records stock holds at all; where it does not, there is no figure rather
+/// than a zero, because "nothing is held here" and "this platform does not record
+/// held stock" are different facts.
+class PlatformReservedStock {
+  final int holds;
+  final int units;
+
+  const PlatformReservedStock({required this.holds, required this.units});
+
+  factory PlatformReservedStock.fromJson(Map<String, dynamic> json) => PlatformReservedStock(
+        holds: PlatformJson.count(json['holds']),
+        units: PlatformJson.count(json['units']),
+      );
+}
+
+/// How the stock of a pooled product is divided between the channels offering it:
+/// how many pools there are, how many could not give every channel its share, and
+/// how many units short those are. Absent, like [PlatformReservedStock], on an
+/// installation that divides no stock.
+class PlatformStockAllocation {
+  final int pools;
+  final int short;
+  final int shortUnits;
+
+  const PlatformStockAllocation({required this.pools, required this.short, required this.shortUnits});
+
+  factory PlatformStockAllocation.fromJson(Map<String, dynamic> json) => PlatformStockAllocation(
+        pools: PlatformJson.count(json['pools']),
+        short: PlatformJson.count(json['short']),
+        shortUnits: PlatformJson.count(json['short_units']),
+      );
+}
+
 /// What the platform reports for one market, or for the orders of no market.
 ///
 /// `pendingFulfilment` and the stock figures are states of the moment; the
 /// orders and the refund requests are flows of the window.
+///
+/// Every figure here is a whole count. `stockOversoldUnits` and the units of a
+/// hold or a pool are units of stock and never money: the shell has nowhere to
+/// keep an amount and no way to write one.
 class PlatformFigures {
   final PlatformOrderFigures orders;
   final PlatformSalesFigure sales;
@@ -129,6 +169,18 @@ class PlatformFigures {
   final int stockZero;
   final int stockLow;
 
+  /// Live products whose stock has gone PAST zero, and by how many units. A
+  /// subset of [stockZero], which counts everything at zero or below.
+  final int stockOversold;
+  final int stockOversoldUnits;
+
+  /// Null where the platform records no stock holds, which is not the same as
+  /// holding none.
+  final PlatformReservedStock? reserved;
+
+  /// Null where the platform divides no stock between channels.
+  final PlatformStockAllocation? allocation;
+
   const PlatformFigures({
     required this.orders,
     required this.sales,
@@ -137,6 +189,10 @@ class PlatformFigures {
     required this.refundRequestsPending,
     required this.stockZero,
     required this.stockLow,
+    this.stockOversold = 0,
+    this.stockOversoldUnits = 0,
+    this.reserved,
+    this.allocation,
   });
 
   factory PlatformFigures.fromJson(Map<String, dynamic> json) {
@@ -151,6 +207,11 @@ class PlatformFigures {
       refundRequestsPending: PlatformJson.count(returns['pending']),
       stockZero: PlatformJson.count(stock['zero']),
       stockLow: PlatformJson.count(stock['low']),
+      stockOversold: PlatformJson.count(stock['oversold']),
+      stockOversoldUnits: PlatformJson.count(stock['oversold_units']),
+      reserved: stock['reserved'] is Map ? PlatformReservedStock.fromJson(PlatformJson.map(stock['reserved'])) : null,
+      allocation:
+          stock['allocation'] is Map ? PlatformStockAllocation.fromJson(PlatformJson.map(stock['allocation'])) : null,
     );
   }
 }
