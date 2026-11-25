@@ -78,6 +78,9 @@ class _HomePageScreenState extends State<HomePageScreen> {
     // load rather than on the next sign-in (K-09). A build without markets has no controller to ask.
     if (sl.isRegistered<SellerMarketController>()) {
       sl<SellerMarketController>().refreshGrant();
+      // And the market the platform serves whoever has chosen none, so moving the default on the server reaches a seller who has
+      // chosen nothing on the next load rather than on the next release (A1-03).
+      sl<SellerMarketController>().refreshPlatformDefault();
     }
   }
 

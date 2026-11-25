@@ -252,6 +252,10 @@ class AppConstants {
   /// Who is signed in: the principal, what it may do, and the markets it carries (K-09).
   static const String sellerPrincipalUri =
       '/api/v3/seller/seller-center/security/me';
+
+  /// The markets the shop serves, and which of them it serves whoever has chosen none (A1-03). The same answer the customer app reads:
+  /// it needs no token, which is why a seller who has not signed in yet can still be shown the market the platform defaults to.
+  static const String storefrontsUri = '/api/v1/storefronts';
   static const String sellerAnalyticsUri =
       '/api/v3/seller/seller-center/analytics';
   static const String sellerActivitiesUri =
@@ -405,6 +409,9 @@ class AppConstants {
   static const String userEmail = 'user_email';
   static const String langKey = 'lang';
   static const String storefrontCountry = 'storefront_country';
+
+  /// The market the server last said the platform serves whoever has chosen none. A seller who has chosen a market is not moved by it.
+  static const String storefrontDefaultCountry = 'storefront_default_country';
   static const String storefrontHeader = 'X-Storefront';
   static const String showCookies = 'cookies';
   static const String bluetoothMacAddress = 'bluetooth_mac_address';

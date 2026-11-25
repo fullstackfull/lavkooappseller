@@ -9,6 +9,7 @@ import 'package:syriacosmeticsmanger/features/order_details/widgets/due_ampunt_c
 import 'package:syriacosmeticsmanger/features/order_details/widgets/order_details_shimmer.dart';
 import 'package:syriacosmeticsmanger/features/order_details/widgets/order_payment_info_widget.dart';
 import 'package:syriacosmeticsmanger/features/order_details/widgets/order_earning_widget.dart';
+import 'package:syriacosmeticsmanger/features/order_details/widgets/shipment_hold_widget.dart';
 import 'package:syriacosmeticsmanger/features/order_details/widgets/order_sla_countdown_widget.dart';
 import 'package:syriacosmeticsmanger/features/order_details/widgets/order_timeline_widget.dart';
 import 'package:syriacosmeticsmanger/features/order_details/widgets/order_setup_bottom_sheet.dart';
@@ -58,6 +59,8 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     // Fetched separately so a slow or failing breakdown never keeps the order
     // itself from rendering.
     Provider.of<OrderDetailsController>(Get.context!, listen: false).getOrderBreakdown(widget.orderId.toString());
+    // And why a shipment of it has not left, if one has not: asked separately for the same reason, and silent when nothing is held.
+    Provider.of<OrderDetailsController>(Get.context!, listen: false).getShipmentHolds(widget.orderId.toString());
   }
 
 
@@ -216,6 +219,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                               // What the order is worth to the seller, right after what
                               // was in it — the total above is the customer's number, not
                               // theirs.
+                              // Why a shipment has not left, ahead of the money: a seller who opens a held order needs the reason
+                              // before anything else on the screen. Draws nothing when nothing is held.
+                              const ShipmentHoldWidget(),
+
                               const OrderEarningWidget(),
                               const SizedBox(height: Dimensions.paddingSizeSmall),
 

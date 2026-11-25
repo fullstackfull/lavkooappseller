@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:syriacosmeticsmanger/features/storefront/domain/models/market_scope.dart';
+import 'package:syriacosmeticsmanger/features/storefront/domain/models/platform_default_market.dart';
 import 'package:syriacosmeticsmanger/features/storefront/domain/models/seller_market_grant.dart';
+import 'package:syriacosmeticsmanger/features/storefront/domain/platform_default_market_source.dart';
 import 'package:syriacosmeticsmanger/features/storefront/domain/seller_principal_source.dart';
 import 'package:syriacosmeticsmanger/features/storefront/seller_market_choice.dart';
 
@@ -14,13 +16,16 @@ class SellerMarketController extends ChangeNotifier {
     required SellerMarketChoice marketChoice,
     required MarketSwitchHandler onMarketSwitched,
     SellerPrincipalSource? principalSource,
+    PlatformDefaultMarketSource? defaultMarketSource,
   })  : _marketChoice = marketChoice,
         _onMarketSwitched = onMarketSwitched,
-        _principalSource = principalSource;
+        _principalSource = principalSource,
+        _defaultMarketSource = defaultMarketSource;
 
   final SellerMarketChoice _marketChoice;
   final MarketSwitchHandler _onMarketSwitched;
   final SellerPrincipalSource? _principalSource;
+  final PlatformDefaultMarketSource? _defaultMarketSource;
   Future<void>? _lastHandled;
   SellerMarketGrant _grant = const SellerMarketGrant.unrestricted();
 
@@ -45,6 +50,28 @@ class SellerMarketController extends ChangeNotifier {
     }
 
     await applyGrant(await source.grant());
+  }
+
+  /// Asks the server which market the platform serves whoever has chosen none, and remembers the answer, so that moving the default on
+  /// the server moves a seller who has chosen no market (A1-03). A seller who has chosen one is not moved and nothing notifies: their
+  /// choice outranks the default and always did. A build with no source never asks.
+  Future<void> refreshPlatformDefault() async {
+    final PlatformDefaultMarketSource? source = _defaultMarketSource;
+    if (source == null) {
+      return;
+    }
+
+    final PlatformDefaultMarket answer = await source.defaultMarket();
+    if (!answer.answered) {
+      return;
+    }
+
+    final MarketScope marketBefore = market;
+    await _marketChoice.rememberPlatformDefault(answer.market);
+
+    if (market != marketBefore) {
+      notifyListeners();
+    }
   }
 
   /// Takes the grant the server answered. A seller working in a market the grant does not hold is moved to the first market it
