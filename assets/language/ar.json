@@ -2012,5 +2012,6 @@
   "platform_admin_late": "بدون نجاح في هذه الفترة",
   "platform_admin_last_success": "آخر نجاح",
   "platform_admin_never_succeeded": "لم تنجح قطّ",
-  "platform_admin_unattributed": "سوق غير مُسجَّل"
+  "platform_admin_unattributed": "سوق غير مُسجَّل",
+  "platform_admin_reconciliation_breaks": "تكاليف لم تُطابَق"
 }

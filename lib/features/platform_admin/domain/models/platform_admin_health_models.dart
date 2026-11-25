@@ -19,10 +19,19 @@ class PlatformPaymentHealth {
   /// Attempts started, never confirmed, and older than the server's grace period.
   final int stuckAttempts;
 
-  const PlatformPaymentHealth({this.stuckAttempts = 0});
+  /// Cost reconciliations nobody has settled. A BACKLOG and not a window: one
+  /// from last month is still money the platform cannot account for, so this
+  /// figure does not fall when the window moves.
+  final int reconciliationBreaks;
 
-  factory PlatformPaymentHealth.fromJson(Map<String, dynamic> json) =>
-      PlatformPaymentHealth(stuckAttempts: PlatformJson.count(json['stuck_attempts']));
+  const PlatformPaymentHealth({this.stuckAttempts = 0, this.reconciliationBreaks = 0});
+
+  factory PlatformPaymentHealth.fromJson(Map<String, dynamic> json) => PlatformPaymentHealth(
+        stuckAttempts: PlatformJson.count(json['stuck_attempts']),
+        reconciliationBreaks: PlatformJson.count(json['reconciliation_breaks']),
+      );
+
+  bool get hasTrouble => stuckAttempts > 0 || reconciliationBreaks > 0;
 }
 
 /// A market's sales-channel accounts and how their syncs are doing.
@@ -110,7 +119,7 @@ class PlatformMarketHealth {
   bool get isUnattributed => market == null;
 
   /// Whether anything on this row is worth a person's attention right now.
-  bool get needsAttention => payments.stuckAttempts > 0 || channels.hasTrouble || carriers.hasTrouble;
+  bool get needsAttention => payments.hasTrouble || channels.hasTrouble || carriers.hasTrouble;
 }
 
 /// The whole answer of `GET /health`.
