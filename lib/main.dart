@@ -58,6 +58,7 @@ import 'package:syriacosmeticsmanger/features/shipping/controllers/shipping_cont
 import 'package:syriacosmeticsmanger/features/shop/controllers/shop_controller.dart';
 import 'package:syriacosmeticsmanger/features/splash/controllers/splash_controller.dart';
 import 'package:syriacosmeticsmanger/notification/models/notification_body.dart';
+import 'package:syriacosmeticsmanger/notification/seller_deep_link_entry.dart';
 import 'package:syriacosmeticsmanger/theme/controllers/theme_controller.dart';
 import 'package:syriacosmeticsmanger/features/bank_info/controllers/bank_info_controller.dart';
 import 'package:syriacosmeticsmanger/features/home/controllers/seller_analytics_controller.dart';
@@ -163,6 +164,15 @@ Future<void> main() async {
     await MyNotification.initialize(
       flutterLocalNotificationsPlugin,
     );
+
+    // A `lavkooseller://` link that started the app, taken only when no push was
+    // tapped: a push that opened the app was tapped a moment ago, and the thing
+    // the seller just did wins over a link that was waiting (K-11).
+    body ??= await SellerDeepLinkEntry.initialPayload();
+
+    // And one that arrives while the app is running, through the same opener a
+    // push uses.
+    SellerDeepLinkEntry.listen(onPayload: MyNotification.open);
 
     // Deferred to after first paint: asking for the notification permission
     // before runApp() blocks cold start behind an OS dialog.

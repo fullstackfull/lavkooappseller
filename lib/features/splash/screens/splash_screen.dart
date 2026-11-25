@@ -4,21 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 import 'package:syriacosmeticsmanger/helper/version_helper.dart';
 import 'package:provider/provider.dart';
-import 'package:syriacosmeticsmanger/features/chat/screens/inbox_screen.dart';
 import 'package:syriacosmeticsmanger/features/maintenance/maintenance_screen.dart';
 import 'package:syriacosmeticsmanger/features/notification/screens/notification_screen.dart';
-import 'package:syriacosmeticsmanger/features/order_details/screens/order_details_screen.dart';
-import 'package:syriacosmeticsmanger/features/product/screens/product_list_screen.dart';
-import 'package:syriacosmeticsmanger/features/refund/domain/models/refund_model.dart';
-import 'package:syriacosmeticsmanger/features/refund/screens/refund_details_screen.dart';
 import 'package:syriacosmeticsmanger/features/splash/domain/models/config_model.dart';
 import 'package:syriacosmeticsmanger/features/update/screen/update_screen.dart';
-import 'package:syriacosmeticsmanger/features/wallet/screens/wallet_screen.dart';
 import 'package:syriacosmeticsmanger/helper/network_info.dart';
 import 'package:syriacosmeticsmanger/features/auth/controllers/auth_controller.dart';
 import 'package:syriacosmeticsmanger/features/splash/controllers/splash_controller.dart';
 import 'package:syriacosmeticsmanger/core/app_context.dart';
 import 'package:syriacosmeticsmanger/notification/models/notification_body.dart';
+import 'package:syriacosmeticsmanger/notification/my_notification.dart';
+import 'package:syriacosmeticsmanger/notification/notification_screens.dart';
 import 'package:syriacosmeticsmanger/utill/dimensions.dart';
 import 'package:syriacosmeticsmanger/utill/images.dart';
 import 'package:syriacosmeticsmanger/utill/styles.dart';
@@ -90,60 +86,31 @@ class SplashScreenState extends State<SplashScreen> {
               settings: const RouteSettings(name: 'MaintenanceScreen'),
             ));
           } else {
-            if(widget.body != null && Provider.of<AuthController>(context, listen: false).isLoggedIn()) {
-              String notificationType = widget.body?.type??"";
+            // The screen a notification opens is NotificationScreens' to say, and it is the same list the opener used while the app is
+            // running asks (K-11). There were two lists here and they disagreed: this one switched on the type alone, so an order notice
+            // carrying an order number and no type -- which is most of them -- opened the notification LIST when it started the app and the
+            // ORDER when the app was already running, and an order notice with a type and no number crashed on `int.parse` of the word
+            // "null". A notification that was tapped and names no screen this build knows still opens the list it is in, as it always did:
+            // the seller tapped something and has to land somewhere about it.
+            final AuthController auth = Provider.of<AuthController>(context, listen: false);
+            final bool signedIn = auth.isLoggedIn();
+            final Widget? fromNotification = widget.body != null && signedIn
+                ? (NotificationScreens.of(widget.body, signedIn: true) ?? const NotificationScreen())
+                : null;
 
-              switch(notificationType.toLowerCase()) {
-                case 'chatting' : {
-                  Navigator.of(Get.context!).pushReplacement(MaterialPageRoute(builder: (context) => InboxScreen(fromNotification: true, initIndex: widget.body?.messageKey ==  'message_from_delivery_man' ? 1 : 0)));
-                }
-                break;
-
-                case 'theme' : {
-                  Navigator.of(Get.context!).pushReplacement(MaterialPageRoute(builder: (context) => const NotificationScreen()));
-                }
-                break;
-
-                case 'order' : {
-                  Navigator.of(Get.context!).pushReplacement(MaterialPageRoute(builder: (context) => OrderDetailsScreen(orderId: int.parse(widget.body!.orderId.toString()), fromNotification: true)));
-                }
-                break;
-
-                case 'wallet' : {
-                  Navigator.of(Get.context!).pushReplacement(MaterialPageRoute(builder: (context) => const WalletScreen(fromNotification: true)));
-                }
-                break;
-
-                case 'wallet_withdraw' : {
-                  Navigator.of(Get.context!).pushReplacement(MaterialPageRoute(builder: (context) => const WalletScreen(fromNotification: true)));
-                }
-                break;
-
-                case 'product_request_approved_message' : {
-                  Navigator.of(Get.context!).pushReplacement(MaterialPageRoute(builder: (context) => const ProductListMenuScreen(fromNotification: true)));
-                }
-                break;
-
-                case 'refund' : {
-                  Navigator.of(Get.context!).pushReplacement(MaterialPageRoute(builder: (context) =>  RefundDetailsScreen(fromNotification: true, refundModel: RefundModel(id: widget.body!.refundId), orderDetailsId: widget.body!.orderDetailsId)));
-                }
-                break;
-
-                default: {
-                  Navigator.of(Get.context!).pushReplacement(MaterialPageRoute(builder: (context) => const NotificationScreen()));
-                } break;
+            if (fromNotification != null && await MyNotification.marketIsReady(widget.body)) {
+              Navigator.of(Get.context!).pushReplacement(MaterialPageRoute(builder: (BuildContext context) => fromNotification));
+            } else if (signedIn) {
+              if (!mounted) {
+                return;
               }
 
+              await auth.updateToken(context);
+              Navigator.of(Get.context!).pushReplacement(MaterialPageRoute(builder: (BuildContext context) => const DashboardScreen()));
             } else {
-              // A deep link from a push lands here too when there is no session:
-              // every one of those screens fetches on open, so following it
+              // A deep link or a push lands here too when there is no session: every one of those screens fetches on open, so following it
               // signed out meant a 401 and a bounce, rather than a login screen.
-              if(Provider.of<AuthController>(context, listen: false).isLoggedIn()) {
-                await Provider.of<AuthController>(context, listen: false).updateToken(context);
-                Navigator.of(Get.context!).pushReplacement(MaterialPageRoute(builder: (BuildContext context) => const DashboardScreen()));
-              } else {
-                Navigator.of(Get.context!).pushReplacement(MaterialPageRoute(builder: (BuildContext context) => const AuthScreen()));
-              }
+              Navigator.of(Get.context!).pushReplacement(MaterialPageRoute(builder: (BuildContext context) => const AuthScreen()));
             }
           }
         });

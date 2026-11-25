@@ -5,6 +5,7 @@ import 'package:syriacosmeticsmanger/features/auth/screens/auth_screen.dart';
 import 'package:syriacosmeticsmanger/features/dashboard/screens/dashboard_screen.dart';
 import 'package:syriacosmeticsmanger/features/splash/controllers/splash_controller.dart';
 import 'package:syriacosmeticsmanger/features/splash/domain/models/config_model.dart';
+import 'package:syriacosmeticsmanger/features/storefront/widgets/paused_market_notice.dart';
 import 'package:syriacosmeticsmanger/localization/language_constrants.dart';
 import 'package:syriacosmeticsmanger/core/app_context.dart';
 import 'package:syriacosmeticsmanger/utill/dimensions.dart';
@@ -96,6 +97,10 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> with WidgetsBindi
               if(configModel?.maintenanceModeData?.maintenanceMessages?.messageBody == null || (configModel?.maintenanceModeData?.maintenanceMessages?.messageBody == null && configModel!.maintenanceModeData!.maintenanceMessages!.messageBody!.isEmpty) )...[
                 Text(getTranslated('maintenance_body', context)!, textAlign: TextAlign.justify, style: titilliumRegular),
               ],
+
+              // WHICH market is stopped, for a seller who works in more than one (K-V4). Draws nothing unless the server named the
+              // market this seller is working in, so the screen a single-market platform shows is unchanged.
+              const PausedMarketNotice(),
 
               SizedBox(height: size.height * 0.07),
 

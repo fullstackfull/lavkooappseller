@@ -9,6 +9,8 @@ import 'package:syriacosmeticsmanger/data/datasource/remote/exception/api_error_
 import 'package:syriacosmeticsmanger/features/auth/domain/models/register_model.dart';
 import 'package:syriacosmeticsmanger/data/model/response/base/api_response.dart';
 import 'package:syriacosmeticsmanger/features/auth/domain/repositories/auth_repository_interface.dart';
+import 'package:syriacosmeticsmanger/features/storefront/seller_market_choice.dart';
+import 'package:syriacosmeticsmanger/notification/seller_push_topics.dart';
 import 'package:syriacosmeticsmanger/utill/app_constants.dart';
 import 'package:path/path.dart';
 import 'package:http/http.dart' as http;
@@ -17,6 +19,11 @@ class AuthRepository implements AuthRepositoryInterface{
   final DioClient? dioClient;
   final SharedPreferences? sharedPreferences;
   late final SecureCredentialStore secureCredentialStore;
+
+  /// The market this device is working in, for the topics it subscribes to (K-11). Null in a build or a test that has not wired it, which
+  /// subscribes to the platform-wide topics alone -- exactly what this app did before markets existed.
+  SellerMarketChoice? get _marketChoice =>
+      sharedPreferences == null ? null : SellerMarketChoice(sharedPreferences!);
 
   AuthRepository({required this.dioClient, required this.sharedPreferences, SecureCredentialStore? credentialStore}) {
     secureCredentialStore = credentialStore ?? SecureCredentialStore(sharedPreferences: sharedPreferences);
@@ -86,8 +93,11 @@ class AuthRepository implements AuthRepositoryInterface{
   Future<ApiResponse> updateToken() async {
     try {
       String? deviceToken = await _getDeviceToken();
-      FirebaseMessaging.instance.subscribeToTopic(AppConstants.topic);
-      FirebaseMessaging.instance.subscribeToTopic(AppConstants.maintenanceModeTopic);
+      // The platform-wide topics AND the one of the market this device is working in (K-11): a maintenance of one market must not tell the
+      // sellers of the others to stop working. With storefronts off the list is the two topics this app has always subscribed to.
+      for (final String topic in SellerPushTopics.forMarket(_marketChoice?.current())) {
+        FirebaseMessaging.instance.subscribeToTopic(topic);
+      }
       Response response = await dioClient!.post(
         AppConstants.tokenUri,
         data: {"_method": "put", "cm_firebase_token": deviceToken},
@@ -168,8 +178,9 @@ class AuthRepository implements AuthRepositoryInterface{
     // not part of ending the session. It must never be able to outlive the
     // sign-out it belongs to.
     try {
-      await FirebaseMessaging.instance.unsubscribeFromTopic(AppConstants.topic);
-      await FirebaseMessaging.instance.unsubscribeFromTopic(AppConstants.maintenanceModeTopic);
+      for (final String topic in SellerPushTopics.forMarket(_marketChoice?.current())) {
+        await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
+      }
     } catch (e) {
       if (kDebugMode) {
         print("====Execption====>>$e");

@@ -21,7 +21,11 @@
       "unattributed": "rows whose market is not recorded; never counted as the default market",
       "payments.reconciliation_breaks": "cost reconciliations nobody has settled -- a variance not accepted, an invoice line with no estimate, an estimate with no invoice line. A BACKLOG and not a window: one from last month is still money this platform cannot account for, so this figure does not fall when the window moves",
       "issues.open_shop_issues": "shop service-level breaches nobody has cleared, counted in the market of the shop they are against. A BACKLOG and not a window. STAFF issues and ESCALATIONS are not in this figure and are not sent at all: this platform keeps no record of either, and a zero would read as \"none open\"",
-      "issues.pending_approvals": "approval requests nobody has decided, counted in the market of the shop that asked. Also a backlog. A request that names no shop is counted apart rather than placed in a market"
+      "issues.pending_approvals": "approval requests nobody has decided, counted in the market of the shop that asked. Also a backlog. A request that names no shop is counted apart rather than placed in a market",
+      "integrations.books.queued_postings": "accounting entries the queue can still post by itself: waiting, or possibly posted and waiting to be asked about. Not a fault",
+      "integrations.books.postings_needing_a_person": "entries the queue has stopped trying on -- it needs a decision, or it has given up. This is the figure to act on. A BACKLOG and not a window",
+      "integrations.books.overdue_postings": "queued entries whose turn has passed and that nothing has worked: how a stopped worker looks from here",
+      "integrations.books.last_posted_at": "the latest entry that reached the books, whenever it was. Deliberately not bounded by the window: \"nothing has posted since the 3rd\" is what an operator needs to see, and a window would hide it"
     },
     "markets": [
       {
@@ -43,6 +47,12 @@
             "failing_capabilities": 1,
             "late_capabilities": 0,
             "last_success_at": "2026-11-25T05:30:00Z"
+          },
+          "books": {
+            "queued_postings": 2,
+            "postings_needing_a_person": 1,
+            "overdue_postings": 1,
+            "last_posted_at": "2026-11-24T06:00:00Z"
           }
         },
         "issues": {
@@ -69,6 +79,12 @@
             "failing_capabilities": 0,
             "late_capabilities": 0,
             "last_success_at": null
+          },
+          "books": {
+            "queued_postings": 0,
+            "postings_needing_a_person": 0,
+            "overdue_postings": 0,
+            "last_posted_at": null
           }
         },
         "issues": {
@@ -96,6 +112,12 @@
           "failing_capabilities": 0,
           "late_capabilities": 1,
           "last_success_at": null
+        },
+        "books": {
+          "queued_postings": 1,
+          "postings_needing_a_person": 0,
+          "overdue_postings": 1,
+          "last_posted_at": null
         }
       },
       "reason": "no_market_recorded",

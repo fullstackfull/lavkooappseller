@@ -86,6 +86,10 @@ void main() {
       expect(kuwait.health.channels.lateResources, 1);
       expect(saudi.health.carriers.failingCapabilities, 1);
       expect(kuwait.health.carriers.connections, 0);
+      expect(saudi.health.books.postingsNeedingAPerson, 1, reason: 'the accounting entry the queue has stopped on');
+      expect(saudi.health.books.overduePostings, 1);
+      expect(saudi.health.books.queuedPostings, 2, reason: 'and the work it can still do by itself, drawn apart from the two above');
+      expect(kuwait.health.books.postingsNeedingAPerson, 0);
       expect(saudi.health.issues.openShopIssues, 3, reason: 'the shops of that market that are out of policy');
       expect(saudi.health.issues.pendingApprovals, 1);
       expect(kuwait.health.issues.openShopIssues, 0, reason: 'a market with nothing open reads zero, not nothing');
@@ -107,6 +111,28 @@ void main() {
         ).needsAttention,
         isTrue,
         reason: 'issues alone are enough: a market whose shops are out of policy is not a market with nothing on it',
+      );
+      expect(
+        const PlatformMarketHealth(
+          payments: PlatformPaymentHealth(),
+          channels: PlatformChannelHealth(),
+          carriers: PlatformCarrierHealth(),
+          books: PlatformBooksHealth(postingsNeedingAPerson: 1),
+          market: 'BH',
+        ).needsAttention,
+        isTrue,
+        reason: 'an accounting entry the queue has stopped on is enough too',
+      );
+      expect(
+        const PlatformMarketHealth(
+          payments: PlatformPaymentHealth(),
+          channels: PlatformChannelHealth(),
+          carriers: PlatformCarrierHealth(),
+          books: PlatformBooksHealth(queuedPostings: 9),
+          market: 'BH',
+        ).needsAttention,
+        isFalse,
+        reason: 'but work the queue can still do by itself is not trouble, and marking it would teach a reader to ignore the mark',
       );
     });
 

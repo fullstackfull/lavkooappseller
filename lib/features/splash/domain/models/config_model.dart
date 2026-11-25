@@ -1,4 +1,5 @@
 import 'package:syriacosmeticsmanger/data/model/image_full_url.dart';
+import 'package:syriacosmeticsmanger/features/storefront/domain/models/storefront_pause.dart';
 
 class ConfigModel {
   int? _systemDefaultCurrency;
@@ -42,6 +43,10 @@ class ConfigModel {
   bool? reviewReplyStatus;
   MaintenanceMode? maintenanceModeData;
   bool? maintenanceMode;
+
+  /// The markets the server says are stopped, by country code (K-V4). Empty when the server sent none, which is every answer of a platform
+  /// with storefronts off and every answer of a platform whose markets are all selling.
+  Map<String, StorefrontPause> storefrontPause = const <String, StorefrontPause>{};
   String? currencySymbolPosition;
   bool? walletStatus;
   double? productMaxPriceRange;
@@ -317,6 +322,7 @@ class ConfigModel {
 
 
     maintenanceModeData = json['maintenance_mode'] != null ? MaintenanceMode.fromJson(json['maintenance_mode']) : null;
+    storefrontPause = StorefrontPause.mapFromJson(json['storefront_pause']);
     currencySymbolPosition = json['currency_symbol_position'];
     if(json['wallet_status'] != null) {
       walletStatus = json['wallet_status'] == 0 ? false : true;
