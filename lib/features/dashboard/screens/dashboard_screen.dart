@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
+import 'package:syriacosmeticsmanger/features/dashboard/domain/seller_dashboard_tabs.dart';
+import 'package:syriacosmeticsmanger/features/security/controllers/seller_permission_controller.dart';
+import 'package:syriacosmeticsmanger/features/security/domain/models/seller_permission_scope.dart';
 import 'package:syriacosmeticsmanger/theme/app_glass.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -27,7 +31,11 @@ import 'package:syriacosmeticsmanger/features/product/screens/product_list_scree
 import 'package:syriacosmeticsmanger/features/profile/controllers/profile_controller.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  /// What the signed-in role may use. Null in the app, where it is taken from the registered objects; a test hands its own
+  /// (K-08), as the "more" screen does.
+  final SellerPermissionController? permissionController;
+
+  const DashboardScreen({super.key, this.permissionController});
 
   @override
   DashboardScreenState createState() => DashboardScreenState();
@@ -82,20 +90,34 @@ class DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final GetIt locator = GetIt.instance;
+    final SellerPermissionController? permissions = widget.permissionController ??
+        (locator.isRegistered<SellerPermissionController>() ? locator<SellerPermissionController>() : null);
+
+    if (permissions == null) {
+      return _dashboard(context, const SellerPermissionScope.unrestricted());
+    }
+
+    return ListenableBuilder(
+      listenable: permissions,
+      builder: (BuildContext context, Widget? child) => _dashboard(context, permissions.scope),
+    );
+  }
+
+  /// The tabs of the app, with the ones the signed-in role cannot use left out (K-08).
+  ///
+  /// The "more" screen already leaves out the entries a role lacks; the bar at the foot of the app did not, so a staff member
+  /// who may not see orders still had an Orders tab that answered them 403 on arrival. Hiding it is a courtesy and not a
+  /// boundary: the server refuses the same requests it always refused, and a scope that could not be read hides nothing.
+  Widget _dashboard(BuildContext context, SellerPermissionScope scope) {
     final bool posEnabled = Provider.of<SplashController>(context).configModel?.posActive == 1
         && Provider.of<ProfileController>(context).userInfoModel?.posActive == 1;
-    if (!posEnabled && _pageIndex == 2) {
-      // POS access was revoked while the POS tab was open — its nav item is
-      // gone, so land back on Home instead of showing an orphaned page.
+    final List<SellerDashboardTab> navItems = SellerDashboardTab.visible(posEnabled: posEnabled, scope: scope);
+    if (!navItems.any((SellerDashboardTab item) => item.page == _pageIndex)) {
+      // The tab was open and its entry has gone -- POS access revoked while it was showing, or the role read after the first
+      // frame -- so land back on Home instead of leaving an orphaned page on screen.
       _pageIndex = 0;
     }
-    final List<({int page, String icon, String label})> navItems = [
-      (page: 0, icon: Images.home, label: 'home'),
-      (page: 1, icon: Images.order, label: 'my_order'),
-      if (posEnabled) (page: 2, icon: Images.pos, label: 'pos'),
-      (page: 3, icon: Images.productIcon, label: 'products'),
-      (page: 4, icon: Images.menu, label: 'more'),
-    ];
 
     return PopScope(
       canPop: false,
@@ -207,7 +229,7 @@ class DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  int _selectedNavIndex(List<({int page, String icon, String label})> navItems) {
+  int _selectedNavIndex(List<SellerDashboardTab> navItems) {
     final int index = navItems.indexWhere((item) => item.page == _pageIndex);
     return index >= 0 ? index : 0;
   }
