@@ -164,6 +164,14 @@ jobs:
         if: always()
         run: flutter test test/api_checker_unauthorized_test.dart
 
+      # K-12: the seller's session token lives in the Keystore / Keychain and not in the plain preferences file. The behaviour test has existed
+      # since the token was moved and had NO step of its own, so the one run that read it was the whole run below, which is red on main for the
+      # version gate — a security property that cannot be read green on its own is not being reported. The source rules run beside it: the
+      # behaviour test says today's code keeps the token out of plaintext, and the scan says the code has no way back to it.
+      - name: Test that the session token is kept in the platform secure store and nothing else may name the legacy key (K-12)
+        if: always()
+        run: flutter test test/seller_session_token_test.dart test/seller_session_token_source_rules_test.dart
+
       # Four files of this branch had no step of their own, and were read only in the whole run below, which is red for the
       # version gate. Each step is named for what its file proves and no more: the refusal of a total that would add two
       # currencies is proved for the report, and not for the statement, whose own refusal has no test on this branch.
