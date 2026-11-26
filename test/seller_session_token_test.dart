@@ -27,46 +27,63 @@ void main() {
 
   const String token = 'a-real-looking-session-token-value';
 
-  Future<SharedPreferences> preferencesWith([Map<String, Object> values = const <String, Object>{}]) async {
+  Future<SharedPreferences> preferencesWith(
+      [Map<String, Object> values = const <String, Object>{}]) async {
     SharedPreferences.setMockInitialValues(values);
     return SharedPreferences.getInstance();
   }
 
   group('where the token is kept', () {
-    test('a token the server issued goes to the secure store and not to the preferences', () async {
+    test(
+        'a token the server issued goes to the secure store and not to the preferences',
+        () async {
       final SharedPreferences preferences = await preferencesWith();
-      final SellerSessionToken store = SellerSessionToken(preferences: preferences);
+      final SellerSessionToken store =
+          SellerSessionToken(preferences: preferences);
 
       await store.save(token);
 
       expect(secure[AppConstants.token], token);
-      expect(preferences.getKeys(), isEmpty, reason: 'the plain file is where it used to be written and must stay empty');
+      expect(preferences.getKeys(), isEmpty,
+          reason:
+              'the plain file is where it used to be written and must stay empty');
       expect(store.value, token);
       expect(store.exists, isTrue);
     });
 
-    test('a value an older build left in the plain file is moved into the secure store and erased', () async {
-      final SharedPreferences preferences = await preferencesWith(<String, Object>{AppConstants.token: token});
-      final SellerSessionToken store = SellerSessionToken(preferences: preferences);
+    test(
+        'a value an older build left in the plain file is moved into the secure store and erased',
+        () async {
+      final SharedPreferences preferences =
+          await preferencesWith(<String, Object>{AppConstants.token: token});
+      final SellerSessionToken store =
+          SellerSessionToken(preferences: preferences);
 
       await store.prime();
 
       expect(secure[AppConstants.token], token);
-      expect(preferences.containsKey(AppConstants.token), isFalse, reason: 'migrated means moved, not copied');
-      expect(store.value, token, reason: 'the seller stays signed in across the migration');
+      expect(preferences.containsKey(AppConstants.token), isFalse,
+          reason: 'migrated means moved, not copied');
+      expect(store.value, token,
+          reason: 'the seller stays signed in across the migration');
     });
 
-    test('an unprimed store still reads the old place, so no session is lost waiting for a migration', () async {
-      final SharedPreferences preferences = await preferencesWith(<String, Object>{AppConstants.token: token});
+    test(
+        'an unprimed store still reads the old place, so no session is lost waiting for a migration',
+        () async {
+      final SharedPreferences preferences =
+          await preferencesWith(<String, Object>{AppConstants.token: token});
 
-      final SellerSessionToken store = SellerSessionToken(preferences: preferences);
+      final SellerSessionToken store =
+          SellerSessionToken(preferences: preferences);
 
       expect(store.isPrimed, isFalse);
       expect(store.value, token);
     });
 
     test('nothing stored anywhere is no session', () async {
-      final SellerSessionToken store = SellerSessionToken(preferences: await preferencesWith());
+      final SellerSessionToken store =
+          SellerSessionToken(preferences: await preferencesWith());
 
       await store.prime();
 
@@ -75,7 +92,8 @@ void main() {
     });
 
     test('a blank token is not a session and is not written', () async {
-      final SellerSessionToken store = SellerSessionToken(preferences: await preferencesWith());
+      final SellerSessionToken store =
+          SellerSessionToken(preferences: await preferencesWith());
 
       await store.save('   ');
 
@@ -84,21 +102,29 @@ void main() {
     });
 
     test('its key is the seller\'s own and is not the platform admin\'s', () {
-      expect(AppConstants.token, isNot(SecurePlatformAdminTokenStore.sessionKey));
+      expect(
+          AppConstants.token, isNot(SecurePlatformAdminTokenStore.sessionKey));
       expect(platformAdminSecureStorage.aOptions.storageNamespace, isNotEmpty,
-          reason: 'the platform keeps its own namespace, so one store cannot read the other\'s');
+          reason:
+              'the platform keeps its own namespace, so one store cannot read the other\'s');
     });
   });
 
   group('ending the session', () {
-    test('the cache is empty before the clearing returns, and both stores lose the token', () async {
-      final SharedPreferences preferences = await preferencesWith(<String, Object>{AppConstants.token: token});
-      final SellerSessionToken store = SellerSessionToken(preferences: preferences);
+    test(
+        'the cache is empty before the clearing returns, and both stores lose the token',
+        () async {
+      final SharedPreferences preferences =
+          await preferencesWith(<String, Object>{AppConstants.token: token});
+      final SellerSessionToken store =
+          SellerSessionToken(preferences: preferences);
       await store.save(token);
 
       final Future<void> clearing = store.clear();
 
-      expect(store.value, isEmpty, reason: 'a synchronous reader must not be handed the session that was just abandoned');
+      expect(store.value, isEmpty,
+          reason:
+              'a synchronous reader must not be handed the session that was just abandoned');
       await clearing;
       expect(secure, isEmpty);
       expect(preferences.containsKey(AppConstants.token), isFalse);
@@ -106,7 +132,9 @@ void main() {
   });
 
   group('what the app reads it through', () {
-    Future<DioClient> clientWith(SharedPreferences preferences, SellerSessionToken store) async => DioClient(
+    Future<DioClient> clientWith(
+            SharedPreferences preferences, SellerSessionToken store) async =>
+        DioClient(
           AppConstants.baseUrl,
           Dio(),
           loggingInterceptor: LoggingInterceptor(),
@@ -114,9 +142,12 @@ void main() {
           sessionToken: store,
         );
 
-    test('the Dio client signs its requests with the token the secure store holds', () async {
+    test(
+        'the Dio client signs its requests with the token the secure store holds',
+        () async {
       final SharedPreferences preferences = await preferencesWith();
-      final SellerSessionToken store = SellerSessionToken(preferences: preferences);
+      final SellerSessionToken store =
+          SellerSessionToken(preferences: preferences);
       await store.save(token);
 
       final DioClient client = await clientWith(preferences, store);
@@ -126,25 +157,34 @@ void main() {
 
     test('and sends no credential at all when the store holds none', () async {
       final SharedPreferences preferences = await preferencesWith();
-      final SellerSessionToken store = SellerSessionToken(preferences: preferences);
+      final SellerSessionToken store =
+          SellerSessionToken(preferences: preferences);
       await store.prime();
 
       final DioClient client = await clientWith(preferences, store);
 
       expect(client.dio!.options.headers['Authorization'], 'Bearer ');
-      expect(client.token, isNull, reason: 'absent is null, as it was before the token moved');
+      expect(client.token, isNull,
+          reason: 'absent is null, as it was before the token moved');
     });
 
-    test('the auth repository keeps, reads and ends the session through the secure store', () async {
+    test(
+        'the auth repository keeps, reads and ends the session through the secure store',
+        () async {
       final SharedPreferences preferences = await preferencesWith();
-      final SellerSessionToken store = SellerSessionToken(preferences: preferences);
+      final SellerSessionToken store =
+          SellerSessionToken(preferences: preferences);
       final DioClient client = await clientWith(preferences, store);
-      final AuthRepository auth = AuthRepository(dioClient: client, sharedPreferences: preferences, sessionToken: store);
+      final AuthRepository auth = AuthRepository(
+          dioClient: client,
+          sharedPreferences: preferences,
+          sessionToken: store);
 
       await auth.saveUserToken(token);
 
       expect(secure[AppConstants.token], token);
-      expect(preferences.containsKey(AppConstants.token), isFalse, reason: 'the repository must not write a token to the plain file');
+      expect(preferences.containsKey(AppConstants.token), isFalse,
+          reason: 'the repository must not write a token to the plain file');
       expect(auth.getUserToken(), token);
       expect(auth.isLoggedIn(), isTrue);
 

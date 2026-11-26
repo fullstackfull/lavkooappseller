@@ -39,14 +39,18 @@ class DioClient {
   /// working.
   final SellerSessionToken? sessionToken;
 
-  DioClient(this.baseUrl,
-      Dio? dioC, {
-        required this.loggingInterceptor,
-        required this.sharedPreferences,
-        this.sessionToken,
-        bool storefrontsEnabled = StorefrontConfig.enabled,
-      }) : _marketChoice = SellerMarketChoice(sharedPreferences, enabled: storefrontsEnabled) {
-    final String? stored = sessionToken == null ? sharedPreferences.getString(AppConstants.token) : sessionToken!.value;
+  DioClient(
+    this.baseUrl,
+    Dio? dioC, {
+    required this.loggingInterceptor,
+    required this.sharedPreferences,
+    this.sessionToken,
+    bool storefrontsEnabled = StorefrontConfig.enabled,
+  }) : _marketChoice =
+            SellerMarketChoice(sharedPreferences, enabled: storefrontsEnabled) {
+    final String? stored = sessionToken == null
+        ? sharedPreferences.getString(AppConstants.token)
+        : sessionToken!.value;
     token = stored == null || stored.isEmpty ? null : stored;
     _language = sharedPreferences.getString(AppConstants.languageCode) ?? 'en';
     dio = dioC ?? Dio();
@@ -116,7 +120,8 @@ class DioClient {
     dio?.options.headers['Authorization'] = 'Bearer ';
   }
 
-  Future<Response> get(String uri, {
+  Future<Response> get(
+    String uri, {
     Map<String, dynamic>? queryParameters,
     Options? options,
     CancelToken? cancelToken,
@@ -140,7 +145,8 @@ class DioClient {
     }
   }
 
-  Future<Response> post(String uri, {
+  Future<Response> post(
+    String uri, {
     data,
     Map<String, dynamic>? queryParameters,
     Options? options,
@@ -167,18 +173,18 @@ class DioClient {
     }
   }
 
-  Future<Response> postMultipart(String uri, {
-    Map<String, dynamic>? data,
-    List<MultipartWithKey>? files,
-    String? fileKey,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-    CancelToken? cancelToken,
-    ProgressCallback? onSendProgress,
-    ProgressCallback? onReceiveProgress,
-    Map<String, dynamic>? otherFiles
-  }) async {
-    debugPrint('apiCall ==> url=> $uri \nparams---> $queryParameters\nheader=> ${dio!.options.headers}');
+  Future<Response> postMultipart(String uri,
+      {Map<String, dynamic>? data,
+      List<MultipartWithKey>? files,
+      String? fileKey,
+      Map<String, dynamic>? queryParameters,
+      Options? options,
+      CancelToken? cancelToken,
+      ProgressCallback? onSendProgress,
+      ProgressCallback? onReceiveProgress,
+      Map<String, dynamic>? otherFiles}) async {
+    debugPrint(
+        'apiCall ==> url=> $uri \nparams---> $queryParameters\nheader=> ${dio!.options.headers}');
 
     try {
       // List<MultipartFile> fileList = [];
@@ -192,33 +198,25 @@ class DioClient {
       //   }
       // }
 
-
-
-      for(int i = 0; i < (files?.length ?? 0); i++) {
-        data?.addAll({files![i].key : files[i].multipartFile});
+      for (int i = 0; i < (files?.length ?? 0); i++) {
+        data?.addAll({files![i].key: files[i].multipartFile});
       }
-
 
       // if(files?.isNotEmpty ?? false) {
       //   data?.addAll({
       //     '${fileKey ?? 'image'}[]' : files,
       //   });
       // }
-
-    } catch(e) {
+    } catch (e) {
       debugPrint('----exImage---$e-----');
       rethrow;
     }
 
     try {
-
-
-      for(int i=0; i<FormData.fromMap(data ?? {}).fields.length; i++){
-
-        debugPrint("=====FromData==$i=>>${FormData.fromMap(data ?? {}).fields[i]}");
-
+      for (int i = 0; i < FormData.fromMap(data ?? {}).fields.length; i++) {
+        debugPrint(
+            "=====FromData==$i=>>${FormData.fromMap(data ?? {}).fields[i]}");
       }
-
 
       var response = await dio!.post(
         uri,
@@ -238,7 +236,8 @@ class DioClient {
     }
   }
 
-  Future<Response> put(String uri, {
+  Future<Response> put(
+    String uri, {
     data,
     Map<String, dynamic>? queryParameters,
     Options? options,
@@ -264,7 +263,8 @@ class DioClient {
     }
   }
 
-  Future<Response> delete(String uri, {
+  Future<Response> delete(
+    String uri, {
     data,
     Map<String, dynamic>? queryParameters,
     Options? options,
@@ -285,14 +285,11 @@ class DioClient {
       rethrow;
     }
   }
-
 }
 
-class MultipartWithKey{
+class MultipartWithKey {
   final String key;
   final MultipartFile? multipartFile;
 
   MultipartWithKey({required this.key, this.multipartFile});
-
-
 }

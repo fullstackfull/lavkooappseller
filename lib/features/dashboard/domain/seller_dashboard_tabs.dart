@@ -13,11 +13,24 @@ import 'package:syriacosmeticsmanger/utill/images.dart';
 /// draws exactly what it always drew.
 enum SellerDashboardTab {
   home(page: 0, icon: Images.home, label: 'home'),
-  orders(page: 1, icon: Images.order, label: 'my_order', screen: SellerScreen.inbox),
+  orders(
+      page: 1,
+      icon: Images.order,
+      label: 'my_order',
+      screen: SellerScreen.inbox),
 
   /// The till also needs the point of sale switched on, for the platform and for this shop, which is not a permission.
-  pointOfSale(page: 2, icon: Images.pos, label: 'pos', screen: SellerScreen.pointOfSale, needsPointOfSale: true),
-  products(page: 3, icon: Images.productIcon, label: 'products', screen: SellerScreen.products),
+  pointOfSale(
+      page: 2,
+      icon: Images.pos,
+      label: 'pos',
+      screen: SellerScreen.pointOfSale,
+      needsPointOfSale: true),
+  products(
+      page: 3,
+      icon: Images.productIcon,
+      label: 'products',
+      screen: SellerScreen.products),
 
   /// Open to any credential: it is the way to the profile, the language and the sign-out, and a staff member needs all three.
   more(page: 4, icon: Images.menu, label: 'more');
@@ -44,10 +57,13 @@ enum SellerDashboardTab {
   final bool needsPointOfSale;
 
   /// The tabs to draw, in their order.
-  static List<SellerDashboardTab> visible({required bool posEnabled, required SellerPermissionScope scope}) {
+  static List<SellerDashboardTab> visible(
+      {required bool posEnabled, required SellerPermissionScope scope}) {
     return <SellerDashboardTab>[
       for (final SellerDashboardTab tab in values)
-        if ((!tab.needsPointOfSale || posEnabled) && (tab.screen == null || scope.allows(tab.screen!))) tab,
+        if ((!tab.needsPointOfSale || posEnabled) &&
+            (tab.screen == null || scope.allows(tab.screen!)))
+          tab,
     ];
   }
 }

@@ -13,7 +13,8 @@ abstract final class PlatformWindows {
   /// API reads a date (`YYYY-MM-DD`). Never locale-formatted: in Arabic a
   /// formatted date would come out in other digits.
   static String firstDay({required int days, required DateTime today}) {
-    final DateTime first = DateTime(today.year, today.month, today.day - (days - 1));
+    final DateTime first =
+        DateTime(today.year, today.month, today.day - (days - 1));
     final String month = first.month.toString().padLeft(2, '0');
     final String day = first.day.toString().padLeft(2, '0');
     return '${first.year.toString().padLeft(4, '0')}-$month-$day';
@@ -39,7 +40,8 @@ class PlatformWindowModel {
     this.timezone,
   });
 
-  factory PlatformWindowModel.fromJson(Map<String, dynamic> json) => PlatformWindowModel(
+  factory PlatformWindowModel.fromJson(Map<String, dynamic> json) =>
+      PlatformWindowModel(
         from: PlatformJson.string(json['from']) ?? '',
         to: PlatformJson.string(json['to']) ?? '',
         days: PlatformJson.count(json['days']),
@@ -55,7 +57,8 @@ class PlatformFreshness {
 
   const PlatformFreshness({this.mode = 'live', this.cached = false});
 
-  factory PlatformFreshness.fromJson(Map<String, dynamic> json) => PlatformFreshness(
+  factory PlatformFreshness.fromJson(Map<String, dynamic> json) =>
+      PlatformFreshness(
         mode: PlatformJson.string(json['mode']) ?? 'live',
         cached: PlatformJson.flag(json['cached']),
       );
@@ -70,12 +73,15 @@ class PlatformOrderFigures {
   final Map<String, int> byStatus;
   final DateTime? latestAt;
 
-  const PlatformOrderFigures({required this.total, required this.byStatus, this.latestAt});
+  const PlatformOrderFigures(
+      {required this.total, required this.byStatus, this.latestAt});
 
-  factory PlatformOrderFigures.fromJson(Map<String, dynamic> json) => PlatformOrderFigures(
+  factory PlatformOrderFigures.fromJson(Map<String, dynamic> json) =>
+      PlatformOrderFigures(
         total: PlatformJson.count(json['total']),
         byStatus: <String, int>{
-          for (final MapEntry<String, dynamic> entry in PlatformJson.map(json['by_status']).entries)
+          for (final MapEntry<String, dynamic> entry
+              in PlatformJson.map(json['by_status']).entries)
             entry.key: PlatformJson.count(entry.value),
         },
         latestAt: PlatformJson.moment(json['latest_at']),
@@ -105,9 +111,11 @@ class PlatformAlertCounts {
   final int warning;
   final int info;
 
-  const PlatformAlertCounts({this.critical = 0, this.warning = 0, this.info = 0});
+  const PlatformAlertCounts(
+      {this.critical = 0, this.warning = 0, this.info = 0});
 
-  factory PlatformAlertCounts.fromJson(Map<String, dynamic> json) => PlatformAlertCounts(
+  factory PlatformAlertCounts.fromJson(Map<String, dynamic> json) =>
+      PlatformAlertCounts(
         critical: PlatformJson.count(json['critical']),
         warning: PlatformJson.count(json['warning']),
         info: PlatformJson.count(json['info']),
@@ -128,7 +136,8 @@ class PlatformReservedStock {
 
   const PlatformReservedStock({required this.holds, required this.units});
 
-  factory PlatformReservedStock.fromJson(Map<String, dynamic> json) => PlatformReservedStock(
+  factory PlatformReservedStock.fromJson(Map<String, dynamic> json) =>
+      PlatformReservedStock(
         holds: PlatformJson.count(json['holds']),
         units: PlatformJson.count(json['units']),
       );
@@ -143,9 +152,11 @@ class PlatformStockAllocation {
   final int short;
   final int shortUnits;
 
-  const PlatformStockAllocation({required this.pools, required this.short, required this.shortUnits});
+  const PlatformStockAllocation(
+      {required this.pools, required this.short, required this.shortUnits});
 
-  factory PlatformStockAllocation.fromJson(Map<String, dynamic> json) => PlatformStockAllocation(
+  factory PlatformStockAllocation.fromJson(Map<String, dynamic> json) =>
+      PlatformStockAllocation(
         pools: PlatformJson.count(json['pools']),
         short: PlatformJson.count(json['short']),
         shortUnits: PlatformJson.count(json['short_units']),
@@ -202,16 +213,21 @@ class PlatformFigures {
     return PlatformFigures(
       orders: PlatformOrderFigures.fromJson(PlatformJson.map(json['orders'])),
       sales: PlatformSalesFigure.fromJson(PlatformJson.map(json['sales'])),
-      pendingFulfilment: PlatformJson.count(PlatformJson.map(json['pending_fulfilment'])['count']),
+      pendingFulfilment: PlatformJson.count(
+          PlatformJson.map(json['pending_fulfilment'])['count']),
       refundRequests: PlatformJson.count(returns['refund_requests']),
       refundRequestsPending: PlatformJson.count(returns['pending']),
       stockZero: PlatformJson.count(stock['zero']),
       stockLow: PlatformJson.count(stock['low']),
       stockOversold: PlatformJson.count(stock['oversold']),
       stockOversoldUnits: PlatformJson.count(stock['oversold_units']),
-      reserved: stock['reserved'] is Map ? PlatformReservedStock.fromJson(PlatformJson.map(stock['reserved'])) : null,
-      allocation:
-          stock['allocation'] is Map ? PlatformStockAllocation.fromJson(PlatformJson.map(stock['allocation'])) : null,
+      reserved: stock['reserved'] is Map
+          ? PlatformReservedStock.fromJson(PlatformJson.map(stock['reserved']))
+          : null,
+      allocation: stock['allocation'] is Map
+          ? PlatformStockAllocation.fromJson(
+              PlatformJson.map(stock['allocation']))
+          : null,
     );
   }
 }
@@ -235,7 +251,8 @@ class PlatformMarketOverview {
     this.storefrontCurrency,
   });
 
-  factory PlatformMarketOverview.fromJson(Map<String, dynamic> json) => PlatformMarketOverview(
+  factory PlatformMarketOverview.fromJson(Map<String, dynamic> json) =>
+      PlatformMarketOverview(
         market: PlatformJson.string(json['market']) ?? '',
         storefrontCurrency: PlatformJson.string(json['storefront_currency']),
         active: PlatformJson.flag(json['active']),
@@ -253,7 +270,8 @@ class PlatformUnattributedOverview {
 
   const PlatformUnattributedOverview({required this.figures, this.reason});
 
-  factory PlatformUnattributedOverview.fromJson(Map<String, dynamic> json) => PlatformUnattributedOverview(
+  factory PlatformUnattributedOverview.fromJson(Map<String, dynamic> json) =>
+      PlatformUnattributedOverview(
         figures: PlatformFigures.fromJson(json),
         reason: PlatformJson.string(json['reason']),
       );
@@ -283,15 +301,22 @@ class PlatformOverviewModel {
     this.unattributed,
   });
 
-  factory PlatformOverviewModel.fromJson(Map<String, dynamic> json) => PlatformOverviewModel(
+  factory PlatformOverviewModel.fromJson(Map<String, dynamic> json) =>
+      PlatformOverviewModel(
         scope: PlatformScope.parse(json['scope']),
         market: PlatformJson.string(json['market']) ?? PlatformMarketCode.all,
         generatedAt: PlatformJson.moment(json['generated_at']),
-        window: json['window'] is Map ? PlatformWindowModel.fromJson(PlatformJson.map(json['window'])) : null,
-        freshness: PlatformFreshness.fromJson(PlatformJson.map(json['freshness'])),
-        markets: PlatformJson.maps(json['markets']).map(PlatformMarketOverview.fromJson).toList(),
+        window: json['window'] is Map
+            ? PlatformWindowModel.fromJson(PlatformJson.map(json['window']))
+            : null,
+        freshness:
+            PlatformFreshness.fromJson(PlatformJson.map(json['freshness'])),
+        markets: PlatformJson.maps(json['markets'])
+            .map(PlatformMarketOverview.fromJson)
+            .toList(),
         unattributed: json['unattributed'] is Map
-            ? PlatformUnattributedOverview.fromJson(PlatformJson.map(json['unattributed']))
+            ? PlatformUnattributedOverview.fromJson(
+                PlatformJson.map(json['unattributed']))
             : null,
       );
 

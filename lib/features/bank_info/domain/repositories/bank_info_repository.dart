@@ -9,8 +9,7 @@ import 'package:syriacosmeticsmanger/features/profile/domain/models/profile_info
 import 'package:syriacosmeticsmanger/utill/app_constants.dart';
 import 'package:http/http.dart' as http;
 
-class BankInfoRepository implements BankInfoRepositoryInterface{
-
+class BankInfoRepository implements BankInfoRepositoryInterface {
   final DioClient? dioClient;
   final SharedPreferences? sharedPreferences;
 
@@ -18,20 +17,33 @@ class BankInfoRepository implements BankInfoRepositoryInterface{
   /// plaintext key this used to read (K-268).
   late final SellerSessionToken _sessionToken;
 
-  BankInfoRepository({required this.dioClient, required this.sharedPreferences, SellerSessionToken? sessionToken}) {
-    _sessionToken = sessionToken ?? SellerSessionToken(preferences: sharedPreferences);
+  BankInfoRepository(
+      {required this.dioClient,
+      required this.sharedPreferences,
+      SellerSessionToken? sessionToken}) {
+    _sessionToken =
+        sessionToken ?? SellerSessionToken(preferences: sharedPreferences);
   }
 
   @override
-  Future<http.StreamedResponse> updateBank(ProfileInfoModel userInfoModel, ProfileBody seller, String token) async {
-    http.MultipartRequest request = http.MultipartRequest('POST', Uri.parse('${AppConstants.baseUrl}${AppConstants.sellerAndBankUpdate}'));
+  Future<http.StreamedResponse> updateBank(
+      ProfileInfoModel userInfoModel, ProfileBody seller, String token) async {
+    http.MultipartRequest request = http.MultipartRequest(
+        'POST',
+        Uri.parse(
+            '${AppConstants.baseUrl}${AppConstants.sellerAndBankUpdate}'));
     request.headers.addAll(dioClient!.multipartHeaders(token: token));
 
     Map<String, String> fields = {};
     fields.addAll(<String, String>{
-      '_method': 'put', 'bank_name': userInfoModel.bankName!, 'branch': userInfoModel.branch!,
-      'holder_name': userInfoModel.holderName!, 'account_no': userInfoModel.accountNo!,
-      'f_name': seller.fName!, 'l_name': seller.lName!, 'phone': userInfoModel.phone!
+      '_method': 'put',
+      'bank_name': userInfoModel.bankName!,
+      'branch': userInfoModel.branch!,
+      'holder_name': userInfoModel.holderName!,
+      'account_no': userInfoModel.accountNo!,
+      'f_name': seller.fName!,
+      'l_name': seller.lName!,
+      'phone': userInfoModel.phone!
     });
     request.fields.addAll(fields);
     http.StreamedResponse response = await request.send();

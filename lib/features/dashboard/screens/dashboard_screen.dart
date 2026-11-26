@@ -58,18 +58,24 @@ class DashboardScreenState extends State<DashboardScreen> {
     String languageCode = LocalizationController.apiLanguageCode(context);
     // getSellerInfo() is fetched by HomePageScreen; calling it here too meant
     // two identical requests on every cold start.
-    Provider.of<DigitalProductController>(context, listen: false).getDigitalAuthor();
-    Provider.of<DigitalProductController>(context, listen: false).getPublishingHouse();
-    Provider.of<CategoryController>(context,listen: false).getCategoryList(context, null, languageCode);
-    Provider.of<CartController>(context,listen: false).getCartData();
+    Provider.of<DigitalProductController>(context, listen: false)
+        .getDigitalAuthor();
+    Provider.of<DigitalProductController>(context, listen: false)
+        .getPublishingHouse();
+    Provider.of<CategoryController>(context, listen: false)
+        .getCategoryList(context, null, languageCode);
+    Provider.of<CartController>(context, listen: false).getCartData();
     Provider.of<ShopController>(context, listen: false).getShopInfo();
 
     // The transaction list is unpaginated and grows forever; it is now fetched
     // by the transaction screen itself rather than at every app launch.
     Provider.of<WalletController>(context, listen: false).getPaymentInfoList();
 
-    if(Provider.of<SplashController>(context,listen: false).configModel?.isAiFeatureActive == 1) {
-      Provider.of<AiController>(context,listen: false).generateLimitCheck();
+    if (Provider.of<SplashController>(context, listen: false)
+            .configModel
+            ?.isAiFeatureActive ==
+        1) {
+      Provider.of<AiController>(context, listen: false).generateLimitCheck();
     }
 
     _screens = [
@@ -78,7 +84,6 @@ class DashboardScreenState extends State<DashboardScreen> {
           setPage(1);
         });
       }),
-
       const OrderScreen(),
       const POSProductScreen(),
       const ProductListMenuScreen(isTab: true),
@@ -91,8 +96,11 @@ class DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final GetIt locator = GetIt.instance;
-    final SellerPermissionController? permissions = widget.permissionController ??
-        (locator.isRegistered<SellerPermissionController>() ? locator<SellerPermissionController>() : null);
+    final SellerPermissionController? permissions =
+        widget.permissionController ??
+            (locator.isRegistered<SellerPermissionController>()
+                ? locator<SellerPermissionController>()
+                : null);
 
     if (permissions == null) {
       return _dashboard(context, const SellerPermissionScope.unrestricted());
@@ -100,7 +108,8 @@ class DashboardScreenState extends State<DashboardScreen> {
 
     return ListenableBuilder(
       listenable: permissions,
-      builder: (BuildContext context, Widget? child) => _dashboard(context, permissions.scope),
+      builder: (BuildContext context, Widget? child) =>
+          _dashboard(context, permissions.scope),
     );
   }
 
@@ -110,9 +119,12 @@ class DashboardScreenState extends State<DashboardScreen> {
   /// who may not see orders still had an Orders tab that answered them 403 on arrival. Hiding it is a courtesy and not a
   /// boundary: the server refuses the same requests it always refused, and a scope that could not be read hides nothing.
   Widget _dashboard(BuildContext context, SellerPermissionScope scope) {
-    final bool posEnabled = Provider.of<SplashController>(context).configModel?.posActive == 1
-        && Provider.of<ProfileController>(context).userInfoModel?.posActive == 1;
-    final List<SellerDashboardTab> navItems = SellerDashboardTab.visible(posEnabled: posEnabled, scope: scope);
+    final bool posEnabled =
+        Provider.of<SplashController>(context).configModel?.posActive == 1 &&
+            Provider.of<ProfileController>(context).userInfoModel?.posActive ==
+                1;
+    final List<SellerDashboardTab> navItems =
+        SellerDashboardTab.visible(posEnabled: posEnabled, scope: scope);
     if (!navItems.any((SellerDashboardTab item) => item.page == _pageIndex)) {
       // The tab was open and its entry has gone -- POS access revoked while it was showing, or the role read after the first
       // frame -- so land back on Home instead of leaving an orphaned page on screen.
@@ -127,20 +139,25 @@ class DashboardScreenState extends State<DashboardScreen> {
         } else {
           _onWillPop(context);
         }
-        if(didPop) return;
+        if (didPop) return;
       },
-
       child: Scaffold(
         key: _scaffoldKey,
-        extendBody: true, // 👈 مهم حتى يمشي المحتوى خلف الشريط ويشتغل تأثير الزجاج
+        extendBody:
+            true, // 👈 مهم حتى يمشي المحتوى خلف الشريط ويشتغل تأثير الزجاج
 
-        floatingActionButton: posEnabled && _pageIndex == 2 ? FloatingActionButton(
-          backgroundColor: Theme.of(context).primaryColor,
-          onPressed: () {
-            Provider.of<BarcodeScanController>(context, listen: false).scanProductBarCode(context);
-          },
-          child: Padding(padding: const EdgeInsets.all(12.0), child: Image.asset(Images.scanner)),
-        ) : null,
+        floatingActionButton: posEnabled && _pageIndex == 2
+            ? FloatingActionButton(
+                backgroundColor: Theme.of(context).primaryColor,
+                onPressed: () {
+                  Provider.of<BarcodeScanController>(context, listen: false)
+                      .scanProductBarCode(context);
+                },
+                child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Image.asset(Images.scanner)),
+              )
+            : null,
 
         // 👇 الشريط الجديد: عائم + زجاجي
         bottomNavigationBar: Padding(
@@ -164,7 +181,8 @@ class DashboardScreenState extends State<DashboardScreen> {
                   boxShadow: AppGlass.of(context).shadowMedium,
                 ),
                 child: BottomNavigationBar(
-                  backgroundColor: Colors.transparent, // 👈 ضروري حتى يبين الزجاج
+                  backgroundColor:
+                      Colors.transparent, // 👈 ضروري حتى يبين الزجاج
                   elevation: 0,
                   selectedItemColor: Theme.of(context).primaryColor,
                   unselectedItemColor: Theme.of(context).hintColor,
@@ -176,7 +194,8 @@ class DashboardScreenState extends State<DashboardScreen> {
                   type: BottomNavigationBarType.fixed,
                   items: [
                     for (final item in navItems)
-                      _barItem(item.icon, getTranslated(item.label, context), item.page),
+                      _barItem(item.icon, getTranslated(item.label, context),
+                          item.page),
                   ],
                   onTap: (int index) => setPage(navItems[index].page),
                 ),
@@ -218,10 +237,14 @@ class DashboardScreenState extends State<DashboardScreen> {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            SizedBox(width: index == _pageIndex ? Dimensions.iconSizeLarge : Dimensions.iconSizeMedium,
-                child: Image.asset(icon, color: index == _pageIndex ?
-                Theme.of(context).primaryColor : Theme.of(context).hintColor)
-            ),
+            SizedBox(
+                width: index == _pageIndex
+                    ? Dimensions.iconSizeLarge
+                    : Dimensions.iconSizeMedium,
+                child: Image.asset(icon,
+                    color: index == _pageIndex
+                        ? Theme.of(context).primaryColor
+                        : Theme.of(context).hintColor)),
           ],
         ),
       ),
@@ -241,17 +264,19 @@ class DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-
   Future<bool> _onWillPop(BuildContext context) async {
-    showAnimatedDialogWidget(context,  ConfirmationDialogWidget(icon: Images.logOut,
-      title: getTranslated('exit_app', context),
-      description: getTranslated('do_you_want_to_exit_the_app', context),
-      onYesPressed: () {
-        SystemNavigator.pop();
-      },
-    ), isFlip: true);
+    showAnimatedDialogWidget(
+        context,
+        ConfirmationDialogWidget(
+          icon: Images.logOut,
+          title: getTranslated('exit_app', context),
+          description: getTranslated('do_you_want_to_exit_the_app', context),
+          onYesPressed: () {
+            SystemNavigator.pop();
+          },
+        ),
+        isFlip: true);
 
     return true;
   }
-
 }

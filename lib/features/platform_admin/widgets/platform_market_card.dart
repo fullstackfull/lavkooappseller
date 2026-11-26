@@ -25,7 +25,8 @@ class PlatformMarketCard extends StatelessWidget {
   /// the counts are then only read.
   final VoidCallback? onOpenAlerts;
 
-  const PlatformMarketCard({super.key, required this.overview, this.market, this.onOpenAlerts});
+  const PlatformMarketCard(
+      {super.key, required this.overview, this.market, this.onOpenAlerts});
 
   @override
   Widget build(BuildContext context) {
@@ -39,16 +40,28 @@ class PlatformMarketCard extends StatelessWidget {
           legalEntity: facts?.legalEntity,
         ),
         const SizedBox(height: Dimensions.paddingSizeSmall),
-        Wrap(spacing: Dimensions.paddingSizeExtraSmall, runSpacing: Dimensions.paddingSizeExtraSmall, children: [
-          _statusTag(context, overview.active, getTranslated('platform_admin_market_active', context)!,
-              getTranslated('platform_admin_market_inactive', context)!),
-          if (facts != null) ...[
-            _statusTag(context, facts.legalReady, getTranslated('platform_admin_legal_ready', context)!,
-                getTranslated('platform_admin_legal_not_ready', context)!),
-            if (!facts.storefrontEnabled)
-              _tag(context, getTranslated('platform_admin_storefronts_off', context)!, Theme.of(context).hintColor),
-          ],
-        ]),
+        Wrap(
+            spacing: Dimensions.paddingSizeExtraSmall,
+            runSpacing: Dimensions.paddingSizeExtraSmall,
+            children: [
+              _statusTag(
+                  context,
+                  overview.active,
+                  getTranslated('platform_admin_market_active', context)!,
+                  getTranslated('platform_admin_market_inactive', context)!),
+              if (facts != null) ...[
+                _statusTag(
+                    context,
+                    facts.legalReady,
+                    getTranslated('platform_admin_legal_ready', context)!,
+                    getTranslated('platform_admin_legal_not_ready', context)!),
+                if (!facts.storefrontEnabled)
+                  _tag(
+                      context,
+                      getTranslated('platform_admin_storefronts_off', context)!,
+                      Theme.of(context).hintColor),
+              ],
+            ]),
         const SizedBox(height: Dimensions.paddingSizeDefault),
         PlatformFiguresBlock(figures: overview.figures),
         const SizedBox(height: Dimensions.paddingSizeSmall),
@@ -59,8 +72,10 @@ class PlatformMarketCard extends StatelessWidget {
     );
   }
 
-  Widget _statusTag(BuildContext context, bool isGood, String good, String bad) =>
-      _tag(context, isGood ? good : bad, isGood ? Colors.green.shade700 : Colors.orange.shade800,
+  Widget _statusTag(
+          BuildContext context, bool isGood, String good, String bad) =>
+      _tag(context, isGood ? good : bad,
+          isGood ? Colors.green.shade700 : Colors.orange.shade800,
           icon: isGood ? Icons.check_circle_outline : Icons.error_outline);
 }
 
@@ -85,8 +100,9 @@ class PlatformFiguresBlock extends StatelessWidget {
     final PlatformOrderFigures orders = figures.orders;
     final PlatformReservedStock? held = figures.reserved;
     final PlatformStockAllocation? pooled = figures.allocation;
-    final List<MapEntry<String, int>> statuses =
-        orders.byStatus.entries.where((MapEntry<String, int> entry) => entry.value > 0).toList();
+    final List<MapEntry<String, int>> statuses = orders.byStatus.entries
+        .where((MapEntry<String, int> entry) => entry.value > 0)
+        .toList();
     final DateTime? latestAt = orders.latestAt;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -109,39 +125,62 @@ class PlatformFiguresBlock extends StatelessWidget {
       ],
       if (latestAt != null)
         PlatformFigureRow(
-            label: getTranslated('platform_admin_latest_order', context)!, value: PlatformAdminTexts.moment(latestAt)),
+            label: getTranslated('platform_admin_latest_order', context)!,
+            value: PlatformAdminTexts.moment(latestAt)),
       PlatformFigureRow(
-          label: getTranslated('platform_admin_pending_fulfilment', context)!, value: '${figures.pendingFulfilment}'),
+          label: getTranslated('platform_admin_pending_fulfilment', context)!,
+          value: '${figures.pendingFulfilment}'),
       PlatformFigureRow(
-          label: getTranslated('platform_admin_refund_requests', context)!, value: '${figures.refundRequests}'),
+          label: getTranslated('platform_admin_refund_requests', context)!,
+          value: '${figures.refundRequests}'),
       PlatformFigureRow(
-          label: getTranslated('platform_admin_refund_requests_pending', context)!,
+          label:
+              getTranslated('platform_admin_refund_requests_pending', context)!,
           value: '${figures.refundRequestsPending}'),
-      PlatformFigureRow(label: getTranslated('platform_admin_stock_zero', context)!, value: '${figures.stockZero}'),
-      PlatformFigureRow(label: getTranslated('platform_admin_stock_low', context)!, value: '${figures.stockLow}'),
       PlatformFigureRow(
-          label: getTranslated('platform_admin_stock_oversold', context)!, value: '${figures.stockOversold}'),
+          label: getTranslated('platform_admin_stock_zero', context)!,
+          value: '${figures.stockZero}'),
+      PlatformFigureRow(
+          label: getTranslated('platform_admin_stock_low', context)!,
+          value: '${figures.stockLow}'),
+      PlatformFigureRow(
+          label: getTranslated('platform_admin_stock_oversold', context)!,
+          value: '${figures.stockOversold}'),
       if (figures.stockOversold > 0)
         PlatformFigureRow(
-            label: getTranslated('platform_admin_stock_oversold_units', context)!,
+            label:
+                getTranslated('platform_admin_stock_oversold_units', context)!,
             value: '${figures.stockOversoldUnits}'),
       if (held != null) ...[
-        PlatformFigureRow(label: getTranslated('platform_admin_stock_reserved_holds', context)!, value: '${held.holds}'),
-        PlatformFigureRow(label: getTranslated('platform_admin_stock_reserved_units', context)!, value: '${held.units}'),
+        PlatformFigureRow(
+            label:
+                getTranslated('platform_admin_stock_reserved_holds', context)!,
+            value: '${held.holds}'),
+        PlatformFigureRow(
+            label:
+                getTranslated('platform_admin_stock_reserved_units', context)!,
+            value: '${held.units}'),
       ],
       if (pooled != null) ...[
-        PlatformFigureRow(label: getTranslated('platform_admin_stock_pools', context)!, value: '${pooled.pools}'),
+        PlatformFigureRow(
+            label: getTranslated('platform_admin_stock_pools', context)!,
+            value: '${pooled.pools}'),
         if (pooled.short > 0) ...[
           PlatformFigureRow(
-              label: getTranslated('platform_admin_stock_pools_short', context)!, value: '${pooled.short}'),
+              label:
+                  getTranslated('platform_admin_stock_pools_short', context)!,
+              value: '${pooled.short}'),
           PlatformFigureRow(
-              label: getTranslated('platform_admin_stock_pools_short_units', context)!,
+              label: getTranslated(
+                  'platform_admin_stock_pools_short_units', context)!,
               value: '${pooled.shortUnits}'),
         ],
       ],
       if (held == null || pooled == null) ...[
         const SizedBox(height: Dimensions.paddingSizeExtraSmall),
-        PlatformFigureNote(text: getTranslated('platform_admin_stock_inventory_not_recorded', context)!),
+        PlatformFigureNote(
+            text: getTranslated(
+                'platform_admin_stock_inventory_not_recorded', context)!),
       ],
     ]);
   }
@@ -157,12 +196,15 @@ class PlatformFigureNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Icon(Icons.info_outline, size: Dimensions.iconSizeSmall, color: Theme.of(context).hintColor),
+      Icon(Icons.info_outline,
+          size: Dimensions.iconSizeSmall, color: Theme.of(context).hintColor),
       const SizedBox(width: Dimensions.paddingSizeExtraSmall),
       Expanded(
         child: Text(
           text,
-          style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeExtraSmall, color: Theme.of(context).hintColor),
+          style: robotoRegular.copyWith(
+              fontSize: Dimensions.fontSizeExtraSmall,
+              color: Theme.of(context).hintColor),
         ),
       ),
     ]);
@@ -176,24 +218,33 @@ class PlatformFigureRow extends StatelessWidget {
   final String value;
   final bool emphasised;
 
-  const PlatformFigureRow({super.key, required this.label, required this.value, this.emphasised = false});
+  const PlatformFigureRow(
+      {super.key,
+      required this.label,
+      required this.value,
+      this.emphasised = false});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: Dimensions.paddingSizeExtraSmall),
+      padding: const EdgeInsets.symmetric(
+          vertical: Dimensions.paddingSizeExtraSmall),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(
           child: Text(label,
-              style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).hintColor)),
+              style: robotoRegular.copyWith(
+                  fontSize: Dimensions.fontSizeSmall,
+                  color: Theme.of(context).hintColor)),
         ),
         const SizedBox(width: Dimensions.paddingSizeSmall),
         Flexible(
           child: Text(
             value,
             textAlign: TextAlign.end,
-            style: (emphasised ? robotoBold : robotoMedium)
-                .copyWith(fontSize: emphasised ? Dimensions.fontSizeLarge : Dimensions.fontSizeSmall),
+            style: (emphasised ? robotoBold : robotoMedium).copyWith(
+                fontSize: emphasised
+                    ? Dimensions.fontSizeLarge
+                    : Dimensions.fontSizeSmall),
           ),
         ),
       ]),
@@ -208,7 +259,8 @@ class PlatformSalesNote extends StatelessWidget {
   const PlatformSalesNote({super.key, required this.sales});
 
   @override
-  Widget build(BuildContext context) => PlatformFigureNote(text: PlatformAdminTexts.sales(context, sales));
+  Widget build(BuildContext context) =>
+      PlatformFigureNote(text: PlatformAdminTexts.sales(context, sales));
 }
 
 /// The orders that belong to no single market, kept apart from every market's own.
@@ -222,17 +274,22 @@ class PlatformUnattributedCard extends StatelessWidget {
     return ReportCardWidget(
       children: [
         Row(children: [
-          Icon(Icons.help_outline, size: Dimensions.iconSizeMedium, color: Theme.of(context).hintColor),
+          Icon(Icons.help_outline,
+              size: Dimensions.iconSizeMedium,
+              color: Theme.of(context).hintColor),
           const SizedBox(width: Dimensions.paddingSizeSmall),
           Expanded(
-            child: Text(getTranslated('platform_admin_unattributed_title', context)!,
+            child: Text(
+                getTranslated('platform_admin_unattributed_title', context)!,
                 style: robotoBold.copyWith(fontSize: Dimensions.fontSizeLarge)),
           ),
         ]),
         const SizedBox(height: Dimensions.paddingSizeExtraSmall),
         Text(
           getTranslated('platform_admin_unattributed_explanation', context)!,
-          style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).hintColor),
+          style: robotoRegular.copyWith(
+              fontSize: Dimensions.fontSizeSmall,
+              color: Theme.of(context).hintColor),
         ),
         const SizedBox(height: Dimensions.paddingSizeDefault),
         PlatformFiguresBlock(figures: unattributed.figures),
@@ -265,24 +322,34 @@ class _Header extends StatelessWidget {
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Wrap(spacing: Dimensions.paddingSizeExtraSmall, crossAxisAlignment: WrapCrossAlignment.center, children: [
-            Text(PlatformAdminTexts.marketName(context, code),
-                style: robotoBold.copyWith(fontSize: Dimensions.fontSizeLarge)),
-            Text(code,
-                style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).hintColor)),
-          ]),
+          Wrap(
+              spacing: Dimensions.paddingSizeExtraSmall,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(PlatformAdminTexts.marketName(context, code),
+                    style: robotoBold.copyWith(
+                        fontSize: Dimensions.fontSizeLarge)),
+                Text(code,
+                    style: robotoRegular.copyWith(
+                        fontSize: Dimensions.fontSizeSmall,
+                        color: Theme.of(context).hintColor)),
+              ]),
           if (entity != null)
             Padding(
-              padding: const EdgeInsets.only(top: Dimensions.paddingSizeExtraSmall),
+              padding:
+                  const EdgeInsets.only(top: Dimensions.paddingSizeExtraSmall),
               child: Text(entity,
-                  style:
-                      robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).hintColor)),
+                  style: robotoRegular.copyWith(
+                      fontSize: Dimensions.fontSizeSmall,
+                      color: Theme.of(context).hintColor)),
             ),
         ]),
       ),
       if (currency != null)
         Text(currency!,
-            style: robotoMedium.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).hintColor)),
+            style: robotoMedium.copyWith(
+                fontSize: Dimensions.fontSizeSmall,
+                color: Theme.of(context).hintColor)),
     ]);
   }
 }
@@ -297,27 +364,34 @@ class _AlertCounts extends StatelessWidget {
   Widget build(BuildContext context) {
     if (counts.total == 0) {
       return Row(children: [
-        Icon(Icons.notifications_none_rounded, size: Dimensions.iconSizeSmall, color: Theme.of(context).hintColor),
+        Icon(Icons.notifications_none_rounded,
+            size: Dimensions.iconSizeSmall, color: Theme.of(context).hintColor),
         const SizedBox(width: Dimensions.paddingSizeExtraSmall),
         Expanded(
           child: Text(getTranslated('platform_admin_alerts_none', context)!,
-              style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).hintColor)),
+              style: robotoRegular.copyWith(
+                  fontSize: Dimensions.fontSizeSmall,
+                  color: Theme.of(context).hintColor)),
         ),
       ]);
     }
 
-    final Widget tags =
-        Wrap(spacing: Dimensions.paddingSizeExtraSmall, runSpacing: Dimensions.paddingSizeExtraSmall, children: [
-      for (final (String severity, int count) in <(String, int)>[
-        (PlatformSeverity.critical, counts.critical),
-        (PlatformSeverity.warning, counts.warning),
-        (PlatformSeverity.info, counts.info),
-      ])
-        if (count > 0)
-          _tag(context, '${PlatformAdminTexts.severity(context, severity)} $count',
-              PlatformSeverityStyle.color(context, severity),
-              icon: PlatformSeverityStyle.icon(severity)),
-    ]);
+    final Widget tags = Wrap(
+        spacing: Dimensions.paddingSizeExtraSmall,
+        runSpacing: Dimensions.paddingSizeExtraSmall,
+        children: [
+          for (final (String severity, int count) in <(String, int)>[
+            (PlatformSeverity.critical, counts.critical),
+            (PlatformSeverity.warning, counts.warning),
+            (PlatformSeverity.info, counts.info),
+          ])
+            if (count > 0)
+              _tag(
+                  context,
+                  '${PlatformAdminTexts.severity(context, severity)} $count',
+                  PlatformSeverityStyle.color(context, severity),
+                  icon: PlatformSeverityStyle.icon(severity)),
+        ]);
     if (onOpen == null) return tags;
 
     return Semantics(
@@ -339,17 +413,23 @@ class _AlertCounts extends StatelessWidget {
 }
 
 /// A small label with a colour that says how it stands, and words that say it too.
-Widget _tag(BuildContext context, String label, Color color, {IconData? icon}) => Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeSmall, vertical: Dimensions.paddingSizeOrder),
-      decoration:
-          BoxDecoration(color: color.withValues(alpha: .1), borderRadius: BorderRadius.circular(Dimensions.radiusPill)),
+Widget _tag(BuildContext context, String label, Color color,
+        {IconData? icon}) =>
+    Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: Dimensions.paddingSizeSmall,
+          vertical: Dimensions.paddingSizeOrder),
+      decoration: BoxDecoration(
+          color: color.withValues(alpha: .1),
+          borderRadius: BorderRadius.circular(Dimensions.radiusPill)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         if (icon != null) ...[
           Icon(icon, size: Dimensions.iconSizeSmall, color: color),
           const SizedBox(width: Dimensions.paddingSizeVeryTiny),
         ],
         Flexible(
-            child: Text(label, style: robotoMedium.copyWith(fontSize: Dimensions.fontSizeExtraSmall, color: color))),
+            child: Text(label,
+                style: robotoMedium.copyWith(
+                    fontSize: Dimensions.fontSizeExtraSmall, color: color))),
       ]),
     );

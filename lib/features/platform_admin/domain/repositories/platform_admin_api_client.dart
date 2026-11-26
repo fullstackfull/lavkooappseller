@@ -41,7 +41,8 @@ class PlatformAdminApiClient {
 
   final String Function() _languageCode;
 
-  PlatformAdminApiClient({required String baseUrl, required String Function() languageCode})
+  PlatformAdminApiClient(
+      {required String baseUrl, required String Function() languageCode})
       : _languageCode = languageCode,
         dio = Dio(
           BaseOptions(
@@ -72,7 +73,8 @@ class PlatformAdminApiClient {
   }) =>
       _send('POST', path, bearerToken: bearerToken, body: body);
 
-  Future<PlatformAdminResult<PlatformAdminReply>> delete(String path, {String? bearerToken}) =>
+  Future<PlatformAdminResult<PlatformAdminReply>> delete(String path,
+          {String? bearerToken}) =>
       _send('DELETE', path, bearerToken: bearerToken);
 
   Future<PlatformAdminResult<PlatformAdminReply>> _send(
@@ -103,10 +105,12 @@ class PlatformAdminApiClient {
 
   PlatformAdminResult<PlatformAdminReply> _reply(Object? body) {
     if (body is! Map || !body.containsKey('data')) {
-      return const PlatformAdminResult<PlatformAdminReply>.failure(PlatformAdminFailure.malformed());
+      return const PlatformAdminResult<PlatformAdminReply>.failure(
+          PlatformAdminFailure.malformed());
     }
     return PlatformAdminResult<PlatformAdminReply>.success(
-      PlatformAdminReply(data: body['data'], meta: PlatformJson.map(body['meta'])),
+      PlatformAdminReply(
+          data: body['data'], meta: PlatformJson.map(body['meta'])),
     );
   }
 

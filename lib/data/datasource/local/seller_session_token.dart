@@ -32,12 +32,14 @@ import 'package:syriacosmeticsmanger/utill/app_constants.dart';
 /// A seller is never locked out by a device whose secure storage is
 /// unavailable, and on a device where it works nothing is left behind.
 class SellerSessionToken {
-  SellerSessionToken({required SharedPreferences? preferences, FlutterSecureStorage? storage})
+  SellerSessionToken(
+      {required SharedPreferences? preferences, FlutterSecureStorage? storage})
       : _preferences = preferences,
         _storage = storage ??
             const FlutterSecureStorage(
               aOptions: AndroidOptions(encryptedSharedPreferences: true),
-              iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+              iOptions:
+                  IOSOptions(accessibility: KeychainAccessibility.first_unlock),
             );
 
   final SharedPreferences? _preferences;

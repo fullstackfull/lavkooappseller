@@ -61,14 +61,18 @@ class PlatformAdminFailure {
   /// The part of the API a grant lacks, for a call it refused for that. Null when the API does not name one this app knows.
   final PlatformCapability? capability;
 
-  const PlatformAdminFailure._(this.kind, {this.statusCode, this.code, this.retryAt, this.capability});
+  const PlatformAdminFailure._(this.kind,
+      {this.statusCode, this.code, this.retryAt, this.capability});
 
-  const PlatformAdminFailure.network() : this._(PlatformAdminFailureKind.network);
+  const PlatformAdminFailure.network()
+      : this._(PlatformAdminFailureKind.network);
 
   /// The session is over without the API having been asked: its token has run out.
-  const PlatformAdminFailure.unauthenticated() : this._(PlatformAdminFailureKind.unauthenticated);
+  const PlatformAdminFailure.unauthenticated()
+      : this._(PlatformAdminFailureKind.unauthenticated);
 
-  const PlatformAdminFailure.malformed() : this._(PlatformAdminFailureKind.malformed);
+  const PlatformAdminFailure.malformed()
+      : this._(PlatformAdminFailureKind.malformed);
 
   /// The longest wait a `Retry-After` is allowed to name, so that the moment it
   /// names can always be written down.
@@ -83,13 +87,20 @@ class PlatformAdminFailure {
     final String? code = _firstErrorCode(body);
 
     return switch (statusCode) {
-      401 => PlatformAdminFailure._(PlatformAdminFailureKind.unauthenticated, statusCode: statusCode, code: code),
+      401 => PlatformAdminFailure._(PlatformAdminFailureKind.unauthenticated,
+          statusCode: statusCode, code: code),
       403 => switch (code) {
-          'market_not_allowed' =>
-            PlatformAdminFailure._(PlatformAdminFailureKind.marketNotAllowed, statusCode: statusCode, code: code),
-          'capability_not_allowed' => PlatformAdminFailure._(PlatformAdminFailureKind.capabilityNotAllowed,
-              statusCode: statusCode, code: code, capability: _firstErrorCapability(body)),
-          _ => PlatformAdminFailure._(PlatformAdminFailureKind.server, statusCode: statusCode, code: code),
+          'market_not_allowed' => PlatformAdminFailure._(
+              PlatformAdminFailureKind.marketNotAllowed,
+              statusCode: statusCode,
+              code: code),
+          'capability_not_allowed' => PlatformAdminFailure._(
+              PlatformAdminFailureKind.capabilityNotAllowed,
+              statusCode: statusCode,
+              code: code,
+              capability: _firstErrorCapability(body)),
+          _ => PlatformAdminFailure._(PlatformAdminFailureKind.server,
+              statusCode: statusCode, code: code),
         },
       404 => PlatformAdminFailure._(
           code == 'session_not_found'
@@ -98,27 +109,38 @@ class PlatformAdminFailure {
           statusCode: statusCode,
           code: code,
         ),
-      422 => PlatformAdminFailure._(PlatformAdminFailureKind.invalidRequest, statusCode: statusCode, code: code),
-      426 => PlatformAdminFailure._(PlatformAdminFailureKind.appTooOld, statusCode: statusCode, code: code),
+      422 => PlatformAdminFailure._(PlatformAdminFailureKind.invalidRequest,
+          statusCode: statusCode, code: code),
+      426 => PlatformAdminFailure._(PlatformAdminFailureKind.appTooOld,
+          statusCode: statusCode, code: code),
       429 => PlatformAdminFailure._(
           PlatformAdminFailureKind.throttled,
           statusCode: statusCode,
           code: code,
           retryAt: _retryAt(retryAfter, now ?? DateTime.now()),
         ),
-      503 => PlatformAdminFailure._(PlatformAdminFailureKind.notReady, statusCode: statusCode, code: code),
-      _ => PlatformAdminFailure._(PlatformAdminFailureKind.server, statusCode: statusCode, code: code),
+      503 => PlatformAdminFailure._(PlatformAdminFailureKind.notReady,
+          statusCode: statusCode, code: code),
+      _ => PlatformAdminFailure._(PlatformAdminFailureKind.server,
+          statusCode: statusCode, code: code),
     };
   }
 
   static String? _firstErrorCode(Object? body) {
-    final List<Object?> errors = PlatformJson.list(PlatformJson.map(body)['errors']);
-    return errors.isEmpty ? null : PlatformJson.string(PlatformJson.map(errors.first)['code']);
+    final List<Object?> errors =
+        PlatformJson.list(PlatformJson.map(body)['errors']);
+    return errors.isEmpty
+        ? null
+        : PlatformJson.string(PlatformJson.map(errors.first)['code']);
   }
 
   static PlatformCapability? _firstErrorCapability(Object? body) {
-    final List<Object?> errors = PlatformJson.list(PlatformJson.map(body)['errors']);
-    return errors.isEmpty ? null : PlatformCapability.parse(PlatformJson.map(errors.first)['capability']);
+    final List<Object?> errors =
+        PlatformJson.list(PlatformJson.map(body)['errors']);
+    return errors.isEmpty
+        ? null
+        : PlatformCapability.parse(
+            PlatformJson.map(errors.first)['capability']);
   }
 
   /// `Retry-After` as a number of seconds. A date, a fraction, zero or text is no
@@ -143,7 +165,8 @@ class PlatformAdminResult<T> {
 
   const PlatformAdminResult.success(T this.value) : failure = null;
 
-  const PlatformAdminResult.failure(PlatformAdminFailure this.failure) : value = null;
+  const PlatformAdminResult.failure(PlatformAdminFailure this.failure)
+      : value = null;
 
   bool get isSuccess => failure == null;
 }
