@@ -136,27 +136,51 @@ class _ProductReportScreenState extends State<ProductReportScreen> {
                     ),
                   ]),
                   const SizedBox(height: Dimensions.paddingSizeSmall),
+
                   ReportCardWidget(children: [
                     Text(getTranslated('sales', context)!,
                         style: robotoMedium.copyWith(
                             color:
                                 Theme.of(context).textTheme.bodyLarge?.color)),
                     const SizedBox(height: Dimensions.paddingSizeSmall),
+                    // The quantity is never refused, whatever the period holds:
+                    // a unit sold in Riyadh and a unit sold in Dubai are two
+                    // units. Only the two money figures can go missing.
                     ReportRowWidget(
                         label: 'quantity_sold',
                         value: report.soldQuantity.toStringAsFixed(0)),
-                    ReportRowWidget(
-                        label: 'sales_value',
-                        value: PriceConverter.convertPrice(
-                            context, report.soldAmount)),
-                    ReportRowWidget(
-                        label: 'discount_given',
-                        value: PriceConverter.convertPrice(
-                            context, report.discountGiven)),
+                    if (!report.totalsRefused) ...[
+                      ReportRowWidget(
+                          label: 'sales_value',
+                          value: PriceConverter.convertPrice(
+                              context, report.soldAmount ?? 0)),
+                      ReportRowWidget(
+                          label: 'discount_given',
+                          value: PriceConverter.convertPrice(
+                              context, report.discountGiven ?? 0)),
+                    ],
                   ]),
                   const SizedBox(height: Dimensions.paddingSizeSmall),
+
+                  // Two currencies in the period and there is no one sales
+                  // value to show, so the reason goes where the figures would
+                  // have been and each currency is listed under it, as the
+                  // order report does for its amounts.
+                  //
+                  // These two rows used to hand `PriceConverter` the server's
+                  // null directly, and that converter dereferences the figure
+                  // it is given (`price!`): the screen a seller opens to read
+                  // what their products earned threw instead of drawing, and
+                  // the one fix nobody should make is the obvious one of
+                  // reading the refusal as zero (K-04.2).
+                  if (report.totalsRefused) ...[
+                    ..._perCurrency(context, report),
+                    const SizedBox(height: Dimensions.paddingSizeSmall),
+                  ],
+
                   ReportChartWidget(
                       chart: report.chart, title: 'products_listed_over_time'),
+
                   if (report.topProducts.isNotEmpty) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -194,6 +218,7 @@ class _ProductReportScreenState extends State<ProductReportScreen> {
                           ]),
                         )),
                   ],
+
                   if (report.products.isNotEmpty) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -243,4 +268,56 @@ class _ProductReportScreenState extends State<ProductReportScreen> {
       ),
     );
   }
+
+  /// What the period sold, in each currency it was sold in.
+  ///
+  /// The reason first, in the seller's language, then one card per currency
+  /// with that currency's own real figures -- the same shape the order report
+  /// and the statement use. Deliberately not one number with a footnote: the
+  /// figure is the thing a seller reads, and there isn't one.
+  List<Widget> _perCurrency(BuildContext context, ProductReportModel report) {
+    return [
+      ReportCardWidget(children: [
+        Row(children: [
+          Icon(Icons.info_outline,
+              size: 18, color: Theme.of(context).colorScheme.error),
+          const SizedBox(width: Dimensions.paddingSizeExtraSmall),
+          Expanded(
+            child: Text(
+              getTranslated(report.totalsRefusedBecause!, context) ??
+                  report.totalsRefusedBecause!,
+              style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall),
+            ),
+          ),
+        ]),
+      ]),
+      const SizedBox(height: Dimensions.paddingSizeSmall),
+      ...report.totalsByCurrency.map((group) => Padding(
+            padding: const EdgeInsets.only(bottom: Dimensions.paddingSizeSmall),
+            child: ReportCardWidget(children: [
+              Text(group.currencyCode,
+                  style:
+                      robotoBold.copyWith(fontSize: Dimensions.fontSizeSmall)),
+              ReportRowWidget(
+                  label: 'quantity_sold',
+                  value: _count(group['sold_quantity'])),
+              ReportRowWidget(
+                  label: 'sales_value', value: _amount(group['sold_amount'])),
+              ReportRowWidget(
+                  label: 'discount_given',
+                  value: _amount(group['discount_given'])),
+            ]),
+          )),
+    ];
+  }
+
+  /// A figure in its own currency, never converted to the display currency: the
+  /// point of the per-currency answer is that these are different kinds of
+  /// money.
+  String _amount(double? figure) =>
+      figure == null ? '\u2014' : figure.toStringAsFixed(2);
+
+  /// A count, which has no currency and so is written as it came.
+  String _count(double? figure) =>
+      figure == null ? '\u2014' : figure.toStringAsFixed(0);
 }
