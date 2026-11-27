@@ -175,6 +175,32 @@ class AuthRepository implements AuthRepositoryInterface {
   ];
 
   @override
+  Future<ApiResponse> endServerSession(String token) async {
+    try {
+      // The token is passed in and set on this one request rather than read
+      // from the client, because the client's credential is already gone:
+      // `clearSharedData` drops it first thing, and that order is deliberate
+      // -- see the note there.
+      final Response response = await dioClient!.post(
+        AppConstants.logoutUri,
+        data: const <String, dynamic>{},
+        options: Options(
+          headers: <String, dynamic>{'Authorization': 'Bearer $token'},
+        ),
+      );
+
+      return ApiResponse.withSuccess(response);
+    } catch (e) {
+      // A sign-out that cannot reach the server is still a sign-out. The phone
+      // has already forgotten the session; a server that is unreachable, or
+      // old enough not to know this route, must not leave the seller on a
+      // screen they have signed out of. The token then expires on its own,
+      // which is what happened to every sign-out before this call existed.
+      return ApiResponse.withError(ApiErrorHandler.getMessage(e));
+    }
+  }
+
+  @override
   Future<bool> clearSharedData() async {
     // Everything destructive happens first, before anything can suspend.
     //

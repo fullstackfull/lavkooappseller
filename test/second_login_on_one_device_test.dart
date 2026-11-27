@@ -28,6 +28,8 @@ import 'package:syriacosmeticsmanger/features/storefront/domain/models/market_sc
 import 'package:syriacosmeticsmanger/features/storefront/seller_market_choice.dart';
 import 'package:syriacosmeticsmanger/utill/app_constants.dart';
 
+import 'market_selector/support/recording_adapter.dart';
+
 const String _queueKey = 'offline_pos_orders';
 const int _idOfTheFirstSeller = 7;
 const int _idOfTheSecondSeller = 9;
@@ -92,7 +94,13 @@ class _Phone {
   final WidgetTester tester;
   final _FakeProfileService profileService = _FakeProfileService();
 
-  late final DioClient client = DioClient(AppConstants.baseUrl, Dio(),
+  /// Nothing behind the network. The sign-out of this app now gives the seller's token back to the server (K-12), and
+  /// this phone holds the real repository, so without an adapter here that request would leave the test and reach the
+  /// real host `AppConstants.baseUrl` names. It records what was sent, which is how the hand-back is read below.
+  final RecordingAdapter network = RecordingAdapter();
+
+  late final DioClient client = DioClient(
+      AppConstants.baseUrl, Dio()..httpClientAdapter = network,
       loggingInterceptor: LoggingInterceptor(), sharedPreferences: preferences);
   late final _CartServiceWithoutANetwork cartService =
       _CartServiceWithoutANetwork(
@@ -227,6 +235,14 @@ class _Phone {
   /// when it holds nothing. The write is the other half of a currency picker that this build does not wire up, so the test makes it.
   String get currency => shopSettings.getCurrency();
 
+  /// The sessions this phone handed back to the server, in the order it handed them back: the token of each
+  /// `POST /api/v3/seller/auth/logout` that left the device (K-12).
+  List<String> get sessionsGivenBack => network.requests
+      .where((RecordedRequest sent) =>
+          sent.method == 'POST' && sent.uri.path == AppConstants.logoutUri)
+      .map((RecordedRequest sent) => '${sent.header('authorization')}')
+      .toList();
+
   /// Every sale the phone still holds, whoever took it.
   List<String> get queueOnTheDisk =>
       preferences.getStringList(_queueKey) ?? <String>[];
@@ -282,6 +298,10 @@ void main() {
       await phone.signOut();
 
       expect(phone.auth.isLoggedIn(), isFalse);
+      // Forgetting the key is not revoking it: the session this phone gave up is handed back, so it ends on the server
+      // too (K-12). Carried on that one request, because the client's own credential is already gone by then.
+      expect(phone.sessionsGivenBack,
+          <String>['Bearer a-real-looking-session-token-value']);
       expect(phone.preferences.containsKey(AppConstants.storefrontCountry),
           isFalse,
           reason:
@@ -401,6 +421,9 @@ void main() {
       expect(phone.preferences.containsKey(AppConstants.currency), isFalse);
       expect(phone.keysOnTheDisk, <String?>['a-1'],
           reason: 'a refused credential is no reason to lose a sale');
+      // Nothing is handed back: that token is already refused, the route would answer the same 401 that brought us
+      // here, and `ApiChecker` runs this sign-out from inside the handler for that 401.
+      expect(phone.sessionsGivenBack, isEmpty);
     });
   });
 

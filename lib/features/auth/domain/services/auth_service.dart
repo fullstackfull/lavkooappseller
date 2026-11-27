@@ -20,6 +20,11 @@ class AuthService implements AuthServiceInterface {
   }
 
   @override
+  Future endServerSession(String token) {
+    return authRepoInterface.endServerSession(token);
+  }
+
+  @override
   Future clearUserNumberAndPassword() {
     return authRepoInterface.clearUserNumberAndPassword();
   }

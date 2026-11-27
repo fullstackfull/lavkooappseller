@@ -30,6 +30,8 @@ import 'package:syriacosmeticsmanger/features/shop/controllers/shop_controller.d
 import 'package:syriacosmeticsmanger/features/shop/domain/services/shop_service_interface.dart';
 import 'package:syriacosmeticsmanger/utill/app_constants.dart';
 
+import 'market_selector/support/recording_adapter.dart';
+
 const String _storageKey = 'offline_pos_orders';
 const String _sellerA = 'seller-a';
 const String _sellerB = 'seller-b';
@@ -219,10 +221,17 @@ class _App extends _Terminal {
       CartController(cartServiceInterface: service);
   late final CustomerController customer =
       CustomerController(cartServiceInterface: service);
+
+  /// Nothing behind the network. The sign-out of this app now gives the seller's token back to the server (K-12), and this
+  /// device holds the real repository, so without an adapter here that request would leave the test and reach the real host
+  /// `AppConstants.baseUrl` names.
+  final RecordingAdapter network = RecordingAdapter();
+
   late final AuthController auth = AuthController(
     authServiceInterface: AuthService(
       authRepoInterface: AuthRepository(
-        dioClient: DioClient(AppConstants.baseUrl, Dio(),
+        dioClient: DioClient(
+            AppConstants.baseUrl, Dio()..httpClientAdapter = network,
             loggingInterceptor: LoggingInterceptor(),
             sharedPreferences: preferences),
         sharedPreferences: preferences,

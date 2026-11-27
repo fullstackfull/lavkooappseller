@@ -13,6 +13,7 @@ abstract class AuthServiceInterface {
   String getUserToken();
   bool isLoggedIn();
   Future<dynamic> clearSharedData();
+  Future<dynamic> endServerSession(String token);
   Future<dynamic> saveUserNumberAndPassword(String number, String password);
   String getUserEmail();
   String getUserPassword();

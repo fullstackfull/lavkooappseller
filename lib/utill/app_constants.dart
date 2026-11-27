@@ -11,6 +11,12 @@ class AppConstants {
   static const String baseUrl = 'https://lavkoo.com';
 
   static const String loginUri = '/api/v3/seller/auth/login';
+
+  /// Giving the credential back at sign-out, so the session it opens ends on
+  /// the server and not only on this phone (K-12). Authenticated, and outside
+  /// the login throttle: a seller leaving must never be answered "too many
+  /// attempts" because somebody else was guessing passwords.
+  static const String logoutUri = '/api/v3/seller/auth/logout';
   static const String configUri = '/api/v1/config';
 
   static const String appHealthUri = '/api/v1/app-health';

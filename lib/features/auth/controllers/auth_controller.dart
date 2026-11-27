@@ -329,7 +329,35 @@ class AuthController with ChangeNotifier {
       GetIt.instance<SellerPermissionController>()
           .apply(const SellerPermissionScope.unrestricted());
     }
-    return await authServiceInterface.clearSharedData();
+
+    // The credential this phone is giving up, read BEFORE the local sign-out
+    // forgets it and handed back to the server AFTER (K-12). Until this call
+    // existed the app only forgot the token: the session it opens stayed live
+    // on the server for the whole life of the token, so a signed-out phone, a
+    // backup of it, or anyone holding a copy of the string still had a working
+    // seller session.
+    //
+    // The order matters both ways round. The server call cannot come first:
+    // the local sign-out used to sit behind two Firebase round trips while its
+    // callers -- none of which await it -- navigated straight to the login
+    // screen, and with the credentials prefilled a seller could be signed back
+    // in before those returned, whereupon the tail of the old sign-out erased
+    // the brand-new session. And it cannot be skipped: forgetting a key is not
+    // revoking it.
+    //
+    // A session the server has already refused sends nothing. That token is
+    // dead, the route would answer the same 401 that brought us here, and
+    // `ApiChecker` calls this from inside the handler for that 401.
+    final String? sessionToEnd =
+        fromUnAuthorizationError ? null : authServiceInterface.getUserToken();
+
+    final bool cleared = await authServiceInterface.clearSharedData();
+
+    if (sessionToEnd != null && sessionToEnd.isNotEmpty) {
+      await authServiceInterface.endServerSession(sessionToEnd);
+    }
+
+    return cleared;
   }
 
   void saveUserNumberAndPassword(String number, String password) {

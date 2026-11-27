@@ -15,6 +15,14 @@ abstract class AuthRepositoryInterface implements RepositoryInterface {
   String getUserToken();
   bool isLoggedIn();
   Future<bool> clearSharedData();
+
+  /// Hands the session token back to the server, so the session it opens ends
+  /// there too (K-12).
+  ///
+  /// Takes the token rather than reading it, because by the time this is
+  /// called the phone has already forgotten it: the local sign-out must not
+  /// wait on a round trip.
+  Future<ApiResponse> endServerSession(String token);
   Future<void> saveUserCredentials(String number, String password);
 
   /// Loads the securely stored password into memory (and migrates any legacy

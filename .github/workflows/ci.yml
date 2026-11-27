@@ -78,7 +78,7 @@ jobs:
       # step does not run unless it says `if: always()`, so a named step is the only way the result of one feature can be read on its own.
       - name: Test the market scope, the market choice, the sign-in header and the version helper (K-01, K-02, K-10, K-12, K-14)
         if: always()
-        run: flutter test test/dio_storefront_header_test.dart test/market_scope_test.dart test/seller_market_choice_test.dart test/dio_auth_header_test.dart test/version_helper_test.dart
+        run: flutter test test/dio_storefront_header_test.dart test/market_scope_test.dart test/seller_market_choice_test.dart test/dio_auth_header_test.dart test/version_helper_test.dart test/seller_sign_out_ends_server_session_test.dart
 
       # The platform's own switch for the force-update gate, read by name: it is the lever that gets a platform out of a minimum
       # typed one digit too high, so what it does has to be readable on its own and not only inside the whole run.
