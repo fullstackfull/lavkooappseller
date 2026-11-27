@@ -4,7 +4,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:syriacosmeticsmanger/data/model/response/base/error_response.dart';
 
-
 class ApiErrorHandler {
   /// DioExceptionType.unknown wraps whatever the transport threw. A SocketException
   /// underneath means the device could not reach the server at all, which deserves
@@ -46,32 +45,32 @@ class ApiErrorHandler {
               break;
             case DioExceptionType.badResponse:
               switch (error.response!.statusCode) {
-              case 403:
-                if (kDebugMode) {
-                  print("===403===>>${error.response!.data}");
-                }
-                  if(error.response!.data.containsKey('key')){
+                case 403:
+                  if (kDebugMode) {
+                    print("===403===>>${error.response!.data}");
+                  }
+                  if (error.response!.data.containsKey('key')) {
                     errorDescription = error.response!.data['key'];
-                  }else if(error.response!.data['errors'] != null){
-                    ErrorResponse errorResponse = ErrorResponse.fromJson(error.response?.data);
+                  } else if (error.response!.data['errors'] != null) {
+                    ErrorResponse errorResponse =
+                        ErrorResponse.fromJson(error.response?.data);
                     errorDescription = errorResponse.errors?[0].message;
-                  }else{
+                  } else {
                     errorDescription = error.response!.data['message'];
                   }
                   break;
                 case 401:
-
                   if (kDebugMode) {
                     print("==401==>>401");
                   }
 
-
-                  if(error.response!.data.containsKey('loginStatus')) {
+                  if (error.response!.data.containsKey('loginStatus')) {
                     errorDescription = error.response!.data['loginStatus'];
-                  } else if(error.response!.data['errors'] != null){
-                    ErrorResponse errorResponse = ErrorResponse.fromJson(error.response?.data);
+                  } else if (error.response!.data['errors'] != null) {
+                    ErrorResponse errorResponse =
+                        ErrorResponse.fromJson(error.response?.data);
                     errorDescription = errorResponse.errors?[0].message;
-                  } else{
+                  } else {
                     errorDescription = error.response!.data['message'];
                   }
 
@@ -86,13 +85,15 @@ class ApiErrorHandler {
                   if (kDebugMode) {
                     print("==Responce=405=>>${error.response!.data}");
                   }
-                  errorDescription = _messageFromBody(error) ?? 'something_went_wrong';
+                  errorDescription =
+                      _messageFromBody(error) ?? 'something_went_wrong';
                   break;
                 case 404:
-                  if(error.response!.data['errors'] != null){
-                    ErrorResponse errorResponse = ErrorResponse.fromJson(error.response?.data);
+                  if (error.response!.data['errors'] != null) {
+                    ErrorResponse errorResponse =
+                        ErrorResponse.fromJson(error.response?.data);
                     errorDescription = errorResponse.errors?[0].message;
-                  }else{
+                  } else {
                     errorDescription = error.response!.data['message'];
                   }
                   break;
@@ -103,16 +104,20 @@ class ApiErrorHandler {
                   errorDescription = _messageFromBody(error) ?? 'server_error';
                   break;
                 case 503:
-                  errorDescription = _messageFromBody(error) ?? 'service_unavailable';
+                  errorDescription =
+                      _messageFromBody(error) ?? 'service_unavailable';
                   break;
                 case 429:
                   errorDescription = 'too_many_requests';
                   break;
                 default:
-                  ErrorResponse errorResponse = ErrorResponse.fromJson(error.response!.data);
-                  if (errorResponse.errors != null && errorResponse.errors!.isNotEmpty) {
+                  ErrorResponse errorResponse =
+                      ErrorResponse.fromJson(error.response!.data);
+                  if (errorResponse.errors != null &&
+                      errorResponse.errors!.isNotEmpty) {
                     errorDescription = errorResponse;
-                  } else {errorDescription = 'something_went_wrong';
+                  } else {
+                    errorDescription = 'something_went_wrong';
                   }
               }
               break;
@@ -123,7 +128,9 @@ class ApiErrorHandler {
               errorDescription = 'no_internet_connection';
               break;
             case DioExceptionType.unknown:
-              errorDescription = _isOfflineError(error) ? 'no_internet_connection' : 'something_went_wrong';
+              errorDescription = _isOfflineError(error)
+                  ? 'no_internet_connection'
+                  : 'something_went_wrong';
               break;
           }
         } else {
