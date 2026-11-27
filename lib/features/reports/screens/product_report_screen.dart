@@ -38,14 +38,16 @@ class _ProductReportScreenState extends State<ProductReportScreen> {
     );
 
     if (range != null) {
-      await reports.getProductReport(dateType: 'custom_date', from: range.start, to: range.end);
+      await reports.getProductReport(
+          dateType: 'custom_date', from: range.start, to: range.end);
     }
   }
 
   /// The file must cover the period on screen, so the export carries the same
   /// parameters the report was fetched with.
   Map<String, dynamic> _exportQuery(BuildContext context) {
-    final ReportController reports = Provider.of<ReportController>(context, listen: false);
+    final ReportController reports =
+        Provider.of<ReportController>(context, listen: false);
     return {
       'date_type': reports.productPeriod,
       if (reports.productPeriod == 'custom_date' && reports.customFrom != null)
@@ -94,23 +96,27 @@ class _ProductReportScreenState extends State<ProductReportScreen> {
                   onPickRange: () => _pickRange(reports),
                 ),
                 const SizedBox(height: Dimensions.paddingSizeSmall),
-
                 if (report == null)
                   SizedBox(
                     height: MediaQuery.of(context).size.height * .5,
-                    child: Center(child: reports.isLoading
-                        ? CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor))
-                        : const NoDataScreen()),
+                    child: Center(
+                        child: reports.isLoading
+                            ? CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    Theme.of(context).primaryColor))
+                            : const NoDataScreen()),
                   )
                 else ...[
                   Row(children: [
-                    ReportMetricWidget(title: 'total_products', value: '${report.listedTotal}'),
+                    ReportMetricWidget(
+                        title: 'total_products',
+                        value: '${report.listedTotal}'),
                     const SizedBox(width: Dimensions.paddingSizeSmall),
                     ReportMetricWidget(
                       title: 'active',
                       value: '${report.active}',
-                      valueColor: Theme.of(context).colorScheme.onTertiaryContainer,
+                      valueColor:
+                          Theme.of(context).colorScheme.onTertiaryContainer,
                     ),
                   ]),
                   const SizedBox(height: Dimensions.paddingSizeSmall),
@@ -124,70 +130,110 @@ class _ProductReportScreenState extends State<ProductReportScreen> {
                     ReportMetricWidget(
                       title: 'rejected',
                       value: '${report.rejected}',
-                      valueColor: report.rejected > 0 ? Theme.of(context).colorScheme.error : null,
+                      valueColor: report.rejected > 0
+                          ? Theme.of(context).colorScheme.error
+                          : null,
                     ),
                   ]),
                   const SizedBox(height: Dimensions.paddingSizeSmall),
-
                   ReportCardWidget(children: [
                     Text(getTranslated('sales', context)!,
-                        style: robotoMedium.copyWith(color: Theme.of(context).textTheme.bodyLarge?.color)),
+                        style: robotoMedium.copyWith(
+                            color:
+                                Theme.of(context).textTheme.bodyLarge?.color)),
                     const SizedBox(height: Dimensions.paddingSizeSmall),
-                    ReportRowWidget(label: 'quantity_sold',
+                    ReportRowWidget(
+                        label: 'quantity_sold',
                         value: report.soldQuantity.toStringAsFixed(0)),
-                    ReportRowWidget(label: 'sales_value',
-                        value: PriceConverter.convertPrice(context, report.soldAmount)),
-                    ReportRowWidget(label: 'discount_given',
-                        value: PriceConverter.convertPrice(context, report.discountGiven)),
+                    ReportRowWidget(
+                        label: 'sales_value',
+                        value: PriceConverter.convertPrice(
+                            context, report.soldAmount)),
+                    ReportRowWidget(
+                        label: 'discount_given',
+                        value: PriceConverter.convertPrice(
+                            context, report.discountGiven)),
                   ]),
                   const SizedBox(height: Dimensions.paddingSizeSmall),
-
-                  ReportChartWidget(chart: report.chart, title: 'products_listed_over_time'),
-
+                  ReportChartWidget(
+                      chart: report.chart, title: 'products_listed_over_time'),
                   if (report.topProducts.isNotEmpty) ...[
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: Dimensions.paddingSizeDefault),
-                      child: Text(getTranslated('best_selling_products', context)!,
-                          style: robotoMedium.copyWith(color: Theme.of(context).textTheme.bodyLarge?.color)),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: Dimensions.paddingSizeDefault),
+                      child: Text(
+                          getTranslated('best_selling_products', context)!,
+                          style: robotoMedium.copyWith(
+                              color: Theme.of(context)
+                                  .textTheme
+                                  .bodyLarge
+                                  ?.color)),
                     ),
                     ...report.topProducts.map((product) => Padding(
-                      padding: const EdgeInsets.only(bottom: Dimensions.paddingSizeSmall),
-                      child: ReportCardWidget(children: [
-                        Text(product.name ?? '#${product.productId}',
-                            maxLines: 2, overflow: TextOverflow.ellipsis,
-                            style: robotoMedium.copyWith(
-                                color: Theme.of(context).textTheme.bodyLarge?.color)),
-                        const SizedBox(height: Dimensions.paddingSizeExtraSmall),
-                        ReportRowWidget(label: 'quantity_sold',
-                            value: product.totalQuantity.toStringAsFixed(0)),
-                        ReportRowWidget(label: 'sales_value',
-                            value: PriceConverter.convertPrice(context, product.totalAmount)),
-                      ]),
-                    )),
+                          padding: const EdgeInsets.only(
+                              bottom: Dimensions.paddingSizeSmall),
+                          child: ReportCardWidget(children: [
+                            Text(product.name ?? '#${product.productId}',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: robotoMedium.copyWith(
+                                    color: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge
+                                        ?.color)),
+                            const SizedBox(
+                                height: Dimensions.paddingSizeExtraSmall),
+                            ReportRowWidget(
+                                label: 'quantity_sold',
+                                value:
+                                    product.totalQuantity.toStringAsFixed(0)),
+                            ReportRowWidget(
+                                label: 'sales_value',
+                                value: PriceConverter.convertPrice(
+                                    context, product.totalAmount)),
+                          ]),
+                        )),
                   ],
-
                   if (report.products.isNotEmpty) ...[
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: Dimensions.paddingSizeSmall),
-                      child: Text('${getTranslated('products', context)}  (${report.totalProductCount})',
-                          style: robotoMedium.copyWith(color: Theme.of(context).textTheme.bodyLarge?.color)),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: Dimensions.paddingSizeSmall),
+                      child: Text(
+                          '${getTranslated('products', context)}  (${report.totalProductCount})',
+                          style: robotoMedium.copyWith(
+                              color: Theme.of(context)
+                                  .textTheme
+                                  .bodyLarge
+                                  ?.color)),
                     ),
                     ...report.products.map((product) => Padding(
-                      padding: const EdgeInsets.only(bottom: Dimensions.paddingSizeSmall),
-                      child: ReportCardWidget(children: [
-                        Text(product.name ?? '#${product.id}',
-                            maxLines: 2, overflow: TextOverflow.ellipsis,
-                            style: robotoMedium.copyWith(
-                                color: Theme.of(context).textTheme.bodyLarge?.color)),
-                        const SizedBox(height: Dimensions.paddingSizeExtraSmall),
-                        ReportRowWidget(label: 'price',
-                            value: PriceConverter.convertPrice(context, product.unitPrice)),
-                        ReportRowWidget(label: 'current_stock', value: '${product.currentStock}'),
-                        if (product.soldQuantity > 0)
-                          ReportRowWidget(label: 'quantity_sold',
-                              value: product.soldQuantity.toStringAsFixed(0)),
-                      ]),
-                    )),
+                          padding: const EdgeInsets.only(
+                              bottom: Dimensions.paddingSizeSmall),
+                          child: ReportCardWidget(children: [
+                            Text(product.name ?? '#${product.id}',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: robotoMedium.copyWith(
+                                    color: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge
+                                        ?.color)),
+                            const SizedBox(
+                                height: Dimensions.paddingSizeExtraSmall),
+                            ReportRowWidget(
+                                label: 'price',
+                                value: PriceConverter.convertPrice(
+                                    context, product.unitPrice)),
+                            ReportRowWidget(
+                                label: 'current_stock',
+                                value: '${product.currentStock}'),
+                            if (product.soldQuantity > 0)
+                              ReportRowWidget(
+                                  label: 'quantity_sold',
+                                  value:
+                                      product.soldQuantity.toStringAsFixed(0)),
+                          ]),
+                        )),
                   ],
                 ],
               ],
