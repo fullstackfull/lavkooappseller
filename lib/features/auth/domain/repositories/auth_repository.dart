@@ -16,7 +16,7 @@ import 'package:syriacosmeticsmanger/utill/app_constants.dart';
 import 'package:path/path.dart';
 import 'package:http/http.dart' as http;
 
-class AuthRepository implements AuthRepositoryInterface{
+class AuthRepository implements AuthRepositoryInterface {
   final DioClient? dioClient;
   final SharedPreferences? sharedPreferences;
   late final SecureCredentialStore secureCredentialStore;
@@ -34,30 +34,35 @@ class AuthRepository implements AuthRepositoryInterface{
   SellerMarketChoice? get _marketChoice =>
       sharedPreferences == null ? null : SellerMarketChoice(sharedPreferences!);
 
-  AuthRepository({required this.dioClient, required this.sharedPreferences, SecureCredentialStore? credentialStore, SellerSessionToken? sessionToken}) {
-    secureCredentialStore = credentialStore ?? SecureCredentialStore(sharedPreferences: sharedPreferences);
-    this.sessionToken = sessionToken ?? SellerSessionToken(preferences: sharedPreferences);
+  AuthRepository(
+      {required this.dioClient,
+      required this.sharedPreferences,
+      SecureCredentialStore? credentialStore,
+      SellerSessionToken? sessionToken}) {
+    secureCredentialStore = credentialStore ??
+        SecureCredentialStore(sharedPreferences: sharedPreferences);
+    this.sessionToken =
+        sessionToken ?? SellerSessionToken(preferences: sharedPreferences);
   }
 
   @override
   Future<ApiResponse> login({String? emailAddress, String? password}) async {
     try {
-      Response response = await dioClient!.post(AppConstants.loginUri,
+      Response response = await dioClient!.post(
+        AppConstants.loginUri,
         data: {"email": emailAddress, "password": password},
       );
       return ApiResponse.withSuccess(response);
     } catch (e) {
-     return ApiResponse.withError(ApiErrorHandler.getMessage(e));
+      return ApiResponse.withError(ApiErrorHandler.getMessage(e));
     }
   }
 
   @override
   Future<ApiResponse> setLanguageCode(String languageCode) async {
     try {
-      final response = await dioClient!.post(AppConstants.setCurrentLanguageUri, data: {
-        'current_language' : languageCode,
-        '_method' : 'put'
-      });
+      final response = await dioClient!.post(AppConstants.setCurrentLanguageUri,
+          data: {'current_language': languageCode, '_method': 'put'});
       return ApiResponse.withSuccess(response);
     } catch (e) {
       return ApiResponse.withError(ApiErrorHandler.getMessage(e));
@@ -67,7 +72,8 @@ class AuthRepository implements AuthRepositoryInterface{
   @override
   Future<ApiResponse> forgotPassword(String identity) async {
     try {
-      Response response = await dioClient!.post(AppConstants.forgotPasswordUri, data: {"identity": identity});
+      Response response = await dioClient!
+          .post(AppConstants.forgotPasswordUri, data: {"identity": identity});
       return ApiResponse.withSuccess(response);
     } catch (e) {
       return ApiResponse.withError(ApiErrorHandler.getMessage(e));
@@ -75,13 +81,17 @@ class AuthRepository implements AuthRepositoryInterface{
   }
 
   @override
-  Future<ApiResponse> resetPassword(String identity, String otp ,String password, String confirmPassword, String? token) async {
-
+  Future<ApiResponse> resetPassword(String identity, String otp,
+      String password, String confirmPassword, String? token) async {
     try {
-      Response response = await dioClient!.post(
-          AppConstants.resetPasswordUri, data: {"_method" : "put",
-        "identity": identity.trim(), "otp": token ?? otp,
-        "password": password, "confirm_password":confirmPassword});
+      Response response =
+          await dioClient!.post(AppConstants.resetPasswordUri, data: {
+        "_method": "put",
+        "identity": identity.trim(),
+        "otp": token ?? otp,
+        "password": password,
+        "confirm_password": confirmPassword
+      });
       return ApiResponse.withSuccess(response);
     } catch (e) {
       return ApiResponse.withError(ApiErrorHandler.getMessage(e));
@@ -91,8 +101,8 @@ class AuthRepository implements AuthRepositoryInterface{
   @override
   Future<ApiResponse> verifyOtp(String identity, String otp) async {
     try {
-      Response response = await dioClient!.post(
-          AppConstants.verifyOtpUri, data: {"identity": identity.trim(), "otp": otp});
+      Response response = await dioClient!.post(AppConstants.verifyOtpUri,
+          data: {"identity": identity.trim(), "otp": otp});
       return ApiResponse.withSuccess(response);
     } catch (e) {
       return ApiResponse.withError(ApiErrorHandler.getMessage(e));
@@ -105,7 +115,8 @@ class AuthRepository implements AuthRepositoryInterface{
       String? deviceToken = await _getDeviceToken();
       // The platform-wide topics AND the one of the market this device is working in (K-11): a maintenance of one market must not tell the
       // sellers of the others to stop working. With storefronts off the list is the two topics this app has always subscribed to.
-      for (final String topic in SellerPushTopics.forMarket(_marketChoice?.current())) {
+      for (final String topic
+          in SellerPushTopics.forMarket(_marketChoice?.current())) {
         FirebaseMessaging.instance.subscribeToTopic(topic);
       }
       Response response = await dioClient!.post(
@@ -180,7 +191,8 @@ class AuthRepository implements AuthRepositoryInterface{
     // cannot still be handed the session that was just abandoned; the stores it
     // then clears are the secure one and, belt and braces, the legacy key.
     final Future<void> sessionEnded = sessionToken.clear();
-    final Future<bool> tokenRemoved = sharedPreferences!.remove(AppConstants.token);
+    final Future<bool> tokenRemoved =
+        sharedPreferences!.remove(AppConstants.token);
     final Future<List<bool>> sellerDataRemoved = Future.wait<bool>(
       _keysOfTheSignedInSeller.map(sharedPreferences!.remove).toList(),
     );
@@ -193,7 +205,8 @@ class AuthRepository implements AuthRepositoryInterface{
     // not part of ending the session. It must never be able to outlive the
     // sign-out it belongs to.
     try {
-      for (final String topic in SellerPushTopics.forMarket(_marketChoice?.current())) {
+      for (final String topic
+          in SellerPushTopics.forMarket(_marketChoice?.current())) {
         await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
       }
     } catch (e) {
@@ -238,29 +251,49 @@ class AuthRepository implements AuthRepositoryInterface{
   }
 
   @override
-  Future<ApiResponse> registration(XFile? profileImage, XFile? shopLogo, XFile? shopBanner, XFile? secondaryBanner, RegisterModel registerModel, XFile? tinCertificate) async {
-    http.MultipartRequest request = http.MultipartRequest('POST', Uri.parse('${AppConstants.baseUrl}${AppConstants.registration}'));
+  Future<ApiResponse> registration(
+      XFile? profileImage,
+      XFile? shopLogo,
+      XFile? shopBanner,
+      XFile? secondaryBanner,
+      RegisterModel registerModel,
+      XFile? tinCertificate) async {
+    http.MultipartRequest request = http.MultipartRequest('POST',
+        Uri.parse('${AppConstants.baseUrl}${AppConstants.registration}'));
     request.headers.addAll(dioClient!.multipartHeaders());
-    if(profileImage != null) {
+    if (profileImage != null) {
       Uint8List list = await profileImage.readAsBytes();
-      var part = http.MultipartFile('image', profileImage.readAsBytes().asStream(), list.length, filename: basename(profileImage.path));
-      request.files.add(part);
-    } if(shopLogo != null) {
-      Uint8List list = await shopLogo.readAsBytes();
-      var part = http.MultipartFile('logo', shopLogo.readAsBytes().asStream(), list.length, filename: basename(shopLogo.path));
-      request.files.add(part);
-    } if(shopBanner != null) {
-      Uint8List list = await shopBanner.readAsBytes();
-      var part = http.MultipartFile('banner', shopBanner.readAsBytes().asStream(), list.length, filename: basename(shopBanner.path));
-      request.files.add(part);
-    }if(secondaryBanner != null) {
-      Uint8List list = await secondaryBanner.readAsBytes();
-      var part = http.MultipartFile('bottom_banner', secondaryBanner.readAsBytes().asStream(), list.length, filename: basename(secondaryBanner.path));
+      var part = http.MultipartFile(
+          'image', profileImage.readAsBytes().asStream(), list.length,
+          filename: basename(profileImage.path));
       request.files.add(part);
     }
-    if(tinCertificate != null) {
+    if (shopLogo != null) {
+      Uint8List list = await shopLogo.readAsBytes();
+      var part = http.MultipartFile(
+          'logo', shopLogo.readAsBytes().asStream(), list.length,
+          filename: basename(shopLogo.path));
+      request.files.add(part);
+    }
+    if (shopBanner != null) {
+      Uint8List list = await shopBanner.readAsBytes();
+      var part = http.MultipartFile(
+          'banner', shopBanner.readAsBytes().asStream(), list.length,
+          filename: basename(shopBanner.path));
+      request.files.add(part);
+    }
+    if (secondaryBanner != null) {
+      Uint8List list = await secondaryBanner.readAsBytes();
+      var part = http.MultipartFile('bottom_banner',
+          secondaryBanner.readAsBytes().asStream(), list.length,
+          filename: basename(secondaryBanner.path));
+      request.files.add(part);
+    }
+    if (tinCertificate != null) {
       Uint8List list = await tinCertificate.readAsBytes();
-      var part = http.MultipartFile('tin_certificate', tinCertificate.readAsBytes().asStream(), list.length, filename: basename(tinCertificate.path));
+      var part = http.MultipartFile('tin_certificate',
+          tinCertificate.readAsBytes().asStream(), list.length,
+          filename: basename(tinCertificate.path));
       request.files.add(part);
     }
 
@@ -290,20 +323,23 @@ class AuthRepository implements AuthRepositoryInterface{
     }
 
     try {
-      return ApiResponse.withSuccess(Response(statusCode: response.statusCode,
+      return ApiResponse.withSuccess(Response(
+          statusCode: response.statusCode,
           requestOptions: RequestOptions(path: ''),
-          statusMessage: response.reasonPhrase, data: res.body));
+          statusMessage: response.reasonPhrase,
+          data: res.body));
     } catch (e) {
       return ApiResponse.withError(ApiErrorHandler.getMessage(e));
-
     }
   }
 
   @override
-  Future<ApiResponse> firebaseAuthTokenStore(String userInput, String token) async {
+  Future<ApiResponse> firebaseAuthTokenStore(
+      String userInput, String token) async {
     try {
       Response response = await dioClient!.post(
-          AppConstants.firebaseAuthTokenStore, data: {"identity": userInput, "token": token});
+          AppConstants.firebaseAuthTokenStore,
+          data: {"identity": userInput, "token": token});
       return ApiResponse.withSuccess(response);
     } catch (e) {
       return ApiResponse.withError(ApiErrorHandler.getMessage(e));
@@ -311,15 +347,15 @@ class AuthRepository implements AuthRepositoryInterface{
   }
 
   @override
-  Future<ApiResponse> firebaseAuthVerify({required String phoneNumber, required String session, required String otp, required bool isForgetPassword}) async {
+  Future<ApiResponse> firebaseAuthVerify(
+      {required String phoneNumber,
+      required String session,
+      required String otp,
+      required bool isForgetPassword}) async {
     try {
       Response response = await dioClient!.post(
         AppConstants.firebaseAuthVerify,
-        data: {
-          'sessionInfo' : session,
-          'phoneNumber' : phoneNumber,
-          'code' : otp
-        },
+        data: {'sessionInfo': session, 'phoneNumber': phoneNumber, 'code': otp},
       );
       return ApiResponse.withSuccess(response);
     } catch (e) {
@@ -327,14 +363,14 @@ class AuthRepository implements AuthRepositoryInterface{
     }
   }
 
-
   @override
-  Future<ApiResponse> checkVendorExistPhone({required String phoneNumber}) async {
+  Future<ApiResponse> checkVendorExistPhone(
+      {required String phoneNumber}) async {
     try {
       Response response = await dioClient!.post(
         AppConstants.checkVendorExistInfoPhone,
         data: {
-          'phone' : phoneNumber,
+          'phone': phoneNumber,
         },
       );
       return ApiResponse.withSuccess(response);
@@ -342,8 +378,6 @@ class AuthRepository implements AuthRepositoryInterface{
       return ApiResponse.withError(ApiErrorHandler.getMessage(e));
     }
   }
-
-
 
   @override
   Future add(value) {
@@ -374,5 +408,4 @@ class AuthRepository implements AuthRepositoryInterface{
     // TODO: implement update
     throw UnimplementedError();
   }
-
 }

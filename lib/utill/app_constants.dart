@@ -249,6 +249,7 @@ class AppConstants {
   static const String sellerVerificationSubmitUri =
       '/api/v3/seller/seller-center/verification/submit';
   static const String sellerPayoutsUri = '/api/v3/seller/seller-center/payouts';
+
   /// Who is signed in: the principal, what it may do, and the markets it carries (K-09).
   static const String sellerPrincipalUri =
       '/api/v3/seller/seller-center/security/me';
