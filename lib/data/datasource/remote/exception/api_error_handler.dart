@@ -25,6 +25,24 @@ class ApiErrorHandler {
     return null;
   }
 
+  /// The sentence an answer that is NOT a JSON object carries, or null when it
+  /// carries none.
+  ///
+  /// Several seller v3 endpoints answer `response()->json('some sentence')`,
+  /// which is a bare JSON string and not an object -- a refused close of a
+  /// withdraw request is one ("Withdraw request is invalid", 403), and its own
+  /// success answer is another. A page is deliberately not a sentence: an HTML
+  /// error page from a proxy is not something to show a seller.
+  static String? _textOfANonObjectBody(dynamic body) {
+    if (body is! String) {
+      return null;
+    }
+
+    final String text = body.trim();
+
+    return text.isEmpty || text.startsWith('<') ? null : text;
+  }
+
   static dynamic getMessage(dynamic error) {
     dynamic errorDescription = "";
     if (error is Exception) {
@@ -49,14 +67,31 @@ class ApiErrorHandler {
                   if (kDebugMode) {
                     print("===403===>>${error.response!.data}");
                   }
-                  if (error.response!.data.containsKey('key')) {
-                    errorDescription = error.response!.data['key'];
-                  } else if (error.response!.data['errors'] != null) {
-                    ErrorResponse errorResponse =
-                        ErrorResponse.fromJson(error.response?.data);
-                    errorDescription = errorResponse.errors?[0].message;
+                  // A refusal is not always a JSON object. `close-withdraw-request`
+                  // answers a bare JSON string, and `containsKey` on a String is a
+                  // NoSuchMethodError -- which the `on FormatException` below does
+                  // not hold, and which is raised from inside the calling
+                  // repository's own catch block, so it escaped the repository: the
+                  // seller tapped "close request", the server refused, and the app
+                  // threw with nothing shown and the button left spinning (K-V1).
+                  //
+                  // An object is read exactly as it always was, key before errors
+                  // before message, so no answer that used to work reads
+                  // differently now.
+                  if (error.response!.data is Map) {
+                    if (error.response!.data.containsKey('key')) {
+                      errorDescription = error.response!.data['key'];
+                    } else if (error.response!.data['errors'] != null) {
+                      ErrorResponse errorResponse =
+                          ErrorResponse.fromJson(error.response?.data);
+                      errorDescription = errorResponse.errors?[0].message;
+                    } else {
+                      errorDescription = error.response!.data['message'];
+                    }
                   } else {
-                    errorDescription = error.response!.data['message'];
+                    errorDescription =
+                        _textOfANonObjectBody(error.response!.data) ??
+                            'something_went_wrong';
                   }
                   break;
                 case 401:

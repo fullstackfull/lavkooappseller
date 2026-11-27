@@ -530,6 +530,77 @@ void main() {
       expect(flow.shop.shopReads, 0);
       expect(flow.wallet.isLoading, isFalse);
     });
+
+    // K-V1. The test above scripts the refusal as `{"message": ...}`, which is
+    // the shape the OTHER endpoint of this screen really uses
+    // (`withdraw-request-update`, SellerController line 546). This endpoint does
+    // not: `close_withdraw_request` answers `response()->json(translate(...),
+    // 403)` -- a bare JSON string, exactly as its own SUCCESS answer does, and
+    // that success answer is already scripted that way two tests up. Nothing
+    // compared the two, so the refusal of this endpoint had never been run.
+    //
+    // What it did when it was finally run:
+    //
+    //     THROWN = NoSuchMethodError: Class 'String' has no instance method
+    //              'containsKey'. Receiver: "Invalid withdraw request."
+    //     SHOWN  = []      LOADING = true
+    //
+    // `api_error_handler.dart` asked the body `containsKey('key')`, a String
+    // has no such method, and the error was raised from inside the calling
+    // repository's own catch block, so it escaped the repository: the seller
+    // tapped "close request", the server refused, and the app threw with
+    // nothing shown and the button left spinning. The one thing that was right
+    // is asserted here too -- the money never went back to the balance.
+    testWidgets(
+        'that is refused in the shape THIS endpoint really answers -- a bare string, not an object -- is answered '
+        'as a failure and throws nothing', (WidgetTester tester) async {
+      final _WithdrawFlow flow = await _WithdrawFlow.pump(
+          tester,
+          _walletServer(<ScriptedAnswer>[
+            ScriptedAnswer.json(_invalidWithdrawText, status: 403)
+          ]));
+
+      ApiResponse? answer;
+      final Object? thrown = await FlowHarness.callThatThrows(tester, () async {
+        answer = await flow.wallet.closeWithdrawRequest(21, '150.5');
+      });
+
+      expect(thrown, isNull,
+          reason: 'it threw a NoSuchMethodError out of the repository');
+      expect(answer, isNotNull, reason: 'the call never returned before');
+      expect(answer!.response, isNull);
+      expect(answer!.error, _invalidWithdrawText,
+          reason:
+              'the sentence the server refused with, not a key and not a blank');
+      expect(flow.wallet.isLoading, isFalse,
+          reason: 'the button was left spinning');
+      expect(flow.profile.balancesGivenBack, isEmpty,
+          reason: 'a refusal never gives the money back');
+      expect(flow.shop.shopReads, 0);
+    });
+
+    testWidgets(
+        'that a proxy refuses with a page rather than an answer does not put the page in front of the seller',
+        (WidgetTester tester) async {
+      final _WithdrawFlow flow = await _WithdrawFlow.pump(
+          tester,
+          _walletServer(<ScriptedAnswer>[
+            const ScriptedAnswer.page('<html><body>403 Forbidden</body></html>',
+                status: 403)
+          ]));
+
+      ApiResponse? answer;
+      final Object? thrown = await FlowHarness.callThatThrows(tester, () async {
+        answer = await flow.wallet.closeWithdrawRequest(21, '150.5');
+      });
+
+      expect(thrown, isNull);
+      expect(answer!.error, 'something_went_wrong',
+          reason:
+              'a proxy\'s HTML is not a sentence to put in front of a seller');
+      expect(flow.wallet.isLoading, isFalse);
+      expect(flow.profile.balancesGivenBack, isEmpty);
+    });
   });
 
   group('the list of withdrawal requests', () {
